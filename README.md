@@ -8,6 +8,14 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
 
 ## ✨ Key Features
 
+* **Tactical Arrow Drawing & Square Highlighting (Double-Tap Gestures):**
+  * Solves the lack of right-click hardware on touchscreens by translating single-finger double-taps on the chessboard into desktop right-mouse events on Chess.com and Lichess.
+  * **Double-tap & drag:** Draws live tactical arrows from origin to target square without accidentally moving pieces.
+  * **Double-tap in place:** Toggles square color highlights (green).
+  * **Additive markings:** Multiple arrows and highlights persist together on the board; clearing is done with a single tap or piece move.
+  * **Zero piece movement latency:** Drag-and-drop moves (`> 10px`) bypass the gesture engine with 0ms latency.
+* **Chess.com Bot Engine WebAssembly Memory Patching:**
+  * Intercepts `explanation-engine.wasm` at the network level and dynamically patches Section 5 (Memory Section) from 386 MB down to 32 MB initial memory with local disk caching. Eliminates V8 virtual memory out-of-memory (`RangeError`) crashes on Android WebView, allowing all Chess.com bots (Vinh, Count Morphy, etc.) and Coach review to run flawlessly.
 * **Board OS System Menu Integration:**
   * Pressing the Board hardware/system menu button opens the native Board OS overlay with three actions:
     * **Resume** — Return to the active web app.
@@ -63,7 +71,8 @@ Chess4Board/
             ├── DisplayController.java     # Step zoom & 4-way orientation cycling
             ├── FloatingDismissButton.java # Draggable floating dismiss button (✕)
             ├── SecondaryTabManager.java   # Isolated multi-window popup tab manager
-            ├── ChessTouchHelper.java      # Chess.com desktop sidebar touch bridge
+            ├── ChessTouchHelper.java      # Sidebar navigation & double-tap arrow bridge
+            ├── WasmPatchHelper.java       # Wasm binary patcher for Chess.com bot engine OOM
             └── MenuOverlayView.java       # 2x scaled centered menu overlay card
 ```
 
@@ -116,11 +125,16 @@ From the repository root:
 | **`⬇`** | Close the Chess 4 Board Menu overlay | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
 
-### ♟️ Touch Ergonomics & Gestures (Chess.com & Lichess)
-* **Draw Tactical Arrows (Double-Tap & Drag):** Double-tap on a starting square and drag your finger across to a target square to draw live tactical arrows.
+---
+
+## ♟️ Tabletop Chess Gestures (Chess.com & Lichess)
+
+On desktop browsers, tactical arrows and square highlights require mouse right-clicks (`button: 2`). **Chess 4 Board** provides an intuitive single-finger touch bridge that translates double-taps on the chessboard into right-click events without interfering with normal play:
+
+* **Draw Tactical Arrows (Double-Tap & Drag):** Double-tap on a starting square and hold/drag on the second tap across to a destination square to draw live tactical arrows.
 * **Highlight Square (Double-Tap in Place):** Double-tap quickly in place on any square to toggle its color highlight (green).
-* **No Accidental Piece Grabs:** Double-tapping on occupied squares starts arrows cleanly without picking up or dragging pieces.
-* **Additive Markings:** Multiple arrows and highlights can be drawn sequentially without previous lines disappearing; lines persist until cleared.
+* **No Accidental Piece Grabs:** Double-tapping on occupied squares begins arrows cleanly without picking up or dragging pieces.
+* **Additive Markings:** Multiple arrows and highlights can be drawn sequentially without previous lines disappearing; lines persist until explicitly cleared.
 * **Clear Markings:** Single-tap any square once or make a piece move to clear all arrows and highlights.
 * **Zero Movement Latency:** Standard single-finger piece drags (> 10px) retain 100% native, instant responsiveness.
 * **Pinch-Zoom & Scroll Suppression:** Browser scrolling and pinch-zooming are suppressed during active arrow drawing.
