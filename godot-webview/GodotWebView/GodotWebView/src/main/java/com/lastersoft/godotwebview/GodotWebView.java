@@ -2,6 +2,8 @@ package com.lastersoft.godotwebview;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Build;
@@ -23,17 +25,20 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
 
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.SignalInfo;
 import org.godotengine.godot.plugin.UsedByGodot;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Chess 4 Board WebView Plugin for Godot 4.
+ * ChessBoard WebView Plugin for Godot 4.
  * Coordinates web browsing, Board OS hardware integration, multi-window secondary tab popups,
  * floating dismiss button, and 2x scaled tabletop menu overlay.
  */
@@ -48,11 +53,54 @@ public class GodotWebView extends GodotPlugin {
     private final FloatingDismissButton floatingDismissButton = new FloatingDismissButton();
     private final MenuOverlayView menuOverlayView = new MenuOverlayView();
 
+    public static final int RIGHT_MARGIN_DP = 106;
+
     private FrameLayout layout = null;
     private WebView webView = null;
     private ProgressBar progressBar = null;
     private View customView = null;
     private WebChromeClient.CustomViewCallback customViewCallback = null;
+    private boolean isRightMarginEnabled = false;
+    private String currentSiteKey = "";
+
+    public static boolean getSiteDefaultRightMargin(Context context, String siteKey) {
+        if (context != null && siteKey != null && !siteKey.isEmpty()) {
+            SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+            String key = UserAgentManager.PREF_SITE_MARGIN_PREFIX + siteKey;
+            if (prefs.contains(key)) {
+                return prefs.getBoolean(key, false);
+            }
+            SharedPreferences legacyPrefs = context.getSharedPreferences(UserAgentManager.LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+            if (legacyPrefs.contains(key)) {
+                return legacyPrefs.getBoolean(key, false);
+            }
+        }
+        return false;
+    }
+
+    public static void saveSiteDefaultRightMargin(Context context, String siteKey, boolean isMarginEnabled) {
+        if (context != null && siteKey != null && !siteKey.isEmpty()) {
+            context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(UserAgentManager.PREF_SITE_MARGIN_PREFIX + siteKey, isMarginEnabled)
+                    .apply();
+        }
+    }
+
+    private String getActiveSiteKey() {
+        String currentUrl = null;
+        if (secondaryTabManager.isOpen() && secondaryTabManager.getWebView() != null) {
+            currentUrl = secondaryTabManager.getWebView().getUrl();
+        }
+        if ((currentUrl == null || currentUrl.isEmpty()) && webView != null) {
+            currentUrl = webView.getUrl();
+        }
+        String siteKey = UserAgentManager.getSiteKey(currentUrl);
+        if (siteKey.isEmpty()) {
+            siteKey = currentSiteKey;
+        }
+        return siteKey.isEmpty() ? "this site" : siteKey;
+    }
 
     public GodotWebView(Godot godot) {
         super(godot);
@@ -85,6 +133,7 @@ public class GodotWebView extends GodotPlugin {
                 getActivity(),
                 this::terminateBoardAndActivity,
                 this::showMenu,
+                this::showHelp,
                 mainHandler
         );
     }
@@ -92,6 +141,11 @@ public class GodotWebView extends GodotPlugin {
     @UsedByGodot
     public void show_menu() {
         runOnUiThread(this::showMenu);
+    }
+
+    @UsedByGodot
+    public void show_help() {
+        runOnUiThread(this::showHelp);
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
@@ -110,11 +164,13 @@ public class GodotWebView extends GodotPlugin {
 
             if (layout == null) {
                 layout = new FrameLayout(activity);
+                layout.setBackgroundColor(Color.BLACK);
                 activity.addContentView(layout, new ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
             } else {
                 layout.removeAllViews();
+                layout.setBackgroundColor(Color.BLACK);
             }
 
             webView = new WebView(activity);
@@ -123,15 +179,24 @@ public class GodotWebView extends GodotPlugin {
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);
 
+            currentSiteKey = UserAgentManager.getSiteKey(url);
             WebSettings settings = webView.getSettings();
             uaManager.init(activity, settings.getUserAgentString());
-            uaManager.configureWebSettings(settings);
+            uaManager.applySiteDefault(activity, currentSiteKey);
+            uaManager.configureWebSettings(settings, url);
+            isRightMarginEnabled = getSiteDefaultRightMargin(activity, currentSiteKey);
+
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+                WebSettingsCompat.setRequestedWithHeaderOriginAllowList(settings, Collections.emptySet());
+            }
 
             settings.setJavaScriptEnabled(true);
             settings.setSupportMultipleWindows(true);
             settings.setJavaScriptCanOpenWindowsAutomatically(true);
             settings.setDomStorageEnabled(true);
             settings.setDatabaseEnabled(true);
+            settings.setAllowFileAccess(true);
+            settings.setAllowContentAccess(true);
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setUseWideViewPort(true);
             settings.setLoadWithOverviewMode(true);
@@ -149,6 +214,7 @@ public class GodotWebView extends GodotPlugin {
             cookieManager.setAcceptCookie(true);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 cookieManager.setAcceptThirdPartyCookies(webView, true);
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             }
 
             // Web client
@@ -181,19 +247,58 @@ public class GodotWebView extends GodotPlugin {
                             return true;
                         }
 
+                        // Allow all auth URLs in primary WebView; NEVER divert auth to second tab
+                        String fullTargetUrl = targetUri.toString();
+                        if (UserAgentManager.isAuthUrl(fullTargetUrl)) {
+                            uaManager.applyAuthUserAgent(view.getSettings());
+                            return false;
+                        }
+
                         // Protect active chess game: route external site links in chess.com to second tab
                         if (request.isForMainFrame()) {
                             String host = targetUri.getHost();
                             String currentUrl = view.getUrl();
                             if (currentUrl != null && currentUrl.contains("chess.com") && host != null) {
                                 if (!host.endsWith("chess.com") && !host.endsWith("chesskids.com")) {
-                                    openUrlInSecondTab(targetUri.toString());
+                                    openUrlInSecondTab(fullTargetUrl);
                                     return true;
                                 }
                             }
                         }
                     }
                     return false;
+                }
+
+                @Override
+                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                    super.onPageStarted(view, url, favicon);
+                    if (UserAgentManager.isAuthUrl(url)) {
+                        uaManager.applyAuthUserAgent(view.getSettings());
+                    } else {
+                        String siteKey = UserAgentManager.getSiteKey(url);
+                        if (!siteKey.isEmpty() && !siteKey.equals(currentSiteKey)) {
+                            currentSiteKey = siteKey;
+                            Activity act = getActivity();
+                            if (act != null) {
+                                float d = act.getResources().getDisplayMetrics().density;
+                                float md = d * MenuOverlayView.MENU_SCALE;
+
+                                boolean siteMargin = getSiteDefaultRightMargin(act, siteKey);
+                                if (siteMargin != isRightMarginEnabled) {
+                                    isRightMarginEnabled = siteMargin;
+                                    applyRightMargin();
+                                    menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, md);
+                                }
+
+                                boolean siteDesktop = uaManager.getSiteDefaultDesktopMode(act, siteKey);
+                                if (siteDesktop != uaManager.isDesktopMode()) {
+                                    uaManager.setDesktopMode(siteDesktop);
+                                    uaManager.configureWebSettings(view.getSettings(), url);
+                                    menuOverlayView.updateDesktopButtonStyle(uaManager, md);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 @Override
@@ -237,6 +342,20 @@ public class GodotWebView extends GodotPlugin {
 
                 @Override
                 public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                    // Reject automated/background window requests (e.g. background bot checks)
+                    if (!isUserGesture) {
+                        return false;
+                    }
+                    // Handle auth URLs in-place so Google/OAuth flows remain in primary session
+                    WebView.HitTestResult hitTest = view.getHitTestResult();
+                    String extraUrl = (hitTest != null) ? hitTest.getExtra() : null;
+                    if (UserAgentManager.isAuthUrl(extraUrl)) {
+                        if (extraUrl != null && !extraUrl.isEmpty()) {
+                            uaManager.applyAuthUserAgent(view.getSettings());
+                            view.loadUrl(extraUrl);
+                        }
+                        return false;
+                    }
                     return secondaryTabManager.handleCreateWindow(
                             activity, layout, uaManager, displayController, floatingDismissButton,
                             menuOverlayView.getScrimView(), menuOverlayView.getMenuCard(),
@@ -290,9 +409,13 @@ public class GodotWebView extends GodotPlugin {
                 }
             });
 
-            layout.addView(webView, new FrameLayout.LayoutParams(
+            int rightMarginPx = isRightMarginEnabled ? (int) (RIGHT_MARGIN_DP * density) : 0;
+            FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT));
+                    FrameLayout.LayoutParams.MATCH_PARENT);
+            webParams.rightMargin = rightMarginPx;
+            layout.addView(webView, webParams);
+            progressParams.rightMargin = rightMarginPx;
             layout.addView(progressBar);
 
             ViewGroup parentView = layout;
@@ -342,14 +465,50 @@ public class GodotWebView extends GodotPlugin {
                 public void onToggleDesktopMode(boolean isLongPressSaveDefault) {
                     float menuDensity = density * MenuOverlayView.MENU_SCALE;
                     if (isLongPressSaveDefault) {
-                        uaManager.toggleAndSaveDefaultMode(activity);
+                        String siteKey = getActiveSiteKey();
+                        boolean savedDefault = uaManager.getSiteDefaultDesktopMode(activity, siteKey);
+                        boolean currentMode = uaManager.isDesktopMode();
+                        boolean targetMode = (currentMode != savedDefault) ? currentMode : !currentMode;
+
+                        uaManager.saveSiteDefaultDesktopMode(activity, siteKey, targetMode);
+                        uaManager.setDesktopMode(targetMode);
                         hideMenu();
                         applyUserAgent(true);
-                        uaManager.showDefaultUaAckDialog(activity, menuDensity);
+                        mainHandler.postDelayed(() -> {
+                            Activity act = getActivity();
+                            if (act != null && !act.isFinishing()) {
+                                uaManager.showSiteUaAckDialog(act, siteKey, targetMode, menuDensity);
+                            }
+                        }, 150);
                     } else {
                         uaManager.toggleTemporaryMode();
                         hideMenu();
                         applyUserAgent(true);
+                    }
+                }
+
+                @Override
+                public void onToggleRightMargin(boolean isLongPressSaveDefault) {
+                    float menuDensity = density * MenuOverlayView.MENU_SCALE;
+                    if (isLongPressSaveDefault) {
+                        String siteKey = getActiveSiteKey();
+                        boolean savedDefault = getSiteDefaultRightMargin(activity, siteKey);
+                        boolean currentMode = isRightMarginEnabled;
+                        boolean targetMode = (currentMode != savedDefault) ? currentMode : !currentMode;
+
+                        saveSiteDefaultRightMargin(activity, siteKey, targetMode);
+                        isRightMarginEnabled = targetMode;
+                        applyRightMargin();
+                        menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, menuDensity);
+                        hideMenu();
+                        mainHandler.postDelayed(() -> {
+                            Activity act = getActivity();
+                            if (act != null && !act.isFinishing()) {
+                                uaManager.showSiteMarginAckDialog(act, siteKey, targetMode, menuDensity);
+                            }
+                        }, 150);
+                    } else {
+                        toggleRightMargin();
                     }
                 }
 
@@ -374,11 +533,6 @@ public class GodotWebView extends GodotPlugin {
                 public void onCloseMenu() {
                     hideMenu();
                 }
-
-                @Override
-                public void onExitRequested() {
-                    terminateBoardAndActivity();
-                }
             });
 
             // Setup Floating Dismiss Button
@@ -392,7 +546,8 @@ public class GodotWebView extends GodotPlugin {
                 int oldW = oldRight - oldLeft;
                 int oldH = oldBottom - oldTop;
                 if (w > 0 && h > 0 && (w != oldW || h != oldH)) {
-                    floatingDismissButton.pinToBottomRight(w, h);
+                    int rightOffset = isRightMarginEnabled ? (int) (RIGHT_MARGIN_DP * density) : 0;
+                    floatingDismissButton.pinToBottomRight(w - rightOffset, h);
                     if (menuOverlayView.isMenuOpen()) {
                         hideMenu();
                     }
@@ -408,6 +563,18 @@ public class GodotWebView extends GodotPlugin {
             @Override
             public void onTabClosed() {
                 menuOverlayView.updateBackButtonState(canGoBack());
+                Activity act = getActivity();
+                if (act != null) {
+                    float density = act.getResources().getDisplayMetrics().density;
+                    float md = density * MenuOverlayView.MENU_SCALE;
+                    String mainKey = UserAgentManager.getSiteKey(webView != null ? webView.getUrl() : null);
+                    if (mainKey.isEmpty()) mainKey = currentSiteKey;
+                    uaManager.applySiteDefault(act, mainKey);
+                    isRightMarginEnabled = getSiteDefaultRightMargin(act, mainKey);
+                    applyRightMargin();
+                    menuOverlayView.updateDesktopButtonStyle(uaManager, md);
+                    menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, md);
+                }
                 if (webView != null) {
                     webView.requestFocus();
                 }
@@ -416,6 +583,14 @@ public class GodotWebView extends GodotPlugin {
             @Override
             public void onPageFinished() {
                 menuOverlayView.updateBackButtonState(canGoBack());
+            }
+
+            @Override
+            public void onAuthRedirect(String authUrl) {
+                if (webView != null && authUrl != null && !authUrl.isEmpty()) {
+                    uaManager.applyAuthUserAgent(webView.getSettings());
+                    webView.loadUrl(authUrl);
+                }
             }
         };
     }
@@ -455,8 +630,67 @@ public class GodotWebView extends GodotPlugin {
     }
 
     private void showMenu() {
+        HelpDialogHelper.dismiss();
         floatingDismissButton.hide();
+        Activity activity = getActivity();
+        if (activity != null) {
+            float density = activity.getResources().getDisplayMetrics().density;
+            float menuDensity = density * MenuOverlayView.MENU_SCALE;
+            menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, menuDensity);
+        }
         menuOverlayView.showMenu(layout, canGoBack());
+    }
+
+    private void showHelp() {
+        Activity activity = getActivity();
+        if (activity == null || activity.isFinishing()) return;
+        hideMenu();
+        float density = activity.getResources().getDisplayMetrics().density;
+        HelpDialogHelper.show(activity, density * MenuOverlayView.MENU_SCALE);
+    }
+
+    public void toggleRightMargin() {
+        isRightMarginEnabled = !isRightMarginEnabled;
+        applyRightMargin();
+        Activity activity = getActivity();
+        if (activity != null) {
+            float density = activity.getResources().getDisplayMetrics().density;
+            float menuDensity = density * MenuOverlayView.MENU_SCALE;
+            menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, menuDensity);
+        }
+    }
+
+    private void applyRightMargin() {
+        Activity activity = getActivity();
+        if (activity == null) return;
+        float density = activity.getResources().getDisplayMetrics().density;
+        int marginPx = isRightMarginEnabled ? (int) (RIGHT_MARGIN_DP * density) : 0;
+
+        if (webView != null) {
+            ViewGroup.LayoutParams lp = webView.getLayoutParams();
+            if (lp instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
+                flp.rightMargin = marginPx;
+                webView.setLayoutParams(flp);
+                webView.requestLayout();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    webView.evaluateJavascript("window.dispatchEvent(new Event('resize'));", null);
+                }
+            }
+        }
+
+        if (progressBar != null) {
+            ViewGroup.LayoutParams plp = progressBar.getLayoutParams();
+            if (plp instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams fplp = (FrameLayout.LayoutParams) plp;
+                fplp.rightMargin = marginPx;
+                progressBar.setLayoutParams(fplp);
+            }
+        }
+
+        if (secondaryTabManager != null) {
+            secondaryTabManager.applyRightMargin(marginPx);
+        }
     }
 
     private void hideMenu() {
@@ -472,8 +706,11 @@ public class GodotWebView extends GodotPlugin {
                 ? activity.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE
                 : 2.0f;
         menuOverlayView.updateDesktopButtonStyle(uaManager, menuDensity);
-        secondaryTabManager.applyUserAgent(uaManager, reloadPage);
-        uaManager.applyUserAgent(webView, reloadPage);
+        if (secondaryTabManager.isOpen()) {
+            secondaryTabManager.applyUserAgent(uaManager, reloadPage);
+        } else {
+            uaManager.applyUserAgent(webView, reloadPage);
+        }
     }
 
     private void navigateToSite(String siteUrl) {
@@ -483,10 +720,18 @@ public class GodotWebView extends GodotPlugin {
         float menuDensity = (activity != null)
                 ? activity.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE
                 : 2.0f;
-        if (uaManager.isDesktopMode() != uaManager.isDefaultDesktopMode()) {
-            uaManager.resetToDefaultMode();
+
+        currentSiteKey = UserAgentManager.getSiteKey(siteUrl);
+
+        if (activity != null) {
+            uaManager.applySiteDefault(activity, currentSiteKey);
             applyUserAgent(false);
+
+            isRightMarginEnabled = getSiteDefaultRightMargin(activity, currentSiteKey);
+            applyRightMargin();
+            menuOverlayView.updateRightMarginButtonStyle(isRightMarginEnabled, menuDensity);
         }
+
         if (webView != null) {
             String targetUrl = uaManager.adjustYouTubeTargetUrl(siteUrl);
             webView.loadUrl(targetUrl);

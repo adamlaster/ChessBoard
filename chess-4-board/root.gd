@@ -23,10 +23,11 @@ func _ready() -> void:
 			wait_frames += 1
 
 	Board.pause.set_context({
-		"game_name": "Chess 4 Board",
+		"game_name": "ChessBoard",
 		"offer_save_option": false,
 		"custom_buttons": [
-			{ "id": "open_menu", "title": "Chess 4 Board Menu", "icon": Board.pause.ICON_SQUARE }
+			{ "id": "open_menu", "title": "App Menu", "icon": Board.pause.ICON_NONE },
+			{ "id": "show_help", "title": "Controls Guide", "icon": Board.pause.ICON_NONE }
 		]
 	})
 
@@ -57,7 +58,10 @@ func _on_pause_result(result: BoardPauseResult) -> void:
 		Board.pause.ACTION_CUSTOM_BUTTON:
 			if result.custom_button_id == "open_menu" and webview_plugin:
 				webview_plugin.show_menu()
+			elif result.custom_button_id == "show_help" and webview_plugin:
+				webview_plugin.show_help()
 		Board.pause.ACTION_QUIT:
 			Engine.max_fps = 60
 			OS.low_processor_usage_mode = false
 			Board.application.quit()
+

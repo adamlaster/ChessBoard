@@ -2,22 +2,34 @@ package com.lastersoft.godotwebview;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import androidx.core.graphics.PathParser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,22 +49,23 @@ public class MenuOverlayView {
         void onZoomOut();
         void onRefresh();
         void onToggleDesktopMode(boolean isLongPressSaveDefault);
+        void onToggleRightMargin(boolean isLongPressSaveDefault);
         void onRotateScreen(boolean isLongPressResetLandscape);
         void onCloseMenu();
-        void onExitRequested();
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private View scrimView;
     private LinearLayout menuCard;
-    private Button backButton;
+    private ImageButton backButton;
     private Button desktopModeButton;
     private GradientDrawable desktopModeCircle;
+    private ImageButton rightMarginButton;
+    private GradientDrawable rightMarginCircle;
+    private ControlIconDrawable rightMarginDrawable;
     private Button extraAppsToggleBtn;
     private ScrollView extraAppsScrollView;
     private final List<Runnable> categoryCollapseCallbacks = new ArrayList<>();
-    private TextView slideThumb;
-    private TextView slideLabel;
     private boolean isMenuOpen = false;
 
     @SuppressLint("ClickableViewAccessibility")
@@ -119,11 +132,10 @@ public class MenuOverlayView {
         menuCard.setOrientation(LinearLayout.VERTICAL);
         menuCard.setBackground(cardBg);
         menuCard.setPadding(cardPadding, cardPadding, cardPadding, cardPadding);
-        // Intercept and consume all touch events landing on the menu card (background, padding, etc.)
-        // so drags or accidental touches never pass through to the backdrop scrim.
+        // Intercept and consume all touch events landing on the menu card so touches never pass through to the backdrop scrim.
         menuCard.setOnTouchListener((v, event) -> true);
         FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
-                (int) (320 * menuDensity),
+                (int) (365 * menuDensity),
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         menuCard.setLayoutParams(cardParams);
         menuCard.setVisibility(View.GONE);
@@ -320,54 +332,52 @@ public class MenuOverlayView {
         backCircle.setShape(GradientDrawable.OVAL);
         backCircle.setColor(Color.parseColor("#2E2E2E"));
 
-        backButton = new Button(activity);
-        backButton.setText("⬅");
-        backButton.setTextColor(Color.WHITE);
-        backButton.setTextSize(16 * MENU_SCALE);
-        backButton.setPadding(0, 0, 0, 0);
+        backButton = new ImageButton(activity);
         backButton.setBackground(backCircle);
+        backButton.setImageDrawable(new ControlIconDrawable(ControlIconDrawable.Type.BACK));
+        backButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        backButton.setPadding(0, 0, 0, 0);
         backButton.setLayoutParams(ctrlParams);
         backButton.setContentDescription("Go Back");
         backButton.setOnClickListener(v -> {
             if (listener != null) listener.onGoBack();
         });
 
-        Button zoomOutButton = new Button(activity);
-        zoomOutButton.setText("－");
-        zoomOutButton.setTextColor(Color.WHITE);
-        zoomOutButton.setTextSize(16 * MENU_SCALE);
-        zoomOutButton.setPadding(0, 0, 0, 0);
-        zoomOutButton.setBackground(controlCircle);
-        zoomOutButton.setLayoutParams(ctrlParams);
-        zoomOutButton.setOnClickListener(v -> {
-            if (listener != null) listener.onZoomOut();
-        });
-
         GradientDrawable zoomInCircle = new GradientDrawable();
         zoomInCircle.setShape(GradientDrawable.OVAL);
         zoomInCircle.setColor(Color.parseColor("#2E2E2E"));
 
-        Button zoomInButton = new Button(activity);
-        zoomInButton.setText("＋");
-        zoomInButton.setTextColor(Color.WHITE);
-        zoomInButton.setTextSize(16 * MENU_SCALE);
-        zoomInButton.setPadding(0, 0, 0, 0);
+        ImageButton zoomInButton = new ImageButton(activity);
         zoomInButton.setBackground(zoomInCircle);
+        zoomInButton.setImageDrawable(new ControlIconDrawable(ControlIconDrawable.Type.ZOOM_IN));
+        zoomInButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        zoomInButton.setPadding(0, 0, 0, 0);
         zoomInButton.setLayoutParams(ctrlParams);
+        zoomInButton.setContentDescription("Zoom In");
         zoomInButton.setOnClickListener(v -> {
             if (listener != null) listener.onZoomIn();
+        });
+
+        ImageButton zoomOutButton = new ImageButton(activity);
+        zoomOutButton.setBackground(controlCircle);
+        zoomOutButton.setImageDrawable(new ControlIconDrawable(ControlIconDrawable.Type.ZOOM_OUT));
+        zoomOutButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        zoomOutButton.setPadding(0, 0, 0, 0);
+        zoomOutButton.setLayoutParams(ctrlParams);
+        zoomOutButton.setContentDescription("Zoom Out");
+        zoomOutButton.setOnClickListener(v -> {
+            if (listener != null) listener.onZoomOut();
         });
 
         GradientDrawable refreshCircle = new GradientDrawable();
         refreshCircle.setShape(GradientDrawable.OVAL);
         refreshCircle.setColor(Color.parseColor("#2E2E2E"));
 
-        Button refreshButton = new Button(activity);
-        refreshButton.setText("↺");
-        refreshButton.setTextColor(Color.WHITE);
-        refreshButton.setTextSize(18 * MENU_SCALE);
-        refreshButton.setPadding(0, 0, 0, 0);
+        ImageButton refreshButton = new ImageButton(activity);
         refreshButton.setBackground(refreshCircle);
+        refreshButton.setImageDrawable(new ControlIconDrawable(ControlIconDrawable.Type.REFRESH));
+        refreshButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        refreshButton.setPadding(0, 0, 0, 0);
         refreshButton.setLayoutParams(ctrlParams);
         refreshButton.setContentDescription("Refresh Page");
         refreshButton.setOnClickListener(v -> {
@@ -380,6 +390,8 @@ public class MenuOverlayView {
         desktopModeButton = new Button(activity);
         desktopModeButton.setTextSize(15 * MENU_SCALE);
         desktopModeButton.setPadding(0, 0, 0, 0);
+        desktopModeButton.setIncludeFontPadding(false);
+        desktopModeButton.setGravity(Gravity.CENTER);
         desktopModeButton.setBackground(desktopModeCircle);
         desktopModeButton.setLayoutParams(ctrlParams);
         desktopModeButton.setContentDescription("Toggle Desktop/Mobile User-Agent");
@@ -391,6 +403,7 @@ public class MenuOverlayView {
             private boolean longPressTriggered = false;
             private final Runnable longPressRunnable = () -> {
                 longPressTriggered = true;
+                desktopModeButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                 desktopModeButton.setAlpha(1.0f);
                 if (listener != null) listener.onToggleDesktopMode(true);
             };
@@ -401,33 +414,87 @@ public class MenuOverlayView {
                     case MotionEvent.ACTION_DOWN:
                         longPressTriggered = false;
                         v.setAlpha(0.7f);
-                        handler.postDelayed(longPressRunnable, 3000);
+                        handler.postDelayed(longPressRunnable, 800);
                         return true;
 
                     case MotionEvent.ACTION_MOVE:
                         float mx = event.getX();
                         float my = event.getY();
-                        if (mx < 0 || mx > v.getWidth() || my < 0 || my > v.getHeight()) {
+                        if (mx < -touchSlop || mx > v.getWidth() + touchSlop || my < -touchSlop || my > v.getHeight() + touchSlop) {
                             handler.removeCallbacks(longPressRunnable);
                             v.setAlpha(1.0f);
                         }
                         return true;
 
                     case MotionEvent.ACTION_UP:
-                        handler.removeCallbacks(longPressRunnable);
                         v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
                         if (!longPressTriggered) {
-                            float ux = event.getX();
-                            float uy = event.getY();
-                            if (ux >= 0 && ux <= v.getWidth() && uy >= 0 && uy <= v.getHeight()) {
-                                if (listener != null) listener.onToggleDesktopMode(false);
-                            }
+                            if (listener != null) listener.onToggleDesktopMode(false);
                         }
                         return true;
 
                     case MotionEvent.ACTION_CANCEL:
-                        handler.removeCallbacks(longPressRunnable);
                         v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        rightMarginCircle = new GradientDrawable();
+        rightMarginCircle.setShape(GradientDrawable.OVAL);
+        rightMarginCircle.setColor(Color.parseColor("#2E2E2E"));
+
+        rightMarginDrawable = new ControlIconDrawable(ControlIconDrawable.Type.RIGHT_MARGIN);
+
+        rightMarginButton = new ImageButton(activity);
+        rightMarginButton.setBackground(rightMarginCircle);
+        rightMarginButton.setImageDrawable(rightMarginDrawable);
+        rightMarginButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        rightMarginButton.setPadding(0, 0, 0, 0);
+        rightMarginButton.setLayoutParams(ctrlParams);
+        rightMarginButton.setContentDescription("Toggle Right Margin (Clear Board Menu)");
+
+        rightMarginButton.setOnTouchListener(new View.OnTouchListener() {
+            private boolean longPressTriggered = false;
+            private final Runnable longPressRunnable = () -> {
+                longPressTriggered = true;
+                rightMarginButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                rightMarginButton.setAlpha(1.0f);
+                if (listener != null) listener.onToggleRightMargin(true);
+            };
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        longPressTriggered = false;
+                        v.setAlpha(0.7f);
+                        handler.postDelayed(longPressRunnable, 800);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float mx = event.getX();
+                        float my = event.getY();
+                        if (mx < -touchSlop || mx > v.getWidth() + touchSlop || my < -touchSlop || my > v.getHeight() + touchSlop) {
+                            handler.removeCallbacks(longPressRunnable);
+                            v.setAlpha(1.0f);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        if (!longPressTriggered) {
+                            if (listener != null) listener.onToggleRightMargin(false);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
                         return true;
                 }
                 return false;
@@ -444,6 +511,8 @@ public class MenuOverlayView {
         rotateButton.setTextColor(Color.WHITE);
         rotateButton.setTextSize(13 * MENU_SCALE);
         rotateButton.setPadding(0, 0, 0, 0);
+        rotateButton.setIncludeFontPadding(false);
+        rotateButton.setGravity(Gravity.CENTER);
         rotateButton.setBackground(rotateCircle);
         rotateButton.setLayoutParams(ctrlParams);
         rotateButton.setContentDescription("Rotate Screen");
@@ -459,12 +528,11 @@ public class MenuOverlayView {
         closeCircle.setShape(GradientDrawable.OVAL);
         closeCircle.setColor(Color.parseColor("#2E2E2E"));
 
-        Button closeMenuButton = new Button(activity);
-        closeMenuButton.setText("⬇");
-        closeMenuButton.setTextColor(Color.WHITE);
-        closeMenuButton.setTextSize(16 * MENU_SCALE);
-        closeMenuButton.setPadding(0, 0, 0, 0);
+        ImageButton closeMenuButton = new ImageButton(activity);
         closeMenuButton.setBackground(closeCircle);
+        closeMenuButton.setImageDrawable(new ControlIconDrawable(ControlIconDrawable.Type.CLOSE));
+        closeMenuButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        closeMenuButton.setPadding(0, 0, 0, 0);
         closeMenuButton.setLayoutParams(lastCtrlParams);
         closeMenuButton.setContentDescription("Close Menu");
         closeMenuButton.setOnClickListener(v -> {
@@ -472,137 +540,15 @@ public class MenuOverlayView {
         });
 
         controlsRow.addView(backButton);
-        controlsRow.addView(zoomOutButton);
         controlsRow.addView(zoomInButton);
+        controlsRow.addView(zoomOutButton);
         controlsRow.addView(refreshButton);
         controlsRow.addView(desktopModeButton);
+        controlsRow.addView(rightMarginButton);
         controlsRow.addView(rotateButton);
         controlsRow.addView(closeMenuButton);
 
-        // Slide to Exit Bar
-        FrameLayout slideTrack = new FrameLayout(activity);
-        LinearLayout.LayoutParams trackParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) (46 * menuDensity));
-        trackParams.setMargins(0, (int) (14 * menuDensity), 0, 0);
-        slideTrack.setLayoutParams(trackParams);
-
-        GradientDrawable trackBg = new GradientDrawable();
-        trackBg.setShape(GradientDrawable.RECTANGLE);
-        trackBg.setColor(Color.parseColor("#252525"));
-        trackBg.setCornerRadius(23 * menuDensity);
-        trackBg.setStroke((int) (1 * menuDensity), Color.parseColor("#33FFFFFF"));
-        slideTrack.setBackground(trackBg);
-        slideTrack.setOnTouchListener((v, event) -> true);
-
-        slideLabel = new TextView(activity);
-        slideLabel.setText("Slide to Exit ❯❯❯");
-        slideLabel.setTextColor(Color.parseColor("#99FFFFFF"));
-        slideLabel.setTextSize(14 * MENU_SCALE);
-        slideLabel.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        slideLabel.setLayoutParams(labelParams);
-        slideTrack.addView(slideLabel);
-
-        int thumbSize = (int) (38 * menuDensity);
-        int thumbMargin = (int) (4 * menuDensity);
-        slideThumb = new TextView(activity);
-        slideThumb.setText("✕");
-        slideThumb.setTextColor(Color.WHITE);
-        slideThumb.setTextSize(16 * MENU_SCALE);
-        slideThumb.setGravity(Gravity.CENTER);
-
-        GradientDrawable thumbBg = new GradientDrawable();
-        thumbBg.setShape(GradientDrawable.OVAL);
-        thumbBg.setColor(Color.parseColor("#E53935"));
-        slideThumb.setBackground(thumbBg);
-
-        FrameLayout.LayoutParams thumbParams = new FrameLayout.LayoutParams(thumbSize, thumbSize);
-        thumbParams.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-        thumbParams.setMargins(thumbMargin, 0, 0, 0);
-        slideThumb.setLayoutParams(thumbParams);
-        slideTrack.addView(slideThumb);
-
-        slideThumb.setOnTouchListener(new View.OnTouchListener() {
-            private float downRawX;
-            private float startX;
-            private boolean exitTriggered = false;
-
-            private void triggerExit(View thumbView, float maxX) {
-                if (exitTriggered) return;
-                exitTriggered = true;
-                thumbView.animate().cancel();
-                thumbView.setX(maxX);
-                slideThumb.setText("✓");
-                trackBg.setColor(Color.parseColor("#C62828"));
-                trackBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#FF8A80"));
-                if (slideLabel != null) {
-                    slideLabel.animate().cancel();
-                    slideLabel.setText("Closing...");
-                    slideLabel.setTypeface(Typeface.DEFAULT_BOLD);
-                    slideLabel.setTextColor(Color.WHITE);
-                    slideLabel.setAlpha(1.0f);
-                }
-                if (scrimView != null) {
-                    scrimView.setOnTouchListener(null);
-                    scrimView.setOnClickListener(null);
-                    scrimView.setBackgroundColor(Color.parseColor("#E6000000"));
-                }
-                if (listener != null) {
-                    thumbView.postDelayed(listener::onExitRequested, 60);
-                }
-            }
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (exitTriggered) return true;
-                float minX = thumbMargin;
-                float maxX = slideTrack.getWidth() - v.getWidth() - thumbMargin;
-
-                switch (event.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        downRawX = event.getRawX();
-                        startX = v.getX();
-                        if (v.getParent() != null) {
-                            v.getParent().requestDisallowInterceptTouchEvent(true);
-                        }
-                        return true;
-
-                    case MotionEvent.ACTION_MOVE:
-                        float deltaX = event.getRawX() - downRawX;
-                        float newX = Math.max(minX, Math.min(startX + deltaX, maxX));
-                        v.setX(newX);
-                        float progress = (maxX > minX) ? (newX - minX) / (maxX - minX) : 0f;
-                        if (progress >= 0.985f) {
-                            triggerExit(v, maxX);
-                            return true;
-                        }
-                        if (slideLabel != null) {
-                            slideLabel.setAlpha(Math.max(0f, 1.0f - progress * 1.15f));
-                        }
-                        return true;
-
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        float releaseProgress = (maxX > minX) ? (v.getX() - minX) / (maxX - minX) : 0f;
-                        if (releaseProgress >= 0.95f) {
-                            triggerExit(v, maxX);
-                        } else {
-                            v.animate().x(minX).setDuration(200).start();
-                            if (slideLabel != null) {
-                                slideLabel.animate().alpha(1.0f).setDuration(200).start();
-                            }
-                        }
-                        return true;
-                }
-                return false;
-            }
-        });
-
-        slideTrack.setVisibility(View.GONE);
-
         menuCard.addView(controlsRow);
-        menuCard.addView(slideTrack);
 
         rootLayout.addView(scrimView);
         rootLayout.addView(menuCard);
@@ -627,14 +573,6 @@ public class MenuOverlayView {
 
         scrimView.setVisibility(View.VISIBLE);
         menuCard.setVisibility(View.VISIBLE);
-
-        float density = rootLayout.getResources().getDisplayMetrics().density;
-        if (slideThumb != null) {
-            slideThumb.setX(4 * density * MENU_SCALE);
-        }
-        if (slideLabel != null) {
-            slideLabel.setAlpha(1.0f);
-        }
 
         repositionMenuCard(rootLayout);
     }
@@ -687,6 +625,23 @@ public class MenuOverlayView {
         }
     }
 
+    public void updateRightMarginButtonStyle(boolean isActive, float menuDensity) {
+        if (rightMarginButton == null || rightMarginCircle == null) return;
+        if (isActive) {
+            rightMarginCircle.setColor(Color.parseColor("#1E2433"));
+            rightMarginCircle.setStroke((int) (1.5f * menuDensity), Color.parseColor("#5C7CFA"));
+            if (rightMarginDrawable != null) {
+                rightMarginDrawable.setIconColor(Color.parseColor("#91A7FF"));
+            }
+        } else {
+            rightMarginCircle.setColor(Color.parseColor("#2E2E2E"));
+            rightMarginCircle.setStroke(0, Color.TRANSPARENT);
+            if (rightMarginDrawable != null) {
+                rightMarginDrawable.setIconColor(Color.WHITE);
+            }
+        }
+    }
+
     public void bringToFront() {
         if (scrimView != null) scrimView.bringToFront();
         if (menuCard != null) menuCard.bringToFront();
@@ -706,10 +661,97 @@ public class MenuOverlayView {
         backButton = null;
         desktopModeButton = null;
         desktopModeCircle = null;
+        rightMarginButton = null;
+        rightMarginCircle = null;
+        rightMarginDrawable = null;
         extraAppsToggleBtn = null;
         extraAppsScrollView = null;
-        slideThumb = null;
-        slideLabel = null;
+    }
+
+    /**
+     * Renders mathematically and optically centered Material Design vector icons
+     * (Back, Zoom In, Zoom Out, Refresh, Close Menu) with unified stroke weight,
+     * crisp scaling, and identical visual geometry.
+     */
+    public static class ControlIconDrawable extends Drawable {
+        public enum Type {
+            BACK("M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"),
+            ZOOM_OUT("M19 13H5v-2h14v2z"),
+            ZOOM_IN("M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"),
+            REFRESH("M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"),
+            RIGHT_MARGIN("M16 20H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2zm0-14H4v12h12V6zM20 4h2v16h-2z"),
+            HELP("M11.07 12.85c.77-1.39 2.25-2.21 3.11-3.44.91-1.29.4-4.05-2.18-4.05-1.9 0-2.67 1.48-2.67 2.68H7.1C7.1 4.7 9.33 3 12 3c2.65 0 4.22 1.72 4.22 4.07 0 1.94-1.22 3.03-2.14 3.9-.92.88-1.57 1.49-1.89 2.45-.19.57-.22 1.1-.22 2.48h-2.1c0-1.82-.03-2.61.28-3.05zM11 18h2v2h-2z"),
+            CLOSE("M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z");
+
+            final String pathData;
+
+            Type(String pathData) {
+                this.pathData = pathData;
+            }
+        }
+
+        private final Path path;
+        private final Paint paint;
+
+        public ControlIconDrawable(Type type) {
+            Path p = null;
+            try {
+                p = PathParser.createPathFromPathData(type.pathData);
+            } catch (Exception ignored) {
+            }
+            this.path = p;
+            this.paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            this.paint.setStyle(Paint.Style.FILL);
+            this.paint.setColor(Color.WHITE);
+        }
+
+        public void setIconColor(int color) {
+            paint.setColor(color);
+            invalidateSelf();
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            if (b.isEmpty() || path == null) return;
+            float cx = b.exactCenterX();
+            float cy = b.exactCenterY();
+            float size = Math.min(b.width(), b.height());
+            float iconBox = size * 0.51f;
+            float scale = iconBox / 24.0f;
+
+            canvas.save();
+            canvas.translate(cx - 12.0f * scale, cy - 12.0f * scale);
+            canvas.scale(scale, scale);
+            canvas.drawPath(path, paint);
+            canvas.restore();
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+            invalidateSelf();
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter colorFilter) {
+            paint.setColorFilter(colorFilter);
+            invalidateSelf();
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+
+        @Override
+        public int getIntrinsicWidth() {
+            return -1;
+        }
+
+        @Override
+        public int getIntrinsicHeight() {
+            return -1;
+        }
     }
 }
-

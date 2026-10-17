@@ -1,6 +1,6 @@
-# Chess 4 Board — Build & Deployment Pipeline
+# ChessBoard — Build & Deployment Pipeline
 
-This document details the complete build, packaging, and deployment pipeline for **Chess 4 Board** (`com.lastersoft.chess4board`) running on the **Board** digital tabletop device.
+This document details the complete build, packaging, and deployment pipeline for **ChessBoard** (`com.lastersoft.chessboard`) running on the **Board** digital tabletop device.
 
 For a high-level overview and controls reference, see [`README.md`](./README.md). For detailed component design, view hierarchy, and Mermaid flowcharts, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
@@ -19,7 +19,7 @@ A unified build script handles the entire 4-step sequence automatically:
   ```bash
   ./build_and_deploy.sh --doctor
   ```
-* **Full pipeline (default):** Recompiles Android library, copies AARs, exports Godot APK to `../output/Chess4Board.apk`, and installs/launches on Board:
+* **Full pipeline (default):** Recompiles Android library, copies AARs, exports Godot APK to `../output/ChessBoard.apk`, and installs/launches on Board:
   ```bash
   ./build_and_deploy.sh
   ```
@@ -75,7 +75,7 @@ Compiles both debug and release Android library binaries containing our custom `
 
 ---
 
-### Step 2: Copy AARs to Chess 4 Board Project
+### Step 2: Copy AARs to ChessBoard Project
 Copies the updated native AAR binaries directly into the game's `addons/webview` directory so Godot packages them into the Android export template.
 
 * **Source Directory:** `godot-webview/GodotWebView/GodotWebView/build/outputs/aar`
@@ -95,19 +95,19 @@ Performs a headless compilation and packaging of `chess-4-board` into an Android
 * **Command:**
   ```bash
   mkdir -p "${OUTPUT_DIR:-../output}"
-  "${GODOT_BIN:-godot}" --headless --path chess-4-board --export-debug "Android" "${OUTPUT_DIR:-../output}/Chess4Board.apk"
+  "${GODOT_BIN:-godot}" --headless --path chess-4-board --export-debug "Android" "${OUTPUT_DIR:-../output}/ChessBoard.apk"
   ```
-* **Output:** `Chess4Board.apk` placed in `OUTPUT_DIR` (default: `../output/Chess4Board.apk`, stored out-of-tree so large APK binaries stay outside the git repository).
+* **Output:** `ChessBoard.apk` placed in `OUTPUT_DIR` (default: `../output/ChessBoard.apk`, stored out-of-tree so large APK binaries stay outside the git repository).
 
 ---
 
 ### Step 4: Install and Launch APK on Board Device
-Uploads and installs `Chess4Board.apk` to the target Board device over LAN, then immediately launches the app.
+Uploads and installs `ChessBoard.apk` to the target Board device over LAN, then immediately launches the app.
 
 * **Working Directory:** `OUTPUT_DIR` (e.g. `../output`)
 * **Command:**
   ```bash
-  board-connect install "${OUTPUT_DIR:-../output}/Chess4Board.apk" --launch
+  board-connect install "${OUTPUT_DIR:-../output}/ChessBoard.apk" --launch
   ```
 * **Output:** Real-time upload progress bar and confirmation from the `board-connect` CLI tool.
 

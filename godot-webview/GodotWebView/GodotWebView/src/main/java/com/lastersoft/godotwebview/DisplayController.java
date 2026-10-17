@@ -30,6 +30,11 @@ public class DisplayController {
         return ZOOM_LEVELS[currentZoomIndex];
     }
 
+    public int getOrientationDegrees() {
+        if (currentOrientationIndex <= 0) return 0;
+        return currentOrientationIndex * 90;
+    }
+
     public void resetZoom() {
         currentZoomIndex = DEFAULT_ZOOM_INDEX;
     }
@@ -61,7 +66,7 @@ public class DisplayController {
     private void applyZoomToWebView(WebView webView, int zoomPercent) {
         if (webView == null) return;
         webView.getSettings().setTextZoom(zoomPercent);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && zoomPercent != 100) {
             String js = "document.documentElement.style.zoom = '" + zoomPercent + "%';";
             webView.evaluateJavascript(js, null);
         }

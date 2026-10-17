@@ -1,6 +1,6 @@
-# Chess 4 Board — System Architecture & Component Specification
+# ChessBoard — System Architecture & Component Specification
 
-This document provides a comprehensive technical reference for the system architecture, component breakdown, view hierarchy, event lifecycles, and design decisions of **Chess 4 Board** (`com.lastersoft.chess4board`).
+This document provides a comprehensive technical reference for the system architecture, component breakdown, view hierarchy, event lifecycles, and design decisions of **ChessBoard** (`com.lastersoft.chessboard`).
 
 ---
 
@@ -35,6 +35,7 @@ flowchart TD
             Catalog["AppCatalog.java\n(Sites & Categorized Apps)"]
             TouchHelper["ChessTouchHelper.java\n(Sidebar Touch & Flyout Bridge)"]
             WasmPatch["WasmPatchHelper.java\n(Wasm Memory & OOM Interceptor)"]
+            HelpDialog["HelpDialogHelper.java\n(2x Modal Controls Guide)"]
         end
     end
 
@@ -58,6 +59,7 @@ flowchart TD
     Coordinator --> Catalog
     Coordinator --> TouchHelper
     Coordinator --> WasmPatch
+    Coordinator --> HelpDialog
 
     Secondary --> PopupWeb
     Coordinator --> PrimaryWeb
@@ -73,18 +75,19 @@ flowchart TD
 
 ## 2. Core Architectural Subsystems
 
-The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 10 cohesive classes:
+The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 11 cohesive classes:
 
 | Class | Responsibility | Key Collaborators / Dependencies |
 |---|---|---|
-| [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_menu`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
-| [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"Chess 4 Board Menu"` action context, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
-| [`SecondaryTabManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SecondaryTabManager.java) | **Multi-Window Popup Subsystem:** Manages the isolated popup `WebView` container (`popupContainer`), progress bar, and WebChromeClient / WebViewClient event hooks. Catches `target="_blank"`, `window.open()`, and outbound links clicked during a chess game without reloading or disconnecting the primary game underneath. | `FloatingDismissButton`, `MenuOverlayView`, `UserAgentManager`, `DisplayController`, `ChessTouchHelper`, `WasmPatchHelper` |
+| [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_menu`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
+| [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"App Menu"` and `"Controls Guide"` action context fallback, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
+| [`SecondaryTabManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SecondaryTabManager.java) | **Multi-Window Popup Subsystem:** Manages the isolated popup `WebView` container (`popupContainer`), progress bar, and WebChromeClient / WebViewClient event hooks. Strips `X-Requested-With` via `androidx.webkit`, catches `<a target="_blank">`, `window.open()`, and outbound links clicked during a chess game without reloading or disconnecting the primary game underneath, and reroutes any stray OAuth popups back to the primary WebView via `onAuthRedirect`. | `FloatingDismissButton`, `MenuOverlayView`, `UserAgentManager`, `DisplayController`, `ChessTouchHelper`, `WasmPatchHelper`, `androidx.webkit` |
 | [`FloatingDismissButton.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/FloatingDismissButton.java) | **Ergonomic Floating Controls:** 58dp circular draggable action button (`✕`). Uses `ViewConfiguration.getScaledTouchSlop()` to differentiate taps from drags, clamps movement within container margins, implements a 4-second idle auto-fade (`35%` opacity) to prevent obscuring game content, and triggers secondary tab teardown on tap. | Android `MotionEvent`, `FrameLayout` |
-| [`MenuOverlayView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/MenuOverlayView.java) | **2x Tabletop Menu Interface:** 2x scaled centered card (`menuCard`) styled in dark acrylic (`#F01A1A1A`) with touch-slop tap dismiss scrim (`scrimView`). Consumes all touches on the card and slider track, filtering out drag/swipe gestures on the scrim (`ViewConfiguration.getScaledTouchSlop()`) so the menu dismisses strictly via explicit tap outside or the `⬇` button. Houses quick chess buttons, collapsible extra apps accordion, bottom control row (`[ ⬅ ] [ － ] [ ＋ ] [ ↺ ] [ 🖥/📱 ] [ 90° ] [ ⬇ ]`), and the safety exit slider. | `AppCatalog`, `UserAgentManager`, `MenuActionListener` |
-| [`UserAgentManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/UserAgentManager.java) | **User-Agent Management & Persistence:** Manages Desktop (`🖥`) vs. Mobile (`📱`) modes with persistent storage in `SharedPreferences` (`chess4board_prefs` / `default_desktop_mode`). Rewrites YouTube query parameters (`app=desktop` / `app=mobile`), styles the toggle button, and displays the acknowledgement dialog. | `SharedPreferences`, `WebSettings`, `AlertDialog` |
+| [`MenuOverlayView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/MenuOverlayView.java) | **2x Tabletop Menu Interface:** 2x scaled centered card (`menuCard`) styled in dark acrylic (`#F01A1A1A`) with touch-slop tap dismiss scrim (`scrimView`). Consumes all touches on the card, filtering out drag/swipe gestures on the scrim (`ViewConfiguration.getScaledTouchSlop()`) so the menu dismisses strictly via explicit tap outside or the close button. Houses quick chess buttons, collapsible extra apps accordion, and bottom control row (`[ Back ] [ Zoom+ ] [ Zoom- ] [ Refresh ] [ Desktop ] [ Margin ◧ ] [ 90° ] [ Close ✕ ]` powered by `ControlIconDrawable` Material vector icons). | `AppCatalog`, `UserAgentManager`, `MenuActionListener` |
+| [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java) | **2x Modal Controls & Gestures Guide:** Displays a 2x tabletop-scaled dark acrylic modal dialog (`AlertDialog`) triggered from the Board OS system pause menu detailing all 4 live control systems: Chess Gestures & Touch Ergonomics, Menu Controls Row, Secondary Tabs, and Board OS System Menu. Features a top-right circular `✕` close button, sleek centered pill button, and mutual auto-dismissal when the links menu opens. | Android `AlertDialog`, `ScrollView`, `RelativeLayout`, `LinearLayout` |
+| [`UserAgentManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/UserAgentManager.java) | **User-Agent Management & Persistence:** Manages Desktop (`🖥`) vs. Mobile (`📱`) modes with per-site persistent storage in `SharedPreferences` (`chessboard_prefs` / `site_ua_<host>`). Strips `X-Requested-With` via `androidx.webkit`, derives desktop User-Agent dynamically from native Chromium engine, dynamically normalizes auth URLs (`isAuthUrl`) to clean native mobile User-Agent for Google/Cloudflare compliance, rewrites YouTube query parameters (`app=desktop` / `app=mobile`), and styles menu toggle buttons. | `SharedPreferences`, `WebSettings`, `AlertDialog`, `androidx.webkit` |
 | [`DisplayController.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/DisplayController.java) | **Zoom Stepping & Tabletop Orientation:** Implements 5-level step zoom (`75%`, `100%`, `125%`, `150%`, `200%`) applied via `setTextZoom` + CSS `document.documentElement.style.zoom`. Cycles clockwise through 4 tabletop orientations (`Landscape` → `Portrait` → `Reverse Landscape` → `Reverse Portrait`) with long-press reset to Landscape, scheduling layout invalidation and resize events. | Android `ActivityInfo`, `Configuration`, `WebView` |
-| [`ChessTouchHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ChessTouchHelper.java) | **Chess Ergonomics & Gesture Bridge:** Injects two client-side bridges: (1) **Sidebar Navigation Bridge:** Intercepts desktop hover/touch mismatch on Chess.com, eliminating premature redirects to `/play`, expanding flyout submenus via synthetic `mouseenter`, and blocking premature unmounts on finger lift. (2) **Two-Finger Right-Click Gesture Bridge:** Translates two-finger touch gestures on `<wc-chess-board>` / `<cg-board>` into synthetic right-click events (`button: 2`, `buttons: 2`, `which: 3`), enabling arrow drawing and square highlighting on touchscreen displays while suppressing browser pinch-zoom and keeping single-finger piece movement 100% native. | Android `WebView` evaluation, Chess.com & Lichess DOM architecture |
+| [`ChessTouchHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ChessTouchHelper.java) | **Chess Ergonomics & Gesture Bridge:** Injects two client-side bridges: (1) **Sidebar Navigation Bridge:** Intercepts desktop hover/touch mismatch on Chess.com, eliminating premature redirects to `/play`, expanding flyout submenus via synthetic `mouseenter`, and blocking premature unmounts on finger lift. (2) **Single-Finger Double-Tap Right-Click Gesture Bridge:** Translates double-taps on `<wc-chess-board>` / `<cg-board>` into synthetic right-click events (`button: 2`, `buttons: 2`, `which: 3`), enabling tactical arrow drawing (double-tap & drag) and square highlighting (double-tap in place) on touchscreen displays while suppressing browser pinch-zoom and keeping single-finger piece movement 100% native. | Android `WebView` evaluation, Chess.com & Lichess DOM architecture |
 | [`WasmPatchHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/WasmPatchHelper.java) | **WebAssembly Memory Interceptor & Patching:** Intercepts network requests in `shouldInterceptRequest` for WebAssembly binaries compiled with oversized memory allocations (specifically Chess.com's `explanation-engine.wasm` used by Komodo/CEE bots and Coach). Rewrites binary Section 5 (Memory Section) on-the-fly to reduce initial memory from 386 MB (6,176 pages) to 32 MB (512 pages) and max memory from 2 GB to 512 MB. Caches patched binaries in app cache (`wasm_cache/`) for instant sub-10ms loads, eliminating Android V8 virtual memory exhaustion (`WebAssembly.instantiate(): Out of memory`). | Android `WebViewClient.shouldInterceptRequest`, WebAssembly binary format |
 | [`AppCatalog.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/AppCatalog.java) | **Application & Category Registry:** Immutable registry of primary chess sites (`MAIN_SITES`) and categorized extra applications (`EXTRA_CATEGORIES` across Games, Video, and Web). Ready for future runtime persistence. | Data models `SiteEntry` and `CategoryEntry` |
 
@@ -113,7 +116,7 @@ Root FrameLayout (Activity Root)
  │     └── Translucent 30% black (#4D000000), dismisses menu on outside click
  │
  ├── [Layer 4] Centered Menu Card (LinearLayout, menuCard)
- │     └── 2x scaled (320dp * 2.0 = 640dp wide), rounded corners (18dp), elevation (12dp)
+ │     └── 2x scaled (365dp * 2.0 wide), rounded corners (18dp), elevation (12dp)
  │
  ├── [Layer 5] Floating Dismiss Button (Button, floatingButton)
  │     └── 58dp circular button ("✕" with red border when secondary tab is open)
@@ -139,12 +142,11 @@ sequenceDiagram
     participant Popup as popupWebView
     participant Fab as FloatingDismissButton
 
-    User->>Primary: Clicks external link / window.open()
-    Primary->>Client: onCreateWindow(resultMsg)
-    Client->>SecMgr: handleCreateWindow(resultMsg)
+    User->>Primary: Clicks external link in active game
+    Primary->>Primary: shouldOverrideUrlLoading checks isAuthUrl (Auth stays in primary)
+    Primary->>SecMgr: openUrlInSecondTab(externalUrl)
     SecMgr->>Popup: Instantiate isolated WebView inside popupContainer
     SecMgr->>Fab: showDismissStyle() (✕ button visible at bottom-right)
-    SecMgr->>Client: transport.setWebView(popupWebView) & sendToTarget()
     Popup->>User: Displays secondary site (Primary match intact underneath)
     Fab->>Fab: After 4s idle, auto-fades to 35% opacity
 
@@ -166,22 +168,24 @@ sequenceDiagram
     autonumber
     participant Hardware as Board Hardware Menu Button
     participant OS as Board OS SystemOverlayService
-    participant Bridge as BoardBridge
     participant Godot as Godot host (root.gd)
+    participant Plugin as GodotWebView Plugin
     participant Menu as MenuOverlayView
+    participant Help as HelpDialogHelper
 
     Hardware->>OS: User presses system menu button
     OS->>OS: Opens native pause overlay with options:
-    Note over OS: 1. Resume<br/>2. Chess 4 Board Menu (Custom Action)<br/>3. Exit to Library
+    Note over OS: 1. Resume<br/>2. App Menu<br/>3. Controls Guide<br/>4. Exit to Library
     
-    alt User taps "Chess 4 Board Menu"
-        OS->>Bridge: PauseResultCallbackImpl.onPauseResult("CUSTOM_ACTION", "open_menu")
-        Bridge->>Menu: showMenu() (opens centered 2x menuCard)
+    alt User taps "App Menu"
+        OS->>Godot: pause_result_received("CUSTOM_ACTION", "open_menu")
+        Godot->>Plugin: show_menu() -> Menu.showMenu()
+    else User taps "Controls Guide"
+        OS->>Godot: pause_result_received("CUSTOM_ACTION", "show_help")
+        Godot->>Plugin: show_help() -> Help.show()
     else User taps "Exit to Library"
-        OS->>Bridge: PauseResultCallbackImpl.onPauseResult("EXIT_GAME_UNSAVED")
-        Bridge->>Godot: emitSignal("quit_app_requested")
-        Bridge->>OS: SessionManagerBridge.terminateApplication()
-        Bridge->>Bridge: activity.finishAndRemoveTask()
+        OS->>Godot: pause_result_received("QUIT")
+        Godot->>OS: Board.application.quit()
     end
 ```
 
@@ -254,7 +258,7 @@ sequenceDiagram
 * **Rationale:** The Board SDK `.aar` files (`boardNativePlugin-release.aar`, `sessionManager-release.aar`, `systemOverlay-release.aar`) are bundled exclusively within the Godot export template (`chess-4-board/addons/board_sdk/`). Linking them directly into the `GodotWebView` library would create duplicate class collisions at APK packaging time and prevent the AAR from compiling independently. Reflection maintains loose coupling and zero-overhead execution.
 
 ### 5.2 Out-of-Tree APK Export Pipeline
-* **Decision:** The compiled binary `Chess4Board.apk` is exported by default directly to the out-of-tree sibling directory `../output/Chess4Board.apk` (configurable via `OUTPUT_DIR` in `.env` / `.env.local`).
+* **Decision:** The compiled binary `ChessBoard.apk` is exported by default directly to the out-of-tree sibling directory `../output/ChessBoard.apk` (configurable via `OUTPUT_DIR` in `.env` / `.env.local`).
 * **Rationale:** Mandated by workspace hygiene rules ([`AGENTS.md`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/AGENTS.md)). Large 90+ MB APK binaries are kept entirely outside the git workspace tree to prevent repository bloat, while still remaining easily deployable via `board-connect`.
 
 ### 5.3 Hardware Touch Passthrough over Raw Input

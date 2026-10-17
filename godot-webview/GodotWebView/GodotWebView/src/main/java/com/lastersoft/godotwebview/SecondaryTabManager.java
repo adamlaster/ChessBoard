@@ -20,6 +20,11 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
+
+import java.util.Collections;
+
 /**
  * Manages the isolated secondary tab / popup WebView lifecycle.
  * Protects active chess games in the primary WebView by loading external links and popups
@@ -32,6 +37,7 @@ public class SecondaryTabManager {
     public interface SecondaryTabCallback {
         void onTabClosed();
         void onPageFinished();
+        default void onAuthRedirect(String authUrl) {}
     }
 
     private WebView popupWebView = null;
@@ -39,6 +45,23 @@ public class SecondaryTabManager {
     private ProgressBar popupProgressBar = null;
     private View popupCustomView = null;
     private WebChromeClient.CustomViewCallback popupCustomViewCallback = null;
+    private int currentRightMarginPx = 0;
+
+    public void applyRightMargin(int marginPx) {
+        this.currentRightMarginPx = marginPx;
+        if (popupContainer != null) {
+            ViewGroup.LayoutParams lp = popupContainer.getLayoutParams();
+            if (lp instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
+                flp.rightMargin = marginPx;
+                popupContainer.setLayoutParams(flp);
+                popupContainer.requestLayout();
+                if (popupWebView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    popupWebView.evaluateJavascript("window.dispatchEvent(new Event('resize'));", null);
+                }
+            }
+        }
+    }
 
     public boolean isOpen() {
         return popupWebView != null;
@@ -142,9 +165,11 @@ public class SecondaryTabManager {
         float density = activity.getResources().getDisplayMetrics().density;
 
         popupContainer = new FrameLayout(activity);
-        popupContainer.setLayoutParams(new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams popupParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        popupParams.rightMargin = currentRightMarginPx;
+        popupContainer.setLayoutParams(popupParams);
         popupContainer.setBackgroundColor(Color.BLACK);
 
         popupWebView = new WebView(activity);
@@ -156,12 +181,21 @@ public class SecondaryTabManager {
         WebSettings popupSettings = popupWebView.getSettings();
         if (uaManager != null) {
             uaManager.configureWebSettings(popupSettings);
+        } else {
+            popupSettings.setUserAgentString(UserAgentManager.DESKTOP_USER_AGENT);
         }
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+            WebSettingsCompat.setRequestedWithHeaderOriginAllowList(popupSettings, Collections.emptySet());
+        }
+
         popupSettings.setJavaScriptEnabled(true);
-        popupSettings.setSupportMultipleWindows(true);
-        popupSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        popupSettings.setSupportMultipleWindows(false);
+        popupSettings.setJavaScriptCanOpenWindowsAutomatically(false);
         popupSettings.setDomStorageEnabled(true);
         popupSettings.setDatabaseEnabled(true);
+        popupSettings.setAllowFileAccess(true);
+        popupSettings.setAllowContentAccess(true);
         popupSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         popupSettings.setUseWideViewPort(true);
         popupSettings.setLoadWithOverviewMode(true);
@@ -179,6 +213,7 @@ public class SecondaryTabManager {
         cookieManager.setAcceptCookie(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             cookieManager.setAcceptThirdPartyCookies(popupWebView, true);
+            popupSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
         popupProgressBar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
@@ -205,9 +240,16 @@ public class SecondaryTabManager {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && request != null && request.getUrl() != null) {
+                    String fullUri = request.getUrl().toString();
+                    if (UserAgentManager.isAuthUrl(fullUri)) {
+                        closeSecondTab(rootLayout, floatingDismissButton, callback);
+                        if (callback != null) {
+                            callback.onAuthRedirect(fullUri);
+                        }
+                        return true;
+                    }
                     String scheme = request.getUrl().getScheme();
                     if (scheme != null && !scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https")) {
-                        String fullUri = request.getUrl().toString();
                         if (fullUri.startsWith("intent://")) {
                             try {
                                 android.content.Intent intent = android.content.Intent.parseUri(fullUri, android.content.Intent.URI_INTENT_SCHEME);
@@ -221,6 +263,11 @@ public class SecondaryTabManager {
                     }
                 }
                 return false;
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
             }
 
             @Override

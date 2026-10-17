@@ -20,7 +20,7 @@ public final class BoardBridge {
     private static boolean boardPauseListenerHooked = false;
     private static int boardContextRetryCount = 0;
 
-    public static void prepareBoardTouchPassthrough(Activity activity, Runnable onExit, Runnable onShowMenu, Handler handler) {
+    public static void prepareBoardTouchPassthrough(Activity activity, Runnable onExit, Runnable onShowMenu, Runnable onShowHelp, Handler handler) {
         try {
             Class<?> boardNativeClass = Class.forName("co.harrishill.board.core.BoardNativePlugin");
             Method setSwallow = boardNativeClass.getMethod("setSwallowSystemTouches", boolean.class);
@@ -34,7 +34,7 @@ public final class BoardBridge {
             Log.w(TAG, "BoardNativePlugin touch passthrough setup skipped: " + t.getMessage());
         }
 
-        hookBoardPauseListener(activity, onExit, onShowMenu);
+        hookBoardPauseListener(activity, onExit, onShowMenu, onShowHelp);
         ensureBoardPauseContextRegistered(handler);
 
         if (activity != null) {
@@ -46,7 +46,7 @@ public final class BoardBridge {
         }
     }
 
-    public static void hookBoardPauseListener(Activity activity, Runnable onExit, Runnable onShowMenu) {
+    public static void hookBoardPauseListener(Activity activity, Runnable onExit, Runnable onShowMenu, Runnable onShowHelp) {
         if (boardPauseListenerHooked) return;
         try {
             Class<?> callbackClass = Class.forName("co.harrishill.board.pausescreen.PauseResultCallbackImpl");
@@ -73,6 +73,10 @@ public final class BoardBridge {
                                 } else if ("CUSTOM_ACTION".equals(actionType) && "open_menu".equals(customButtonId)) {
                                     if (activity != null && onShowMenu != null) {
                                         activity.runOnUiThread(onShowMenu);
+                                    }
+                                } else if ("CUSTOM_ACTION".equals(actionType) && "show_help".equals(customButtonId)) {
+                                    if (activity != null && onShowHelp != null) {
+                                        activity.runOnUiThread(onShowHelp);
                                     }
                                 }
                             } catch (Throwable inner) {
@@ -122,16 +126,16 @@ public final class BoardBridge {
                             setPauseContextMethod.invoke(
                                     null,
                                     "00000000-0000-0000-0000-000000000000",
-                                    "Chess 4 Board",
+                                    "ChessBoard",
                                     false,
-                                    new String[]{"open_menu"},
-                                    new String[]{"Chess 4 Board Menu"},
-                                    new String[]{"square"},
+                                    new String[]{"open_menu", "show_help"},
+                                    new String[]{"App Menu", "Controls Guide"},
+                                    new String[]{"", ""},
                                     null,
                                     null,
                                     null
                             );
-                            Log.i(TAG, "Registered Board pause context with Chess 4 Board Menu button after SystemOverlayService bound");
+                            Log.i(TAG, "Registered Board pause context with ChessBoard Menu & Help buttons after SystemOverlayService bound");
                         }
                         return;
                     }

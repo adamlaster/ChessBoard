@@ -38,7 +38,7 @@ class WebViewPlugin extends EditorExportPlugin:
 			return PackedStringArray([subfolder + "/" + _plugin_name + "-release.aar"])
 
 	func _get_android_dependencies(platform, debug):
-		return PackedStringArray()
+		return PackedStringArray(["androidx.webkit:webkit:1.12.1"])
 
 	func _get_name():
 		return _plugin_name

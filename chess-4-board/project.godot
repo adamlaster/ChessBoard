@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Chess4Board"
+config/name="ChessBoard"
 run/main_scene="uid://cmlid1hg3511k"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.png"

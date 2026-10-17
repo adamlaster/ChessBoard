@@ -7,6 +7,7 @@ espressoCore = "3.7.0"
 appcompat = "1.7.1"
 material = "1.13.0"
 browser = "1.9.0"
+webkit = "1.12.1"
 
 [libraries]
 godot = { module = "org.godotengine:godot", version.ref = "godot" }
@@ -16,6 +17,7 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
+webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

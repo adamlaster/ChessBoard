@@ -1,12 +1,12 @@
-# Chess 4 Board (`chess-4-board` & `godot-webview`) — Project & Session Lifecycle Log
+# ChessBoard (`chess-4-board` & `godot-webview`) — Project & Session Lifecycle Log
 
-This document tracks the complete architecture, chronological evolution, engineering decisions, and future roadmap for **Chess 4 Board** (`com.lastersoft.chess4board`) running on the **Board** digital tabletop device.
+This document tracks the complete architecture, chronological evolution, engineering decisions, and future roadmap for **ChessBoard** (`com.lastersoft.chessboard`) running on the **Board** digital tabletop device.
 
 ---
 
 ## 1. Project Context & Documentation Index
 
-**Chess 4 Board** is a custom-engineered web application hub and tabletop gaming portal built for the **Board** hardware device (an Android-based large-format touch tabletop display).
+**ChessBoard** is a custom-engineered web application hub and tabletop gaming portal built for the **Board** hardware device (an Android-based large-format touch tabletop display).
 
 For current technical specifications, controls, and build guides, refer to the canonical root documentation:
 * **[`README.md`](./README.md)** — Project overview, quick-start guide, active menu controls reference, and full app catalog.
@@ -326,6 +326,267 @@ For current technical specifications, controls, and build guides, refer to the c
 3. **Verification & Deployment:**
    - Compiled AAR and Godot APK via `./build_and_deploy.sh -d 10.0.0.65`.
    - Verified on physical Board display: Double-tap in place highlights the square cleanly; double-tap and drag draws smooth live arrows; single-finger piece dragging retains 100% native responsiveness.
+
+---
+
+### Phase 18: Cohesive Material Vector Iconography for Controls Row
+1. **Problem Analysis:**
+   - The menu control row previously used text unicode glyphs (`"⬅"`, `"－"`, `"＋"`, `"↺"`, `"⬇"`) inside circular dark buttons (`Button.setText()`).
+   - Font metrics (typographic baseline, ascent/descent, and uneven font side bearings) caused text glyphs—especially the left back arrow `"⬅"`—to render thin and noticeably off-center vertically and horizontally.
+   - User requested replacing the back button with a bold Material-style arrow, with the explicit design requirement: *"all of the icons to match in style"*.
+2. **Implementation:**
+   - **`ControlIconDrawable` (`MenuOverlayView.java`):**
+     - Engineered a custom vector `Drawable` rendering canonical Google Material Design vector paths parsed via `androidx.core.graphics.PathParser`:
+       - `BACK`: Material `arrow_back` (`M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z`)
+       - `ZOOM_OUT`: Material `remove` (`M19 13H5v-2h14v2z`)
+       - `ZOOM_IN`: Material `add` (`M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z`)
+       - `REFRESH`: Material `refresh` (`M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z`)
+       - `CLOSE_DOWN`: Material `arrow_downward` (`M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z`)
+     - Mathematically centers the canonical 24x24 coordinate box onto `(exactCenterX, exactCenterY)` and scales it uniformly to `size * 0.51f`, giving 100.0% geometric and optical centering.
+   - **`ImageButton` Migration:**
+     - Replaced text `Button` with `ImageButton` for all 5 vector controls, retaining identical background circles and touch click targets.
+     - Centered `desktopModeButton` and `rotateButton` (`"90°"`) with `setIncludeFontPadding(false)` and `setGravity(Gravity.CENTER)` to eliminate font baseline offsets.
+3. **Verification & Deployment:**
+   - Recompiled AAR and exported APK via `./build_and_deploy.sh -d 10.0.0.65`.
+   - Verified on physical Board display: all 5 control buttons display matching visual stroke weight, sharp vector clarity, and perfect optical centering in their circular badges.
+
+---
+
+### Phase 19: Right Margin Gutter Toggle (Board System Menu Clearance)
+1. **Problem Analysis:**
+   - On the Board hardware display, the Board OS runs a system overlay that renders a floating system pause/menu button along the right screen edge.
+   - On certain web applications (such as Chess.com notation, right-hand sidebars, or control buttons), web UI elements sit directly underneath the Board's system button, making them difficult to tap without triggering the system menu.
+   - User requested adding a toggle button in the menu that applies a right margin to shift the page content out from under the Board's system button. The margin is off by default and used on-demand.
+2. **Implementation:**
+   - **`GodotWebView.java` Right Margin Mechanics:**
+     - Defined `RIGHT_MARGIN_DP = 94` (`(int) (94 * density)` pixels, expanded from 84dp by +10px for generous clearance beyond the Board OS system overlay button).
+     - Applied `rightMargin` to `webView.getLayoutParams()` and `progressBar.getLayoutParams()`.
+     - Set `layout.setBackgroundColor(Color.BLACK)` to provide a seamless, dark gutter along the right edge when active.
+     - Automatically dispatched `window.dispatchEvent(new Event('resize'))` to trigger immediate DOM / chessboard recalculation.
+     - Updated secondary tab manager (`SecondaryTabManager.java`) to inherit and apply the right margin to `popupContainer`.
+     - Inset floating dismiss button (`✕`) pinning by `rightOffset` so it never conflicts with the Board button.
+   - **Controls Row Button & Vector Icon (`view_sidebar`):**
+     - Added `RIGHT_MARGIN` type to `ControlIconDrawable` in `MenuOverlayView.java` rendering canonical Google Material `view_sidebar` (`M16 20H4...`).
+     - Added `rightMarginButton` to `controlsRow` between `desktopModeButton` and `rotateButton`.
+     - Expanded `menuCard` width to `(int) (365 * menuDensity)` to comfortably accommodate all 8 control buttons without crowding.
+     - Added dynamic state styling via `updateRightMarginButtonStyle`:
+       - **Inactive (Default):** Neutral dark circle (`#2E2E2E`) with white icon (`#FFFFFF`).
+       - **Active:** Navy circle (`#1E2433`) with blue border (`#5C7CFA`) and light blue icon (`#91A7FF`), providing instant visual confirmation.
+3. **Verification & Deployment:**
+   - Compiled plugin AARs and exported APK via `./build_and_deploy.sh -d 10.0.0.65`.
+   - Verified on physical Board display: tapping the margin button smoothly shifts web content 94dp away from the right edge, moving all UI out from under the Board's system button.
+
+---
+
+### Phase 20: Comprehensive In-App Controls & Gestures Guide (`HelpDialogHelper`)
+1. **Problem Analysis:**
+   - As Chess 4 Board's feature set grew, several non-obvious controls and touch gestures became essential to tabletop play:
+     - Single-finger double-tap and drag for tactical arrows vs. double-tap in place for square highlights.
+     - 3-second long press on Desktop mode button (`🖥`) to toggle and save global default mode.
+     - Long press on `90°` button to reset orientation to default Landscape.
+     - Right margin gutter toggle (`◧`) to avoid occlusion by the Board OS floating system button.
+     - Floating dismiss button (`✕`) repositioning and idle auto-fade for secondary tabs.
+     - Safety slide to exit track (`✕ Slide to Exit ❯❯❯`).
+     - Board hardware button system menu options (Resume, Chess 4 Board Menu, Exit to Library).
+   - User requested an in-app Help page outlining all controls and gestures, integrated directly into the Board system menu to keep the bottom controls row clean and uncluttered.
+2. **Implementation:**
+   - **`HelpDialogHelper.java`:**
+     - Created a specialized modal helper rendering a 2x tabletop-scaled dark acrylic dialog (`#F01E1E1E` background, 18dp rounded corners, subtle translucent border `#33FFFFFF`).
+     - Sized to `480 * menuDensity` width (960px on Board display, ~50% screen width) and capped at 88% screen height.
+     - Organized into 5 distinct, high-contrast sections with soft blue headers (`#91A7FF`) and elevated dark item cards (`#262626`):
+       1. **♟️ Tabletop Chess Gestures (Chess.com & Lichess):** Double-tap & drag arrows, double-tap square highlights, additive markings, clearing with single tap/move, 1-finger piece dragging.
+       2. **🎛️ Bottom Menu Controls Row:** Back, Zoom In/Out (`＋`/`－`, Plus left of Minus), Refresh, Desktop/Mobile UA (short tap vs. 3s hold), Page Margin Gutter (94dp), Screen Rotation (short tap vs. long press reset), Close Menu (`✕`).
+       3. **✕ Secondary Tabs & External Links:** Isolated popup tabs, draggable floating dismiss button (`✕`) with idle fade.
+       4. **🛡️ Safety Slide to Exit:** Sliding the red thumb across the track (> 95%) to safely quit.
+       5. **🔘 Board OS System Menu:** Board hardware button functions (Resume, Chess 4 Board Menu, Controls & Gestures Guide, Exit to Library).
+     - Fixed "Done" button styled in accent blue (`#5C7CFA`) pinned at the bottom of the card for easy single-tap dismissal.
+   - **Board OS System Menu Integration (`root.gd` & `BoardBridge.java`):**
+     - Registered `"show_help"` (`Controls & Gestures Guide`) alongside `"open_menu"` in `Board.pause.set_context()` (`chess-4-board/root.gd`) and native fallback `BoardBridge.ensureBoardPauseContextRegistered()`.
+     - Connected `result.custom_button_id == "show_help"` to `webview_plugin.show_help()` in `root.gd`, and hooked `PauseResultCallbackImpl` in `BoardBridge.java`.
+     - Exposed `@UsedByGodot public void show_help()` in `GodotWebView.java` to invoke `HelpDialogHelper.show()`.
+   - **Controls Row Ergonomics (`MenuOverlayView.java`):**
+     - Sized the 8 control buttons to standard `controlBtnSize = (int) (37 * menuDensity)` with `(int) (5 * menuDensity)` margins on a `(int) (365 * menuDensity)` card width.
+     - Flipped Zoom button ordering so Zoom In (`＋`) is positioned to the left of Zoom Out (`－`).
+     - Replaced the down arrow (`CLOSE_DOWN`) with canonical Google Material `close` (`✕`) vector geometry (`CLOSE`, `M19 6.41L17.59 5 12 10.59...`) for standard, immediate recognition.
+3. **Verification & Deployment:**
+   - Built and deployed via `./build_and_deploy.sh -d 10.0.0.65`.
+   - Verified on physical Board display: pressing the hardware Board button shows `"Controls & Gestures Guide"` which opens the 2x modal guide cleanly; bottom menu control row features 8 perfectly-spaced buttons with `＋` left of `－` and `✕` close.
+
+### Phase 21: Controls & Gestures Guide Audit & Obsolete Exit Code Removal
+1. **Problem Analysis:**
+   - The initial draft of the Controls & Gestures Guide included an obsolete section for "🛡️ Safety Slide to Exit" — a legacy experiment permanently hidden (`View.GONE`) when the Board OS hardware system pause overlay took over application exit ("Exit to Library").
+   - Referencing an invisible UI element caused user confusion. Furthermore, dead `slideTrack`, `slideThumb`, and `slideLabel` variables, listeners, and `onExitRequested` callbacks still resided in `MenuOverlayView.java`.
+2. **Implementation:**
+   - **`HelpDialogHelper.java`:**
+     - Completely removed Section 4 ("🛡️ Safety Slide to Exit").
+     - Re-indexed Section 4 as **🔘 Board OS System Menu**, detailing the hardware menu button and the 4 pause overlay actions (Resume, Chess 4 Board Menu, Controls & Gestures Guide, Exit to Library).
+     - Expanded Section 1 (**♟️ Tabletop Chess Gestures & Touch Ergonomics**) to include Chess.com desktop sidebar navigation behavior (first-tap flyout expansion and outside-tap dismiss).
+     - Structured Section 2 (**🎛️ Bottom Menu Controls Row**) to match the exact visual layout of all 8 buttons (`[ ⬅ Back ] [ ＋ Zoom In ] [ － Zoom Out ] [ ↺ Refresh ] [ 🖥/📱 Desktop ] [ ◧ Margin ] [ 90° Rotate ] [ ✕ Close ]`), clearly differentiating short taps from long-press/hold actions, and added a quick summary of the primary site launcher and collapsible category accordion.
+     - Kept Section 3 (**✕ Secondary Tabs & External Links**) covering isolated popup layers and the draggable floating `✕` dismiss button with 4s idle fade.
+   - **`MenuOverlayView.java` & `GodotWebView.java` Cleanup:**
+     - Purged dead `slideTrack`, `slideThumb`, and `slideLabel` view instantiations, drag listeners, and layout additions from `MenuOverlayView.setup()`.
+     - Removed obsolete `slideThumb` / `slideLabel` reset logic from `showMenu()` and teardown from `destroy()`.
+     - Removed unused `onExitRequested()` from `MenuActionListener` interface and its implementation in `GodotWebView.java`.
+   - **Help Screen Button Redesign & Mutual Dismissal (`HelpDialogHelper.java`, `GodotWebView.java`, `root.gd`):**
+     - Replaced the harsh, full-width `#5C7CFA` blue "Done" button with a sleek, centered rounded pill button (`#1E2433` dark navy slate background, `#5C7CFA` subtle outline, `#B4C6FF` text) matching the app's dark acrylic design language.
+     - Added a top-right circular `✕` button (`closeHeaderBtn`) directly in the dialog header for immediate one-tap dismissal without scrolling.
+     - Added static `currentDialog` tracking with `dismiss()` and `isShowing()` methods to `HelpDialogHelper`.
+     - Integrated `HelpDialogHelper.dismiss()` into `GodotWebView.showMenu()` so opening the links menu immediately closes the help screen.
+     - Replaced `Board.pause.ICON_SQUARE` with `Board.pause.ICON_NONE` in `root.gd` and `BoardBridge.java`, removing the unrendered square box glyph `□` from the Board OS pause screen.
+### Phase 22: Evaluation of Board OS Menu Controls & Reversion to In-App Controls Row
+1. **Experimentation (Board OS System Menu Controls):**
+   - Explored moving browser function buttons (`Back`, `Zoom In/Out`, `Refresh`, `Desktop Mode`, `Right Margin`, `Rotate 90°`) into the native Board OS System Menu with dynamic live titles (`Board.pause.set_context(...)`), streamlining the in-app menu strictly to app links.
+2. **On-Device Usability Evaluation:**
+   - Physical testing on the Board device confirmed that routing frequent browser interactions through the hardware/system overlay added friction and interrupted gameplay flow compared to having immediate, direct access inside the in-app card.
+3. **Reversion & Retention of Ergonomic Improvements:**
+   - **Reverted In-App Controls Row (`MenuOverlayView.java`):** Restored all 8 circular control buttons (`[ ⬅ Back ] [ ＋ Zoom In ] [ － Zoom Out ] [ ↺ Refresh ] [ 🖥/📱 Desktop ] [ ◧ Margin ] [ 90° Rotate ] [ ✕ Close ]`) at the bottom of `menuCard`.
+   - **Retained Enhancements:** Kept Zoom In (`＋`) positioned to the left of Zoom Out (`－`), canonical Material `✕` close geometry, the +10px (94dp) right margin gutter, sleek pill button on the help screen, and mutual auto-dismissal between the links menu and help dialog (`HelpDialogHelper.dismiss()`).
+   - **Board OS System Menu (`root.gd` & `BoardBridge.java`):** Restored the clean 2-button system context: `"Chess 4 Board Menu"` and `"Controls & Gestures Guide"`.
+   - **Guide Synchronization (`HelpDialogHelper.java`):** Section 2 accurately documents the 8 in-app controls row buttons, and Section 4 documents the Board OS menu options.
+4. **Workflow Evolution — Sandboxed Prototyping Rule (`AGENTS.md`):**
+   - Formalized the **Sandbox Rule** (Section 5 of [`AGENTS.md`](./AGENTS.md)): All future exploratory spikes, alternative UX architectures, and experimental features must be isolated on dedicated sandbox branches (e.g., `experiment/<name>`).
+   - If an experiment is rejected after hardware evaluation, switching back to `main` immediately restores the verified baseline and redeploys without manual code surgery or risk of regressions.
+
+---
+
+### Phase 23: Board OS Pause Screen Button Layout & Title Optimization
+1. **Board OS Layout Constraint Analysis:**
+   - Evaluated separating the Menu and Guide buttons into discrete rows.
+   - Per official Board Developer Documentation (`https://docs.dev.board.fun/guides/pause-menu`), Board OS hardcodes the custom button layout in 2-column rows (*"Custom buttons fill rows of two. An even count gives all half-width buttons; an odd count promotes the trailing button to a full-width row"*). The underlying AIDL service (`ISystemOverlayService`) exposes no layout parameters or row-break flags.
+2. **Title Optimization (`App Menu` & `Controls Guide`):**
+   - The visual tightness and ellipsis truncation (`"Controls & Gest..."`) were caused by verbose labels (`"Chess 4 Board Menu"` and `"Controls & Gestures Guide"`) exceeding the half-width button bounds.
+   - Streamlined button labels to **`"App Menu"`** and **`"Controls Guide"`** in `root.gd` and `BoardBridge.java`.
+   - Tested and verified on physical Board hardware: both buttons fit cleanly on a single line within each half-width button with generous padding, zero truncation, and instant tactile clarity.
+3. **Documentation Synchronization:**
+   - Synchronized [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java) Section 4.
+
+---
+
+### Phase 24: Right Margin Bezel-Symmetric Spacing Calibration (106dp)
+1. **Pixel Measurement & Geometric Analysis:**
+   - Captured and analyzed on-device framebuffer metrics (`1920x1080`, `mdpi` density = 1.0):
+     - Board hardware button bounds: $x \in [1828, 1907]$ ($80\text{px}$ diameter circle).
+     - Margin from button right edge ($x = 1907$) to screen bezel ($x = 1920$): $13\text{px}$.
+     - With prior `RIGHT_MARGIN_DP = 94`, WebView ended at $x = 1826$, leaving only $2\text{px}$ between the web content and button left edge ($1828$).
+2. **Bezel-Symmetric Margin Calibration:**
+   - Expanded `RIGHT_MARGIN_DP` to **`106dp`** (`GodotWebView.java`):
+     - WebView right edge now sits at $x = 1814$.
+     - Space between WebView and button left edge ($1828 - 1814$) is **$14\text{px}$**, perfectly matching the **$13\text{px}$** space between the button right edge and display bezel ($1920 - 1907$).
+     - The Board floating system menu button is now visually framed with balanced, even negative space on both sides.
+3. **Documentation & Help Synchronization:**
+   - Synchronized [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java), [`README.md`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/README.md), and [`PROJECT_HISTORY.md`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/PROJECT_HISTORY.md).
+
+---
+
+### Phase 25: Catalog Expansion — ABCmouse, CBS Sports, AutoDraw & 'Watch' Category Refinement
+1. **Catalog Expansion (`AppCatalog.java`):**
+   - **Watch Category (`📺  Watch`):** Renamed category from `"📺  Video"` to `"📺  Watch"` to reflect modern content consumption and added **CBS Sports** (`https://www.cbssports.com/watch`).
+   - **Games Category (`🎲  Games`):** Added **ABCmouse** (`https://app.abcmouse.com/app/`) and **AutoDraw (Google)** (`https://www.autodraw.com`), an AI-powered drawing canvas designed for touchscreens that turns rough finger sketches into finished vector art.
+   - Expanded total extra apps to **21 apps** (`Games (8)`, `Watch (7)`, `Web (6)`).
+2. **Documentation Synchronization:**
+   - Synchronized [`README.md`](./README.md) and [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md).
+
+---
+
+### Phase 26: Complete Application Rebrand & Renaming to 'ChessBoard' (`com.lastersoft.chessboard`) & GitHub Repository Rename
+1. **GitHub Repository Rename:**
+   - Executed remote repository rename from `adamlaster/chess-4-board` to `adamlaster/ChessBoard` via GitHub REST API (`PATCH /repos/adamlaster/chess-4-board`).
+   - Updated local git remote origin to `https://github.com/adamlaster/ChessBoard.git`.
+2. **In-App Name & Android Package ID Rename:**
+   - **Godot Host Configuration (`project.godot`):** Renamed `config/name` from `Chess4Board` to `ChessBoard`.
+   - **Godot Export Presets (`export_presets.cfg`):** Updated `package/unique_name` to `com.lastersoft.chessboard`, `package/name` to `ChessBoard`, and default export path to `../../output/ChessBoard.apk`.
+   - **Board OS Pause Menu (`root.gd` & `BoardBridge.java`):** Updated `game_name` parameter to `"ChessBoard"`.
+   - **Native SharedPreferences Namespace (`UserAgentManager.java`):** Updated preference key namespace from `chess4board_prefs` to `chessboard_prefs`.
+   - **Touch & Arrow Bridge Init Guards (`ChessTouchHelper.java`):** Updated window guard properties from `__chess4board_touch_init` and `__chess4board_arrow_bridge_init` to `__chessboard_touch_init` and `__chessboard_arrow_bridge_init`.
+   - **In-App Controls Guide Dialog (`HelpDialogHelper.java`):** Updated all references in strings and dismiss descriptions to `ChessBoard`.
+3. **Build, Packaging & Deployment Pipeline:**
+   - Updated `build_and_deploy.sh` default APK name to `ChessBoard.apk` and aligned all CLI status headers and logs.
+   - Updated `.env.example` template to reflect `ChessBoard.apk`.
+4. **Clean Hardware Migration:**
+   - Uninstalled legacy package `com.lastersoft.chess4board` from Board hardware display.
+   - Deployed and launched new package `com.lastersoft.chessboard` (`ChessBoard.apk`).
+5. **Documentation Synchronization:**
+   - Synchronized all canonical root documentation: [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md), [`AGENTS.md`](./AGENTS.md), and [`.gitignore`](./.gitignore).
+
+---
+
+### Phase 27: Per-Site Persistent Defaults for User-Agent & Right Margin Gutter
+1. **Per-Site User-Agent Default (`UserAgentManager.java` & `GodotWebView.java`):**
+   - Added `UserAgentManager.getSiteKey(String url)` utility to normalize hostnames (e.g., `chess.com`, `youtube.com`).
+   - Replaced global default overriding with per-site preferences (`chessboard_prefs` / `site_ua_<host>`).
+   - **Short tap on `🖥` / `📱`:** Toggles Desktop vs Mobile mode for the current browsing session only.
+   - **3-second hold on `🖥` / `📱`:** Saves Desktop or Mobile mode as the persistent default for just that site with dark modal feedback (`showSiteUaAckDialog`).
+   - Site defaults auto-load upon launcher selection and during in-app navigation (`WebViewClient.onPageStarted`).
+2. **Per-Site Right Margin Default (`MenuOverlayView.java` & `GodotWebView.java`):**
+   - Added 3-second hold `OnTouchListener` to `rightMarginButton` (`◧`) with visual alpha feedback (`0.7f`), slop filtering, and cancellation handling.
+   - Updated `MenuActionListener.onToggleRightMargin(boolean isLongPressSaveDefault)`.
+   - **Short tap on `◧`:** Toggles 106dp right margin in real time on screen without closing the menu.
+   - **3-second hold on `◧`:** Saves Right Margin ON or OFF as the persistent default for just that site (`chessboard_prefs` / `site_margin_<host>`) and pops dark modal feedback (`showSiteMarginAckDialog`).
+   - Site margin defaults auto-load upon launcher selection and during in-app navigation.
+3. **Documentation & Help Synchronization:**
+   - Synchronized [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java), [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md).
+
+---
+
+### Phase 28: Google Sign-In & Cloudflare Turnstile Captcha Fixes, Native Long-Press Per-Site Defaults & v1.1.0 Bump
+1. **Google OAuth & Cloudflare Turnstile Captcha Safeguards:**
+   - **Google Sign-In (Error 403 `disallowed_useragent`):** Root cause identified in logcat where `targetUrl.contains("chess.com")` matched Google OAuth URLs due to `redirect_uri=https://www.chess.com/...` in query parameters. Injecting synthetic touch fixes and `window.__chessboard_touch_init` into `accounts.google.com` triggered Google's identity anti-tamper security.
+   - **Lichess Captcha (`failure_retry` Loop):** Root cause identified in `ChessTouchHelper.java` monkey-patching `Element.prototype.setPointerCapture`. Cloudflare Turnstile verified JavaScript native prototypes and flagged the WebView as an automated bot.
+   - **Safeguard Implementation:**
+     - Replaced substring matching with strict `Uri.getHost()` parsing in `ChessTouchHelper.java`.
+     - Hardened exclusions: completely exempts `accounts.google.com`, `*.google.com`, `challenges.cloudflare.com`, `*.cloudflare.com`, `turnstile`, `recaptcha`, `hcaptcha`, and all authentication/credential paths (`/login`, `/signin`, `/signup`, `/register`, `/auth`, `/oauth`, `/password`, `/challenge`, `/verify`).
+     - Removed all `Element.prototype` monkey-patching.
+     - Added DOM chessboard element guard in `CHESS_ARROW_TOUCH_JS` so scripts never run on pages without an active chessboard.
+     - Sanitized default User-Agent via regex (`replaceAll(";\\s*wv", "").replaceAll("Version/\\d+\\.\\d+\\s*", "")`) in `UserAgentManager.java` and standardized `DESKTOP_USER_AGENT` to Windows Chrome 131.
+     - In `DisplayController.java`, skipped evaluating `document.documentElement.style.zoom` when zoom is 100%.
+2. **Native Long-Press Per-Site Defaults & Confirmation Modals:**
+   - Replaced rigid 3000ms custom `OnTouchListener` with standard Android `setOnClickListener` and `setOnLongClickListener` on `desktopModeButton` (`🖥 / 📱`) and `rightMarginButton` (`◧`).
+   - Added native tactile haptic feedback (`HapticFeedbackConstants.LONG_PRESS`) and touch-slop handling.
+   - Posted confirmation modals (`showSiteUaAckDialog` & `showSiteMarginAckDialog`) with a 150ms delay following menu close so touch release and transition finish cleanly.
+   - Enhanced `showAckDialog` with UI-thread safety, single-instance dialog management (`currentAckDialog`), and screen-bounded card sizing.
+   - Safeguarded primary tab games during secondary tab User-Agent toggles by reloading only the active tab, and restoring main site defaults upon closing secondary tabs.
+3. **Version Bump to v1.1.0 (Code 2):**
+   - Updated `export_presets.cfg` (`version/code=2`, `version/name="1.1.0"`).
+   - Updated `GodotWebView/build.gradle` (`versionCode 2`, `versionName "1.1.0"`).
+   - Updated `addons/webview/plugin.cfg` (`version="1.1.0"`).
+
+---
+
+### Phase 29: Architectural Second Tab Isolation, Global Single-Window Enforcement & Auth Continuity
+1. **Global Single-Window Mode Enforcement (`setSupportMultipleWindows(false)`):**
+   - **Root Cause of Turnstile Failure:** Cloudflare Turnstile on Lichess failed with `TurnstileError: 600010` and `"Failed to execute 'postMessage' on 'DOMWindow': The target origin does not match the recipient"` because Android WebView's multi-window subsystem intercepted internal iframe window messages and failed origin cross-checks.
+   - **Solution:** Disabled `setSupportMultipleWindows(false)` and `setJavaScriptCanOpenWindowsAutomatically(false)` across both primary and secondary WebViews. Turnstile now runs within standard single-window sandboxed iframe semantics, resolving verification failures.
+2. **Primary Tab Auth Continuity (`isAuthUrl` Guarding):**
+   - **Root Cause of Google Sign-In Detachment:** In `shouldOverrideUrlLoading`, links on `chess.com` whose host did not end with `chess.com` were treated as external links and opened in `popupWebView`. Clicking "Log in with Google" routed `accounts.google.com` to the second tab, severing the OAuth redirect callback (`window.opener` / session cookies) from the primary game tab.
+   - **Solution:** Enforced strict auth continuity in `shouldOverrideUrlLoading`: any URL matching `isAuthUrl` (`accounts.google.com`, `appleid.apple.com`, `challenges.cloudflare.com`, `turnstile`, `recaptcha`, `/oauth`, `/signin`, `/login`, `/auth`) returns `false` to stay in the primary WebView.
+3. **Platform-Compatible Linux x86_64 Desktop User-Agent:**
+   - **Root Cause of Google "Browser Not Secure":** Setting `DESKTOP_USER_AGENT` to `Windows NT 10.0` caused a severe fingerprint contradiction with the Android device's native `Linux armv8l` platform and touch hardware, triggering Google's `disallowed_useragent` and anti-tamper heuristics.
+   - **Solution:** Restored `DESKTOP_USER_AGENT` to `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36`.
+4. **Eliminated Navigation Abortions in `onPageStarted`:**
+   - Removed redundant calls to `uaManager.configureWebSettings(settings)` inside `onPageStarted` across `GodotWebView` and `SecondaryTabManager`. Calling `setUserAgentString()` while a navigation request was in-flight aborted connections mid-stream, which caused YouTube sign-in to bounce back and refresh YouTube.
+5. **Second Tab Game Protection Retained:**
+   - External links clicked during active gameplay on Chess.com (articles, videos, forum threads) continue to open cleanly in `SecondaryTabManager` with the floating circular `✕` button, keeping live games uninterrupted.
+
+---
+
+### Phase 30: Google Sign-In & Turnstile Captcha Resolution via X-Requested-With Stripping, Engine-Matched UA & Multi-Window Second Tab Restoration
+1. **Google OAuth Sign-In ("Browser or app may not be secure") Resolution:**
+   - **Root Cause:** Android WebView automatically injected the `X-Requested-With: com.lastersoft.chessboard` HTTP header on all network requests, triggering Google's server-side embedded WebView block. Furthermore, using a hardcoded `Chrome/131.0.0.0` desktop Linux User-Agent string on an Android hardware touchscreen device caused severe fingerprint mismatches with the device's native Chromium 147 engine, client hints (`Sec-Ch-Ua`), ARM GPU, and multi-touch sensors.
+   - **Solution:**
+     - Integrated `androidx.webkit:webkit:1.12.1` across `GodotWebView` and Godot export dependencies (`plugin.gd`).
+     - Invoked `WebSettingsCompat.setRequestedWithHeaderOriginAllowList(settings, Collections.emptySet())` across both primary and secondary WebViews to completely eliminate the `X-Requested-With` header from all requests.
+     - In `UserAgentManager.java`, implemented `getCleanMobileUserAgent()`, `getDesktopUserAgent()`, and `applyAuthUserAgent()`. When navigating to authentication URLs (`accounts.google.com`, `appleid.apple.com`, `/oauth`, `/signin`, `/login`), the WebView automatically switches to the clean, native mobile User-Agent derived from the system Chromium engine (Chrome 147) without `; wv` or `Version/4.0`, satisfying Google's identity checks.
+2. **Cloudflare Turnstile CAPTCHA (Lichess) Resolution:**
+   - **Root Cause:** Turnstile's automated and interactive verification failed with "Verification failed. Troubleshoot" due to `X-Requested-With` header detection and desktop User-Agent spoofing on ARM touchscreen hardware.
+   - **Solution:** Configured `setAllowFileAccess(true)` and `setAllowContentAccess(true)` per Cloudflare WebView standards, stripped `X-Requested-With`, and applied the clean engine-matched mobile User-Agent for challenge verification on `lichess.org/login`. Turnstile verification now passes instantly.
+3. **Multi-Window Second Tab Restoration & Auth Handshake Continuity:**
+   - **Root Cause:** Global `setSupportMultipleWindows(false)` previously disabled `WebChromeClient.onCreateWindow(...)`, causing Android WebView to silently drop `<a target="_blank">` external link clicks on Chess.com.
+   - **Solution:**
+     - Re-enabled `setSupportMultipleWindows(true)` and `setJavaScriptCanOpenWindowsAutomatically(true)` on the primary WebView.
+     - In `onCreateWindow`, filtered requests: rejected background/automated requests (`!isUserGesture`), kept auth URLs in the primary session (`view.loadUrl(extraUrl)`), and routed external link clicks directly to `SecondaryTabManager.handleCreateWindow(...)`.
+     - In `SecondaryTabManager.java`, added an `onAuthRedirect` fallback in `shouldOverrideUrlLoading` so any auth URL opened as a popup seamlessly dismisses the secondary tab and loads in the primary session, maintaining full OAuth cookie and callback continuity.
+4. **Hardware Verification on Board (10.0.0.65):**
+   - Verified on physical Board display: Google Sign-in on YouTube and web services loads and authenticates without security warnings; Cloudflare Turnstile on `lichess.org` verifies smoothly; external links clicked during Chess.com play open cleanly in the dismissible secondary tab with the floating circular `✕` button.
 
 ---
 

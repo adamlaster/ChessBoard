@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Chess 4 Board - Build, Export & Deployment Pipeline
+# ChessBoard - Build, Export & Deployment Pipeline
 # ==============================================================================
 # Usage:
 #   ./build_and_deploy.sh             # Complete build (AAR + APK) & deploy to Board
@@ -45,7 +45,7 @@ fi
 # ------------------------------------------------------------------------------
 # By default, writes to sibling '../output' directory to keep 90+ MB APKs out of git.
 OUTPUT_DIR="${OUTPUT_DIR:-$(cd "$ROOT_DIR/.." && pwd)/output}"
-APK_NAME="${APK_NAME:-Chess4Board.apk}"
+APK_NAME="${APK_NAME:-ChessBoard.apk}"
 APK_PATH="$OUTPUT_DIR/$APK_NAME"
 
 # ------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ BOARD_CONNECT_ARGS="${BOARD_CONNECT_ARGS:-}"
 # 5. Environment Doctor / Sanity Check Function
 # ------------------------------------------------------------------------------
 run_doctor() {
-    echo -e "\n${BOLD}${CYAN}=== Chess 4 Board Environment Doctor ===${NC}\n"
+    echo -e "\n${BOLD}${CYAN}=== ChessBoard Environment Doctor ===${NC}\n"
     local all_ok=true
 
     # Check Java
@@ -213,7 +213,7 @@ while [[ $# -gt 0 ]]; do
             fi
             ;;
         -h|--help)
-            echo -e "${BOLD}Chess 4 Board - Build & Deploy Script${NC}"
+            echo -e "${BOLD}ChessBoard - Build & Deploy Script${NC}"
             echo "Usage: ./build_and_deploy.sh [OPTIONS]"
             echo ""
             echo "Options:"
@@ -235,7 +235,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "\n${BOLD}${CYAN}=== Starting Chess 4 Board Pipeline ===${NC}\n"
+echo -e "\n${BOLD}${CYAN}=== Starting ChessBoard Pipeline ===${NC}\n"
 
 # Verify Essential Tool Prerequisites
 if [[ "$BUILD_AAR" = true ]]; then
@@ -266,7 +266,7 @@ fi
 # STEP 2: Copy AARs to chess-4-board
 # ------------------------------------------------------------------------------
 if [[ "$BUILD_AAR" = true ]]; then
-    echo -e "${BOLD}${GREEN}[Step 2/4] Copying AARs to Chess 4 Board project...${NC}"
+    echo -e "${BOLD}${GREEN}[Step 2/4] Copying AARs to ChessBoard project...${NC}"
     mkdir -p "$TARGET_ADDONS_DIR"
     cp -v "$AAR_OUT_DIR/GodotWebView-debug.aar" "$TARGET_ADDONS_DIR/"
     cp -v "$AAR_OUT_DIR/GodotWebView-release.aar" "$TARGET_ADDONS_DIR/"
@@ -278,7 +278,7 @@ fi
 # ------------------------------------------------------------------------------
 # STEP 3: Export Android APK via Godot CLI
 # ------------------------------------------------------------------------------
-echo -e "${BOLD}${GREEN}[Step 3/4] Exporting Chess4Board.apk with Godot...${NC}"
+echo -e "${BOLD}${GREEN}[Step 3/4] Exporting ChessBoard.apk with Godot...${NC}"
 mkdir -p "$OUTPUT_DIR"
 cd "$CHESS_DIR"
 "$GODOT_BIN" --headless --path "$CHESS_DIR" --export-debug "Android" "$APK_PATH"

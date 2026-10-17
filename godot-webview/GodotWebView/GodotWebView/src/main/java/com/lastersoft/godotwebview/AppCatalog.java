@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Catalog of primary chess platforms and categorized extra web applications for Chess 4 Board.
+ * Catalog of primary chess platforms and categorized extra web applications for ChessBoard.
  */
 public final class AppCatalog {
 
@@ -40,14 +40,17 @@ public final class AppCatalog {
             new SiteEntry("🐑  Colonist.io (Catan)", "https://colonist.io"),
             new SiteEntry("✏️  Dots & Boxes", "https://gametable.org/games/dots-and-boxes/"),
             new SiteEntry("🎈  PBS Kids", "https://pbskids.org"),
+            new SiteEntry("🐭  ABCmouse", "https://app.abcmouse.com/app/"),
+            new SiteEntry("🎨  AutoDraw (Google)", "https://www.autodraw.com"),
             new SiteEntry("🎲  247 Backgammon", "https://www.247backgammon.org"),
             new SiteEntry("🔴  247 Checkers", "https://www.247checkers.com/"),
             new SiteEntry("🌐  247 Games (All)", "https://www.247games.com")
         )),
-        new CategoryEntry("📺  Video", Arrays.asList(
+        new CategoryEntry("📺  Watch", Arrays.asList(
             new SiteEntry("▶️  YouTube", "https://www.youtube.com"),
             new SiteEntry("🦚  Peacock", "https://www.peacocktv.com"),
             new SiteEntry("🦊  Fox One", "https://www.fox.com"),
+            new SiteEntry("🏈  CBS Sports", "https://www.cbssports.com/watch"),
             new SiteEntry("⚾  MLB.TV", "https://www.mlb.com/tv"),
             new SiteEntry("🏰  Disney+", "https://www.disneyplus.com"),
             new SiteEntry("📦  Prime Video", "https://www.amazon.com/gp/video/storefront")

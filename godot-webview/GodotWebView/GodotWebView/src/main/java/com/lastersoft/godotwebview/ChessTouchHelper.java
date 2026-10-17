@@ -32,8 +32,8 @@ public final class ChessTouchHelper {
 
     private static final String CHESS_TOUCH_FIX_JS =
         "(function() {" +
-        "    if (window.__chess4board_touch_init) return;" +
-        "    window.__chess4board_touch_init = true;" +
+        "    if (window.__chessboard_touch_init) return;" +
+        "    window.__chessboard_touch_init = true;" +
         "    var SUBMENU_KEYS = new Set(['play', 'puzzles', 'learn', 'watch', 'community', 'other', 'train', 'more', 'news', 'social']);" +
         "    var currentOpenKey = null;" +
         "    var allowUnmount = false;" +
@@ -145,8 +145,9 @@ public final class ChessTouchHelper {
 
     private static final String CHESS_ARROW_TOUCH_JS =
         "(function() {" +
-        "    if (window.__chess4board_arrow_bridge_init) return;" +
-        "    window.__chess4board_arrow_bridge_init = true;" +
+        "    if (window.__chessboard_arrow_bridge_init) return;" +
+        "    if (!document.querySelector('wc-chess-board, chess-board, cg-board, #board-layout-chessboard, #board-single, .board, piece')) return;" +
+        "    window.__chessboard_arrow_bridge_init = true;" +
         "    var DOUBLE_TAP_MAX_GAP = 280;" +
         "    var TAP_MAX_HOLD_TIME = 350;" +
         "    var DRAG_MIN_DISTANCE = 18;" +
@@ -164,29 +165,16 @@ public final class ChessTouchHelper {
         "    var activeBoard = null;" +
         "    var lastGestureEndTime = 0;" +
         "    var activeModifiers = { shiftKey: false, altKey: false, ctrlKey: false, metaKey: false };" +
-        "    try {" +
-        "        var origSetPointerCapture = Element.prototype.setPointerCapture;" +
-        "        Element.prototype.setPointerCapture = function(id) {" +
-        "            try { return origSetPointerCapture.call(this, id); } catch (err) {}" +
-        "        };" +
-        "        var origReleasePointerCapture = Element.prototype.releasePointerCapture;" +
-        "        Element.prototype.releasePointerCapture = function(id) {" +
-        "            try { return origReleasePointerCapture.call(this, id); } catch (err) {}" +
-        "        };" +
-        "    } catch (e) {}" +
         "    function getBoardElement(node) {" +
-        "        if (node && typeof node.closest === 'function') {" +
-        "            var specific = node.closest('wc-chess-board, chess-board, cg-board');" +
-        "            if (specific) return specific;" +
-        "            var container = node.closest('#board-layout-chessboard, #board-single, .board-layout-chessboard, .chessboard-component');" +
-        "            if (container) {" +
-        "                var childBoard = container.querySelector('wc-chess-board, chess-board, cg-board');" +
-        "                return childBoard || container;" +
-        "            }" +
+        "        if (!node || typeof node.closest !== 'function') return null;" +
+        "        var specific = node.closest('wc-chess-board, chess-board, cg-board');" +
+        "        if (specific) return specific;" +
+        "        var container = node.closest('#board-layout-chessboard, #board-single, .board-layout-chessboard, .chessboard-component');" +
+        "        if (container) {" +
+        "            var childBoard = container.querySelector('wc-chess-board, chess-board, cg-board');" +
+        "            return childBoard || container;" +
         "        }" +
-        "        var topBoard = document.querySelector('wc-chess-board, chess-board, cg-board');" +
-        "        if (topBoard) return topBoard;" +
-        "        return document.querySelector('#board-layout-chessboard, #board-single, .board');" +
+        "        return null;" +
         "    }" +
         "    function getSquareAtPoint(x, y, board) {" +
         "        if (!board) return null;" +
@@ -666,14 +654,43 @@ public final class ChessTouchHelper {
         String targetUrl = (url != null) ? url : webView.getUrl();
         if (targetUrl == null) return;
 
-        if (targetUrl.contains("chess.com")) {
-            evaluate(webView, CHESS_TOUCH_FIX_JS);
-            Log.i(TAG, "Injected Chess.com desktop sidebar touch fix into " + targetUrl);
-        }
+        try {
+            android.net.Uri uri = android.net.Uri.parse(targetUrl);
+            String host = uri.getHost();
+            if (host == null) return;
+            host = host.toLowerCase().trim();
 
-        if (targetUrl.contains("chess.com") || targetUrl.contains("lichess.org")) {
-            evaluate(webView, CHESS_ARROW_TOUCH_JS);
-            Log.i(TAG, "Injected two-finger right-click arrow bridge into " + targetUrl);
+            // Strict protection: NEVER inject scripts into Google accounts, Cloudflare challenges, or captcha providers
+            if (host.equals("accounts.google.com") || host.endsWith(".google.com") ||
+                host.equals("challenges.cloudflare.com") || host.endsWith(".cloudflare.com") ||
+                host.contains("turnstile") || host.contains("recaptcha") || host.contains("hcaptcha")) {
+                return;
+            }
+
+            // Exclude authentication, login, registration, and credential pages
+            String path = uri.getPath();
+            if (path != null) {
+                String lowerPath = path.toLowerCase();
+                if (lowerPath.contains("/login") || lowerPath.contains("/signin") ||
+                    lowerPath.contains("/signup") || lowerPath.contains("/register") ||
+                    lowerPath.contains("/auth") || lowerPath.contains("/oauth") ||
+                    lowerPath.contains("/password") || lowerPath.contains("/challenge") ||
+                    lowerPath.contains("/verify")) {
+                    return;
+                }
+            }
+
+            if (host.equals("chess.com") || host.endsWith(".chess.com")) {
+                evaluate(webView, CHESS_TOUCH_FIX_JS);
+                Log.i(TAG, "Injected Chess.com desktop sidebar touch fix into " + targetUrl);
+            }
+
+            if (host.equals("chess.com") || host.endsWith(".chess.com")) {
+                evaluate(webView, CHESS_ARROW_TOUCH_JS);
+                Log.i(TAG, "Injected two-finger right-click arrow bridge into " + targetUrl);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking host/path for touch enhancements: " + e.getMessage());
         }
     }
 

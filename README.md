@@ -1,8 +1,8 @@
-# ♟️ Chess 4 Board
+# ♟️ ChessBoard
 
-**Chess 4 Board** (`com.lastersoft.chess4board`) is a custom-engineered web gaming, video streaming, and tabletop application hub built for the **Board** digital tabletop hardware device.
+**ChessBoard** (`com.lastersoft.chessboard`) is a custom-engineered web gaming, video streaming, and tabletop application hub built for the **Board** digital tabletop hardware device.
 
-Because the Board OS validates all installed APKs against its native SDK (`libboard.so` / `libnativeBoardSDK.so`), **Chess 4 Board** pairs a lightweight **Godot 4.7** host application (`chess-4-board`) with a custom native Android plugin (`com.lastersoft.godotwebview.GodotWebView`) that renders a hardware-accelerated Chromium `WebView` with full multi-touch passthrough. For deep architectural details and component diagrams, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+Because the Board OS validates all installed APKs against its native SDK (`libboard.so` / `libnativeBoardSDK.so`), **ChessBoard** pairs a lightweight **Godot 4.7** host application (`chess-4-board`) with a custom native Android plugin (`com.lastersoft.godotwebview.GodotWebView`) that renders a hardware-accelerated Chromium `WebView` with full multi-touch passthrough. For deep architectural details and component diagrams, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
@@ -17,9 +17,10 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
 * **Chess.com Bot Engine WebAssembly Memory Patching:**
   * Intercepts `explanation-engine.wasm` at the network level and dynamically patches Section 5 (Memory Section) from 386 MB down to 32 MB initial memory with local disk caching. Eliminates V8 virtual memory out-of-memory (`RangeError`) crashes on Android WebView, allowing all Chess.com bots (Vinh, Count Morphy, etc.) and Coach review to run flawlessly.
 * **Board OS System Menu Integration:**
-  * Pressing the Board hardware/system menu button opens the native Board OS overlay with three actions:
+  * Pressing the Board hardware/system menu button opens the native Board OS overlay with four actions:
     * **Resume** — Return to the active web app.
-    * **Chess 4 Board Menu** — Open the centered **Chess 4 Board** launcher and control card.
+    * **App Menu** — Open the centered **ChessBoard** launcher and control card.
+    * **Controls Guide** — Open the 2x tabletop-scaled interactive modal detailing all chess gestures, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs.
     * **Exit to Library** — Immediately terminate the app via `SessionManagerBridge` and return to the Board OS Library.
 * **100% Native Multi-Touch Passthrough:**
   * Configures `BoardNativePlugin` before SDK initialization so `SystemOverlayService` binds cleanly without swallowing raw Android touch events—preserving smooth dragging, scrolling, and multi-touch gestures in the `WebView`.
@@ -27,11 +28,17 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * Designed for a 24-inch tabletop display with high-contrast dark styling, outside-tap scrim dismissal, and a top loading progress bar.
 * **Desktop & Mobile User-Agent Switching (`🖥` / `📱`):**
   * Defaults to **Desktop Mode (`🖥`)** for large-screen layouts.
-  * **Short tap** toggles Desktop/Mobile mode for the current site only.
-  * **3-second hold** toggles and saves the global default User-Agent in `SharedPreferences` (with a confirmation dialog).
+  * **Short tap** toggles Desktop/Mobile mode for the current session.
+  * **3-second hold** saves Desktop or Mobile mode as the persistent default for just that site in `SharedPreferences` (with a confirmation dialog).
 * **4-Way Tabletop Rotation (`90°`):**
   * **Short tap** rotates clockwise through all 4 tabletop orientations (`Landscape` → `Portrait` → `Reverse Landscape` → `Reverse Portrait`).
   * **Long-press** immediately resets the display to default `Landscape`.
+* **On-Demand Right Margin Gutter Toggle (Board System Menu Clearance):**
+  * Resolves cases where the Board OS floating system menu button overlaps right-side web UI elements (notation, clocks, controls). Applying the 106dp right margin evenly frames the Board OS floating button between the web content and display bezel.
+  * **Short tap** toggles the margin for the current session.
+  * **3-second hold** saves right margin ON or OFF as the persistent default for just that site.
+* **In-App Interactive Controls & Gestures Guide:**
+  * An interactive, 2x tabletop-scaled modal dialog accessible directly from the Board OS system pause menu. Outlines all tabletop chess gestures (double-tap arrows, highlights, additive markings), desktop sidebar flyouts, browser navigation controls, desktop mode persistence, page margin gutter toggles, screen rotation, secondary tabs, and Board OS pause menu actions.
 * **Isolated Secondary Tab & Floating `✕` Dismissal:**
   * Links that request a new window (`target="_blank"`, `window.open()`, or external links clicked during a game) open in a dedicated secondary `WebView` layered on top, keeping your active Chess.com game alive underneath.
   * A draggable floating **`✕`** button with idle auto-fade allows you to close the secondary tab at any time and instantly return to your active game.
@@ -45,7 +52,7 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
 ## 📁 Repository Structure
 
 ```text
-Chess4Board/
+ChessBoard/
 ├── .gitignore                # Unified root git ignore (macOS, Godot, Gradle, IDEs)
 ├── README.md                 # Project overview & quick reference
 ├── ARCHITECTURE.md           # System architecture, component specifications & diagrams
@@ -57,7 +64,7 @@ Chess4Board/
 │   ├── project.godot         # Godot configuration & 3s splash setup
 │   ├── chess.tscn            # Root scene (splash screen & WebView host)
 │   ├── root.gd               # Board SDK lifecycle, pause menu & WebView bridge
-│   ├── export_presets.cfg    # Android APK export preset (-> ../../output/Chess4Board.apk)
+│   ├── export_presets.cfg    # Android APK export preset (-> ../../output/ChessBoard.apk)
 │   └── addons/
 │       ├── board_sdk/        # Official Board OS Godot SDK & native AARs
 │       └── webview/          # Compiled GodotWebView debug/release AARs
@@ -73,10 +80,11 @@ Chess4Board/
             ├── SecondaryTabManager.java   # Isolated multi-window popup tab manager
             ├── ChessTouchHelper.java      # Sidebar navigation & double-tap arrow bridge
             ├── WasmPatchHelper.java       # Wasm binary patcher for Chess.com bot engine OOM
+            ├── HelpDialogHelper.java      # 2x modal controls & gestures guide dialog
             └── MenuOverlayView.java       # 2x scaled centered menu overlay card
 ```
 
-> **Note:** Exported APK binaries are written out-of-tree to `../output/Chess4Board.apk` (configurable via `OUTPUT_DIR` in `.env`) to keep large build artifacts out of git history.
+> **Note:** Exported APK binaries are written out-of-tree to `../output/ChessBoard.apk` (configurable via `OUTPUT_DIR` in `.env`) to keep large build artifacts out of git history.
 
 ---
 
@@ -103,11 +111,11 @@ From the repository root:
 ### Script Flags
 | Command | Description |
 |---|---|
-| `./build_and_deploy.sh` | Full build: compiles `GodotWebView` AARs, copies to `addons/webview/`, exports `Chess4Board.apk`, and installs/launches on Board |
+| `./build_and_deploy.sh` | Full build: compiles `GodotWebView` AARs, copies to `addons/webview/`, exports `ChessBoard.apk`, and installs/launches on Board |
 | `./build_and_deploy.sh --doctor` | Verifies local JDK 17+, Android SDK, Godot binary, and Board CLI configuration |
 | `./build_and_deploy.sh -d <target>` | Installs to a specific Board device or IP address (e.g. `./build_and_deploy.sh -d 10.0.0.65`) |
 | `./build_and_deploy.sh --skip-aar` | Skips Gradle AAR compilation (use when only Godot files/assets changed) |
-| `./build_and_deploy.sh --no-deploy` | Builds the AARs and exports `Chess4Board.apk` without deploying to the Board device |
+| `./build_and_deploy.sh --no-deploy` | Builds the AARs and exports `ChessBoard.apk` without deploying to the Board device |
 
 > For manual step-by-step CLI commands (Gradle, Godot headless export, and `board-connect`), see [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md).
 
@@ -118,18 +126,29 @@ From the repository root:
 | Control | Short Tap Action | Long-Press Action |
 |---|---|---|
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
-| **`－`** / **`＋`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) | — |
+| **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) | — |
 | **`↺`** | Reload the current page | — |
-| **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent for current site | **3s hold:** Save as new global default User-Agent |
+| **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent for current session | **Long press:** Save as persistent default for this site |
+| **`◧`** | Toggle 106dp right margin (frames Board's system button evenly with bezel) | **Long press:** Save as persistent default for this site |
 | **`90°`** | Rotate clockwise (`0°` → `90°` → `180°` → `270°`) | Reset to default Landscape (`0°`) |
-| **`⬇`** | Close the Chess 4 Board Menu overlay | — |
+| **`✕`** | Close the ChessBoard Menu overlay | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
+
+---
+
+## 🔘 Board OS System Menu Controls
+
+Pressing the hardware or floating Board system button opens the Board OS pause overlay:
+* **Resume:** Return to the active web page or chess game.
+* **App Menu:** Open the centered 2x scaled site launcher and bottom controls row.
+* **Controls Guide:** Open the 2x scaled dark acrylic tabletop reference guide outlining all touch gestures, controls, and features.
+* **Exit to Library:** Safely terminate ChessBoard and return to the Board home screen.
 
 ---
 
 ## ♟️ Tabletop Chess Gestures (Chess.com & Lichess)
 
-On desktop browsers, tactical arrows and square highlights require mouse right-clicks (`button: 2`). **Chess 4 Board** provides an intuitive single-finger touch bridge that translates double-taps on the chessboard into right-click events without interfering with normal play:
+On desktop browsers, tactical arrows and square highlights require mouse right-clicks (`button: 2`). **ChessBoard** provides an intuitive single-finger touch bridge that translates double-taps on the chessboard into right-click events without interfering with normal play:
 
 * **Draw Tactical Arrows (Double-Tap & Drag):** Double-tap on a starting square and hold/drag on the second tap across to a destination square to draw live tactical arrows.
 * **Highlight Square (Double-Tap in Place):** Double-tap quickly in place on any square to toggle its color highlight (green).
@@ -149,9 +168,9 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **Lichess** (`https://lichess.org/analysis`)
 * **ChessReps** (`https://chessreps.com`)
 
-### 🗂️ Extra Apps (18 Apps Across 3 Categories)
-* **🎲 Games (6):** Colonist.io (Catan), Dots & Boxes, PBS Kids, 247 Backgammon, 247 Checkers, 247 Games (All)
-* **📺 Video (6):** YouTube, Peacock, Fox One, MLB.TV, Disney+, Prime Video
+### 🗂️ Extra Apps (21 Apps Across 3 Categories)
+* **🎲 Games (8):** Colonist.io (Catan), Dots & Boxes, PBS Kids, ABCmouse, AutoDraw (Google), 247 Backgammon, 247 Checkers, 247 Games (All)
+* **📺 Watch (7):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video
 * **🌐 Web (6):** Google, Google Photos, Google Maps, Reddit, Wikipedia, Weather
 
 ---
