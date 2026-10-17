@@ -21,3 +21,7 @@ Whenever you add or modify features, web apps/categories, menu controls, or buil
 ## 3. Build & Output Hygiene
 - **Out-of-Tree APK Output:** Always export `Chess4Board.apk` to `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk` (never inside the git repository).
 - **Clean Godot Resource Tree:** Keep `chess-4-board/` free of unused test scripts, duplicate icons, or unused `.tflite` models (`Chess 4 Board` uses native touch passthrough via `GodotWebView.prepareBoardTouchPassthrough()`).
+
+## 4. Git Commit & Push Confirmation Rule
+- **Explicit Confirmation Required:** NEVER run `git commit` or `git push` autonomously.
+- Always summarize the modified/staged files, ensure the user has verified and tested the changes on device, and wait for the user's explicit confirmation before committing and pushing.

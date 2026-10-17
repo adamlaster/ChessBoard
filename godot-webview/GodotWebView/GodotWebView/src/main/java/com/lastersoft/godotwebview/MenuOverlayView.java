@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -63,15 +64,48 @@ public class MenuOverlayView {
         int cardPadding = (int) (14 * menuDensity);
         int paddingH = (int) (20 * menuDensity);
 
-        // --- 1. FULLSCREEN BACKDROP SCRIM (OUTSIDE CLICK DISMISS) ---
+        int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
+
+        // --- 1. FULLSCREEN BACKDROP SCRIM (OUTSIDE TAP DISMISS ONLY) ---
         scrimView = new View(activity);
         scrimView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         scrimView.setBackgroundColor(Color.parseColor("#4D000000")); // 30% black
         scrimView.setVisibility(View.GONE);
-        scrimView.setOnClickListener(v -> {
-            if (listener != null) listener.onCloseMenu();
+        scrimView.setOnTouchListener(new View.OnTouchListener() {
+            private float downX, downY;
+            private boolean isDrag = false;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getX();
+                        downY = event.getY();
+                        isDrag = false;
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float dx = event.getX() - downX;
+                        float dy = event.getY() - downY;
+                        if (!isDrag && Math.hypot(dx, dy) > touchSlop) {
+                            isDrag = true;
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        if (!isDrag) {
+                            if (listener != null) listener.onCloseMenu();
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        isDrag = false;
+                        return true;
+                }
+                return false;
+            }
         });
 
         // --- 2. UNIFIED MENU CARD ---
@@ -85,6 +119,9 @@ public class MenuOverlayView {
         menuCard.setOrientation(LinearLayout.VERTICAL);
         menuCard.setBackground(cardBg);
         menuCard.setPadding(cardPadding, cardPadding, cardPadding, cardPadding);
+        // Intercept and consume all touch events landing on the menu card (background, padding, etc.)
+        // so drags or accidental touches never pass through to the backdrop scrim.
+        menuCard.setOnTouchListener((v, event) -> true);
         FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
                 (int) (320 * menuDensity),
                 ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -455,6 +492,7 @@ public class MenuOverlayView {
         trackBg.setCornerRadius(23 * menuDensity);
         trackBg.setStroke((int) (1 * menuDensity), Color.parseColor("#33FFFFFF"));
         slideTrack.setBackground(trackBg);
+        slideTrack.setOnTouchListener((v, event) -> true);
 
         slideLabel = new TextView(activity);
         slideLabel.setText("Slide to Exit ❯❯❯");
@@ -506,6 +544,7 @@ public class MenuOverlayView {
                     slideLabel.setAlpha(1.0f);
                 }
                 if (scrimView != null) {
+                    scrimView.setOnTouchListener(null);
                     scrimView.setOnClickListener(null);
                     scrimView.setBackgroundColor(Color.parseColor("#E6000000"));
                 }

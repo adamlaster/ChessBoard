@@ -235,6 +235,17 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 14: Accidental Menu Drag Dismissal Prevention
+1. **Root Cause Analysis:**
+   - Previously, the fullscreen backdrop `scrimView` used a standard Android `OnClickListener`. On Android touchscreens, dragging a finger across the screen still triggers `onClick()` upon release as long as `ACTION_UP` occurs within the view bounds (which covers the entire display).
+   - In addition, touches landing on empty space or card padding within `menuCard` were not consumed by `menuCard`, causing them to fall through to `scrimView` underneath and dismiss the menu on finger lift.
+2. **Implementation in `MenuOverlayView.java`:**
+   - **Touch-Slop Tap Filtering:** Replaced `scrimView.setOnClickListener` with an `OnTouchListener` utilizing `ViewConfiguration.get(activity).getScaledTouchSlop()`. Tracks pointer displacement (`Math.hypot(dx, dy) > touchSlop`) to distinguish intentional taps from drags or swipes. Only genuine taps outside the menu dismiss the overlay; drags are completely ignored.
+   - **Menu Card Touch Consumption:** Attached `menuCard.setOnTouchListener((v, event) -> true)` and `slideTrack.setOnTouchListener((v, event) -> true)` to consume all unhandled touches that land anywhere on the menu card, preventing touches, scrolling, or dragging from falling through to the backdrop scrim.
+   - Preserves explicit dismissal via the `⬇` button and intentional single-taps outside the card.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:
