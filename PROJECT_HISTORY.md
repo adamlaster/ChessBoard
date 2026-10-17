@@ -1,4 +1,4 @@
-# ChessBoard (`chess-4-board` & `godot-webview`) — Project & Session Lifecycle Log
+# ChessBoard (`chessboard` & `godot-webview`) — Project & Session Lifecycle Log
 
 This document tracks the complete architecture, chronological evolution, engineering decisions, and future roadmap for **ChessBoard** (`com.lastersoft.chessboard`) running on the **Board** digital tabletop device.
 
@@ -24,7 +24,7 @@ For current technical specifications, controls, and build guides, refer to the c
 2. **End-to-End CLI Pipeline (`build_and_deploy.sh`):**
    - Replaced manual Android Studio + Godot IDE export steps with a 100% automated 4-step CLI workflow documented in `BUILD_SEQUENCE.md`:
      1. `./gradlew --no-build-cache clean assemble` in `godot-webview/GodotWebView`
-     2. Copy `GodotWebView-debug.aar` & `GodotWebView-release.aar` to `chess-4-board/addons/webview/`
+     2. Copy `GodotWebView-debug.aar` & `GodotWebView-release.aar` to `chessboard/addons/webview/`
      3. `/Applications/Godot.app/Contents/MacOS/Godot --headless --path ... --export-debug "Android" ./Chess4Board.apk`
      4. `board-connect install Chess4Board.apk --launch` (uploading over LAN to `10.0.0.65:8843`)
 
@@ -153,17 +153,17 @@ For current technical specifications, controls, and build guides, refer to the c
 ---
 
 ### Phase 9: Godot Resource Cleanup, Canonical Root Docs/Script & "Chess 4 Board Menu" Rename
-1. **Removed Unused Godot Resources in `chess-4-board`:**
+1. **Removed Unused Godot Resources in `chessboard`:**
    - Deleted legacy test scripts and `.uid` sidecars (`app.gd`, `button_2.gd`, `button_3.gd`, `button_test.gd`, `panel_container.gd`, `v_box_container.gd`).
    - Removed unused icon and import files (`icon.svg`, `icon_square.png`, `splash_download.png.import`) and orphaned `.godot/imported/` cache entries.
    - Removed unused `assets/models/model.tflite` (~952 KB), as `Chess 4 Board` uses touch passthrough rather than piece glyph detection.
 2. **Consolidated Single Canonical `README.md`, `AGENTS.md`, `BUILD_SEQUENCE.md`, `PROJECT_HISTORY.md`, and `build_and_deploy.sh` in Root (`/Users/adamlaster/Development/BoardGames/Chess4Board/`):**
-   - Moved `build_and_deploy.sh` to the repository root (`/Users/adamlaster/Development/BoardGames/Chess4Board/build_and_deploy.sh`) and removed duplicate scripts from `chess-4-board/` and `godot-webview/`.
-   - Consolidated `README.md`, `AGENTS.md`, `BUILD_SEQUENCE.md`, and `PROJECT_HISTORY.md` exclusively in the repository root and removed all duplicate copies in `chess-4-board/`, `godot-webview/`, and `Documents/AI_Markdown/`.
+   - Moved `build_and_deploy.sh` to the repository root (`/Users/adamlaster/Development/BoardGames/Chess4Board/build_and_deploy.sh`) and removed duplicate scripts from `chessboard/` and `godot-webview/`.
+   - Consolidated `README.md`, `AGENTS.md`, `BUILD_SEQUENCE.md`, and `PROJECT_HISTORY.md` exclusively in the repository root and removed all duplicate copies in `chessboard/`, `godot-webview/`, and `Documents/AI_Markdown/`.
 3. **Renamed Board System Menu Button to "Chess 4 Board Menu":**
    - Updated the custom Board OS pause menu button title from `"Web Menu"` to `"Chess 4 Board Menu"` in both `root.gd` and `GodotWebView.ensureBoardPauseContextRegistered()`.
 4. **Unified Root `.gitignore` & Git Index Cleanup:**
-   - Created a single canonical root `.gitignore` covering macOS (`.DS_Store`), Godot 4+ (`.godot/`, `chess-4-board/android/`), Android/Gradle (`.gradle/`, `**/build/`, `local.properties`), IDEs (`.idea/`, `.vscode/`), and packaged binaries (`*.apk`, while preserving `chess-4-board/addons/**/*.aar`).
+   - Created a single canonical root `.gitignore` covering macOS (`.DS_Store`), Godot 4+ (`.godot/`, `chessboard/android/`), Android/Gradle (`.gradle/`, `**/build/`, `local.properties`), IDEs (`.idea/`, `.vscode/`), and packaged binaries (`*.apk`, while preserving `chessboard/addons/**/*.aar`).
    - Removed duplicate sub-`.gitignore` files and untracked previously committed `.DS_Store`, `.gradle/`, `.idea/`, `.vscode/`, and `build/` cache files from the git index.
 
 ---
@@ -401,7 +401,7 @@ For current technical specifications, controls, and build guides, refer to the c
        5. **🔘 Board OS System Menu:** Board hardware button functions (Resume, Chess 4 Board Menu, Controls & Gestures Guide, Exit to Library).
      - Fixed "Done" button styled in accent blue (`#5C7CFA`) pinned at the bottom of the card for easy single-tap dismissal.
    - **Board OS System Menu Integration (`root.gd` & `BoardBridge.java`):**
-     - Registered `"show_help"` (`Controls & Gestures Guide`) alongside `"open_menu"` in `Board.pause.set_context()` (`chess-4-board/root.gd`) and native fallback `BoardBridge.ensureBoardPauseContextRegistered()`.
+     - Registered `"show_help"` (`Controls & Gestures Guide`) alongside `"open_menu"` in `Board.pause.set_context()` (`chessboard/root.gd`) and native fallback `BoardBridge.ensureBoardPauseContextRegistered()`.
      - Connected `result.custom_button_id == "show_help"` to `webview_plugin.show_help()` in `root.gd`, and hooked `PauseResultCallbackImpl` in `BoardBridge.java`.
      - Exposed `@UsedByGodot public void show_help()` in `GodotWebView.java` to invoke `HelpDialogHelper.show()`.
    - **Controls Row Ergonomics (`MenuOverlayView.java`):**
@@ -587,6 +587,18 @@ For current technical specifications, controls, and build guides, refer to the c
      - In `SecondaryTabManager.java`, added an `onAuthRedirect` fallback in `shouldOverrideUrlLoading` so any auth URL opened as a popup seamlessly dismisses the secondary tab and loads in the primary session, maintaining full OAuth cookie and callback continuity.
 4. **Hardware Verification on Board (10.0.0.65):**
    - Verified on physical Board display: Google Sign-in on YouTube and web services loads and authenticates without security warnings; Cloudflare Turnstile on `lichess.org` verifies smoothly; external links clicked during Chess.com play open cleanly in the dismissible secondary tab with the floating circular `✕` button.
+
+---
+
+### Phase 31: Canonical Directory & Project Name Normalization (`chess-4-board/` -> `chessboard/`)
+1. **Directory Normalization:**
+   - Renamed the Godot project root directory from `chess-4-board/` to `chessboard/` (`git mv chess-4-board chessboard`) to align with project-wide naming conventions (`ChessBoard`, `com.lastersoft.chessboard`) and eliminate hyphenated legacy directory artifacts.
+2. **Build Scripts & Configuration Synchronization:**
+   - Updated `build_and_deploy.sh` to target `$ROOT_DIR/chessboard` for Godot headless exports and plugin AAR destinations.
+   - Updated `.gitignore` to track `chessboard/.godot/`, `chessboard/android/`, and `!chessboard/addons/**/*.aar`.
+   - Updated all canonical root documentation (`README.md`, `ARCHITECTURE.md`, `BUILD_SEQUENCE.md`, `AGENTS.md`, and `PROJECT_HISTORY.md`) to reflect `chessboard/`.
+3. **Pipeline Verification:**
+   - Confirmed full build pipeline (`./build_and_deploy.sh`) successfully compiles the Android AAR, exports Godot APK from `chessboard/`, and deploys cleanly to the Board hardware.
 
 ---
 

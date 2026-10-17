@@ -2,7 +2,7 @@
 
 **ChessBoard** (`com.lastersoft.chessboard`) is a custom-engineered web gaming, video streaming, and tabletop application hub built for the **Board** digital tabletop hardware device.
 
-Because the Board OS validates all installed APKs against its native SDK (`libboard.so` / `libnativeBoardSDK.so`), **ChessBoard** pairs a lightweight **Godot 4.7** host application (`chess-4-board`) with a custom native Android plugin (`com.lastersoft.godotwebview.GodotWebView`) that renders a hardware-accelerated Chromium `WebView` with full multi-touch passthrough. For deep architectural details and component diagrams, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+Because the Board OS validates all installed APKs against its native SDK (`libboard.so` / `libnativeBoardSDK.so`), **ChessBoard** pairs a lightweight **Godot 4.7** host application (`chessboard`) with a custom native Android plugin (`com.lastersoft.godotwebview.GodotWebView`) that renders a hardware-accelerated Chromium `WebView` with full multi-touch passthrough. For deep architectural details and component diagrams, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
@@ -60,7 +60,7 @@ ChessBoard/
 ├── BUILD_SEQUENCE.md         # Detailed 4-step build & deployment guide
 ├── PROJECT_HISTORY.md        # Chronological engineering log & roadmap
 ├── build_and_deploy.sh       # One-step CLI build, export & deploy script
-├── chess-4-board/            # Godot 4.7 host project & Board SDK integration
+├── chessboard/               # Godot 4.7 host project & Board SDK integration
 │   ├── project.godot         # Godot configuration & 3s splash setup
 │   ├── chess.tscn            # Root scene (splash screen & WebView host)
 │   ├── root.gd               # Board SDK lifecycle, pause menu & WebView bridge

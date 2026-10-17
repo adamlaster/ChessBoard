@@ -9,10 +9,10 @@
 ._*
 Thumbs.db
 
-# --- Godot 4+ (chess-4-board) ---
+# --- Godot 4+ (chessboard) ---
 .godot/
-chess-4-board/.godot/
-chess-4-board/android/
+chessboard/.godot/
+chessboard/android/
 *.translation
 
 # --- Android & Gradle (godot-webview) ---
@@ -48,5 +48,5 @@ captures/
 *.keystore
 *.jks
 
-# Keep compiled plugin & Board SDK AARs inside chess-4-board/addons/
-!chess-4-board/addons/**/*.aar
+# Keep compiled plugin & Board SDK AARs inside chessboard/addons/
+!chessboard/addons/**/*.aar

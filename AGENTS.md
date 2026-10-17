@@ -10,7 +10,7 @@ The following project-wide files must exist **exclusively** in the repository ro
 - [`.env.example`](./.env.example) — Template configuration file for local developer environments.
 - [`.gitignore`](./.gitignore) — Single root git ignore configuration for macOS, Godot 4+, Gradle/Android, and IDEs.
 
-**Do NOT** create or sync duplicate copies of these files inside `chess-4-board/`, `godot-webview/`, or `~/Documents/AI_Markdown/`.
+**Do NOT** create or sync duplicate copies of these files inside `chessboard/`, `godot-webview/`, or `~/Documents/AI_Markdown/`.
 
 ## 2. Keep Root Documentation Up to Date
 Whenever you add or modify features, web apps/categories, menu controls, or build/deployment behavior:
@@ -20,7 +20,7 @@ Whenever you add or modify features, web apps/categories, menu controls, or buil
 
 ## 3. Build & Output Hygiene
 - **Out-of-Tree APK Output:** Always export `ChessBoard.apk` to `/Users/adamlaster/Development/BoardGames/output/ChessBoard.apk` (never inside the git repository).
-- **Clean Godot Resource Tree:** Keep `chess-4-board/` free of unused test scripts, duplicate icons, or unused `.tflite` models (`ChessBoard` uses native touch passthrough via `GodotWebView.prepareBoardTouchPassthrough()`).
+- **Clean Godot Resource Tree:** Keep `chessboard/` free of unused test scripts, duplicate icons, or unused `.tflite` models (`ChessBoard` uses native touch passthrough via `GodotWebView.prepareBoardTouchPassthrough()`).
 
 ## 4. Git Commit & Push Confirmation Rule
 - **Explicit Confirmation Required:** NEVER run `git commit` or `git push` autonomously.

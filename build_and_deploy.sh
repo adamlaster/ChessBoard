@@ -24,7 +24,7 @@ NC='\033[0m' # No Color
 # 1. Base Project Directories (resolved relative to this script)
 # ------------------------------------------------------------------------------
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHESS_DIR="$ROOT_DIR/chess-4-board"
+CHESS_DIR="$ROOT_DIR/chessboard"
 PLUGIN_DIR="$ROOT_DIR/godot-webview/GodotWebView"
 AAR_OUT_DIR="$PLUGIN_DIR/GodotWebView/build/outputs/aar"
 TARGET_ADDONS_DIR="$CHESS_DIR/addons/webview"
@@ -263,7 +263,7 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# STEP 2: Copy AARs to chess-4-board
+# STEP 2: Copy AARs to chessboard
 # ------------------------------------------------------------------------------
 if [[ "$BUILD_AAR" = true ]]; then
     echo -e "${BOLD}${GREEN}[Step 2/4] Copying AARs to ChessBoard project...${NC}"

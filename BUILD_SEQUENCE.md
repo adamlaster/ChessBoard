@@ -79,23 +79,23 @@ Compiles both debug and release Android library binaries containing our custom `
 Copies the updated native AAR binaries directly into the game's `addons/webview` directory so Godot packages them into the Android export template.
 
 * **Source Directory:** `godot-webview/GodotWebView/GodotWebView/build/outputs/aar`
-* **Destination Directory:** `chess-4-board/addons/webview`
+* **Destination Directory:** `chessboard/addons/webview`
 * **Command:**
   ```bash
-  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar chess-4-board/addons/webview/
-  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar chess-4-board/addons/webview/
+  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar chessboard/addons/webview/
+  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar chessboard/addons/webview/
   ```
 
 ---
 
 ### Step 3: Export Android APK via Godot CLI
-Performs a headless compilation and packaging of `chess-4-board` into an Android APK using the Android Gradle build template configured in `export_presets.cfg`.
+Performs a headless compilation and packaging of `chessboard` into an Android APK using the Android Gradle build template configured in `export_presets.cfg`.
 
-* **Project Directory:** `chess-4-board`
+* **Project Directory:** `chessboard`
 * **Command:**
   ```bash
   mkdir -p "${OUTPUT_DIR:-../output}"
-  "${GODOT_BIN:-godot}" --headless --path chess-4-board --export-debug "Android" "${OUTPUT_DIR:-../output}/ChessBoard.apk"
+  "${GODOT_BIN:-godot}" --headless --path chessboard --export-debug "Android" "${OUTPUT_DIR:-../output}/ChessBoard.apk"
   ```
 * **Output:** `ChessBoard.apk` placed in `OUTPUT_DIR` (default: `../output/ChessBoard.apk`, stored out-of-tree so large APK binaries stay outside the git repository).
 

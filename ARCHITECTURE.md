@@ -15,7 +15,7 @@ flowchart TD
         BoardSession["SessionManagerBridge"]
     end
 
-    subgraph GodotHost ["Godot 4.7 Host Application (chess-4-board)"]
+    subgraph GodotHost ["Godot 4.7 Host Application (chessboard)"]
         RootScene["chess.tscn / root.gd"]
         SplashTimer["3-Second Custom Splash Screen"]
         NativeLibs["libboard.so / libnativeBoardSDK.so"]
@@ -255,7 +255,7 @@ sequenceDiagram
 
 ### 5.1 Reflection for Board SDK Integration
 * **Decision:** All interactions with `co.harrishill.board.*` are executed via Java reflection in [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) rather than compile-time Gradle dependencies.
-* **Rationale:** The Board SDK `.aar` files (`boardNativePlugin-release.aar`, `sessionManager-release.aar`, `systemOverlay-release.aar`) are bundled exclusively within the Godot export template (`chess-4-board/addons/board_sdk/`). Linking them directly into the `GodotWebView` library would create duplicate class collisions at APK packaging time and prevent the AAR from compiling independently. Reflection maintains loose coupling and zero-overhead execution.
+* **Rationale:** The Board SDK `.aar` files (`boardNativePlugin-release.aar`, `sessionManager-release.aar`, `systemOverlay-release.aar`) are bundled exclusively within the Godot export template (`chessboard/addons/board_sdk/`). Linking them directly into the `GodotWebView` library would create duplicate class collisions at APK packaging time and prevent the AAR from compiling independently. Reflection maintains loose coupling and zero-overhead execution.
 
 ### 5.2 Out-of-Tree APK Export Pipeline
 * **Decision:** The compiled binary `ChessBoard.apk` is exported by default directly to the out-of-tree sibling directory `../output/ChessBoard.apk` (configurable via `OUTPUT_DIR` in `.env` / `.env.local`).
