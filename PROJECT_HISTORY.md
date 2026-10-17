@@ -246,6 +246,89 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 15: Two-Finger Right-Click Touch Gesture for Arrow Drawing & Square Highlighting
+1. **Problem Analysis:**
+   - Tabletop players using the Board hardware display wanted to draw tactical arrows and highlight squares on Chess.com (and Lichess) during analysis and game review.
+   - On desktop browsers, arrows and square highlights require a mouse right-click and drag (`button: 2`, `buttons: 2`). Android WebView does not synthesize right-clicks from multi-touch natively; instead, Chromium interprets two fingers as pinch-to-zoom or page scrolling.
+   - Analysis of Chess.com's client bundles (`shared.eager.chunk.js`) revealed that the chessboard web component (`<wc-chess-board>`) listens for `pointerdown`, `pointermove`, and `pointerup` events, entering `AddingMarkings` state when `e.which === 3` (`button: 2`).
+2. **Implementation in `ChessTouchHelper.java` (`CHESS_ARROW_TOUCH_JS`):**
+   - **Board Target Detection:** Detects touches occurring on `<wc-chess-board>`, `<chess-board>`, `<cg-board>`, `#board-layout-chessboard`, `#board-single`, or `.board`. Includes a 40px bounding box safety margin so edge squares (a/h files, 1st/8th ranks) trigger reliably.
+   - **Hand Proximity Threshold (`MAX_FINGER_SPREAD = 600px`):** Accommodates broad two-finger hand placement across multiple squares on the 24" display while filtering opposing player multi-touch.
+   - **First-Touch Buffering (Additive Arrows & Piece Drag Prevention):**
+     - Analysis of Chess.com's state machine revealed that any native `PointerdownLeft` event instantly executes `markings.removeAllWhere()`, wiping out all existing markings, and grabs any piece under the touch. Because two fingers naturally touch down 20-50ms apart, Finger 1's premature unbuffered left-click was erasing previous arrows and grabbing pieces.
+     - Added a 70ms first-touch buffer on the chessboard: when Finger 1 lands, its `pointerdown` is held. If Finger 2 lands within 70ms, Finger 1's left-click is completely discarded without ever reaching `<wc-chess-board>`, preserving existing arrows and preventing piece grabs. If no second finger lands (genuine single-finger interaction), or if the finger moves > 12px or lifts, the buffered `pointerdown` flushes instantly, preserving 100% native piece movement and tap responsiveness.
+   - **Synthetic Right-Click Translation:**
+     - On two-finger detection: Dispatches synthetic `pointerdown` and `mousedown` with `button: 2`, `buttons: 2`, `which: 3`, `pointerId: 1`, and `pointerType: 'mouse'` at the midpoint between fingers.
+     - On `touchmove`: Tracks the midpoint, dispatches synthetic `pointermove` with `button: 2`, `buttons: 2`, `which: 3` to the board element and `document`, and suppresses browser scrolling/pinch-zoom.
+     - On `touchend`: When either finger lifts, dispatches synthetic `pointerup` (`button: 2`, `buttons: 0`, `which: 3`) and `contextmenu` to commit the arrow (or square highlight if released on the start square). Enters suppression mode until all touches lift (`e.touches.length === 0`), and blocks lingering synthetic clicks for 500ms so arrows are never erased on release.
+   - **Defensive Pointer Capture:** Intercepts `Element.prototype.setPointerCapture` and `releasePointerCapture` to swallow `DOMException: InvalidPointerId` errors when client code captures synthetic pointer events.
+   - **Additive Tactical Arrows:** Allows multiple arrows and square highlights to be drawn sequentially on the board without previous lines disappearing. Markings persist until cleared by a single-finger tap or piece move.
+3. **Build & Field Verification:**
+   - Unified injection under `ChessTouchHelper.injectTouchEnhancements()`, called in both primary `GodotWebView` and `SecondaryTabManager`.
+   - Built and deployed to the Board hardware display via `./build_and_deploy.sh`.
+
+---
+
+### Phase 16: Chess.com Bot Engine Out-of-Memory Fix via On-The-Fly WebAssembly Memory Section Patching
+1. **Problem Analysis:**
+   - When attempting to play bots or Coach matches on Chess.com (`/play/computer` or `/play/coach`), the page failed to start the game with the error alert: *"Couldn't load the bot engine. Please check your connection and reload the page."*
+   - Inspection of Android logcat on the Board hardware revealed a critical V8 WebAssembly engine crash:
+     `CEE wasm streaming compile failed, falling back to a buffered fetch: RangeError: WebAssembly.instantiate(): Out of memory: Cannot allocate Wasm memory for new instance`
+     Source: `https://www.chess.com/r2/assets-chess-engine/explanation-engine/1.130.53/default/explanation-engine.wasm`
+   - When CEE (Chess Explanation Engine / Komodo TEP) fails to instantiate, Chess.com sets `Qu.ceeLoadFailure = 'engine'`, triggering the failure modal and refusing to start the match.
+2. **Reverse Engineering the WebAssembly Binary:**
+   - Downloaded and parsed `explanation-engine.wasm` (27.7 MB).
+   - Inspected Section 5 (Memory Section) at file offset 21,902:
+     - Declared `initial pages: 6,176 (386.0 MB)` and `maximum pages: 32,768 (2048.0 MB)`.
+   - Inspected Section 11 (Data Section): The maximum data segment offset is only **12.14 MB (195 pages)**! The engine was compiled with an excessively large default initial memory footprint (`-sINITIAL_MEMORY=404750336`).
+   - On desktop 64-bit Chrome, 386 MB contiguous virtual memory plus multi-gigabyte guard pages allocate without incident. On Android WebView's 32/64-bit hybrid memory space, V8 cannot satisfy this virtual memory allocation, resulting in a fatal `RangeError: Out of memory`.
+   - Because CEE runs in a dedicated `Worker`, JavaScript monkey-patching via `evaluateJavascript` cannot reach `self.WebAssembly`.
+3. **Implementation in `WasmPatchHelper.java`:**
+   - **Network-Level Interception:** Hooked `WebViewClient.shouldInterceptRequest()` in both `GodotWebView.java` and `SecondaryTabManager.java` to detect requests ending in `explanation-engine.wasm`.
+   - **Binary Section 5 Memory Header Patching:**
+     - Parses the binary to locate Section 5 (Memory Section).
+     - Rewrites the memory definition:
+       - Initial memory: Reduced from 6,176 pages (386 MB, LEB128: `[0xa0, 0x30]`) to 512 pages (32 MB, LEB128: `[0x80, 0x04]`).
+       - Maximum memory: Reduced from 32,768 pages (2048 MB, LEB128: `[0x80, 0x80, 0x02]`) to 8,192 pages (512 MB, LEB128: `[0x80, 0xc0, 0x00]`).
+     - Perfectly preserves the exact 7-byte section length so no downstream byte offsets or segment pointers shift anywhere in the 27.7 MB binary.
+   - **Local Disk Caching:** Persists the patched `.wasm` binary to app cache (`cacheDir/wasm_cache/cee_<hash>.wasm`). Cache hits serve instantly (~10ms) from local storage with proper `application/wasm` headers and CORS policy.
+4. **Verification:**
+   - Verified on physical Board display: Bot Vinh (1300) and Count Morphy loaded instantly, executed opening moves (`1. d4`), and engaged in bot chat dialogue with zero engine crash alerts.
+
+---
+
+### Phase 17: Single-Finger Double-Tap Right-Click Gesture Engine (Arrow Drawing & Square Highlighting)
+1. **Problem Analysis:**
+   - Multi-touch two-finger gestures on large tabletop capacitive touchscreens frequently suffer from driver contact merging (collapsing two touch points into one during motion), palm rejection interference, and timing skew between fingers. This made two-finger tapping and two-finger dragging difficult to balance reliably across different hand postures.
+   - User requested transitioning from the two-finger interaction to a single-finger **Double-Tap** paradigm:
+     - On double-tap:
+       a.) Do not interpret as a piece movement.
+       b.) Draw an arrow if dragged.
+       c.) Select/highlight the square if released in place.
+2. **Implementation in `ChessTouchHelper.java` (`CHESS_ARROW_TOUCH_JS`):**
+   - **Single-Finger Double-Tap State Machine:**
+     - **Tap 1 Interception:** When a finger lands on the chessboard, native left-click dispatch is buffered (`TAP_MAX_HOLD_TIME = 350ms`).
+       - If the finger moves > 10px (`PIECE_DRAG_THRESHOLD`), it is immediately flushed as a native piece drag (`pointerdown` with `button: 0, buttons: 1`), ensuring 0ms latency for drag-and-drop piece moves.
+       - If the finger lifts quickly without moving (`<= 350ms`), `pendingTap1.released` is set and a gap timer of 280ms (`DOUBLE_TAP_MAX_GAP`) is started.
+       - If no second tap arrives within 280ms, Tap 1 flushes as a normal single left-click (`pointerdown` + `pointerup` + `click`).
+     - **Tap 2 Trigger (Double-Tap Confirmed):**
+       - When a second touch lands on the same square (or within 55px) within the 280ms gap:
+       - Tap 1's left-click is **completely discarded**, preventing piece grabs, move hints, or arrow erasure.
+       - System enters **Double-Tap Active Mode** and dispatches synthetic right-click `pointerdown` (`button: 2, buttons: 2, which: 3`) on the origin square.
+     - **Tap 2 Motion (Arrow Drag):**
+       - If the user moves > 18px or enters another square, `isArrowDrag` flags `true`.
+       - Synthetic `pointermove` (`button: 2, buttons: 2, which: 3`) continuously streams to the board, rendering live arrow previews.
+     - **Tap 2 Release:**
+       - If `isArrowDrag` is true and `endSquare !== startSquare`: Dispatches synthetic right-click `pointerup` on the target square to commit the tactical arrow.
+       - If `isArrowDrag` is true and `endSquare === startSquare`: Cancels marking cleanly via `dispatchPointerCancel` without highlighting.
+       - If `isArrowDrag` is false (released in place): Dispatches synthetic right-click `pointerup` and `contextmenu` on the square, toggling the square highlight.
+   - **Additive Markings:** Because Tap 1 of subsequent double-taps is buffered and discarded upon Tap 2, existing tactical arrows and square highlights are never cleared when drawing multiple arrows sequentially. Markings clear on a standard single-tap or piece move.
+3. **Verification & Deployment:**
+   - Compiled AAR and Godot APK via `./build_and_deploy.sh -d 10.0.0.65`.
+   - Verified on physical Board display: Double-tap in place highlights the square cleanly; double-tap and drag draws smooth live arrows; single-finger piece dragging retains 100% native responsiveness.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

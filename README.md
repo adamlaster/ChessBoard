@@ -116,6 +116,15 @@ From the repository root:
 | **`⬇`** | Close the Chess 4 Board Menu overlay | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
 
+### ♟️ Touch Ergonomics & Gestures (Chess.com & Lichess)
+* **Draw Tactical Arrows (Double-Tap & Drag):** Double-tap on a starting square and drag your finger across to a target square to draw live tactical arrows.
+* **Highlight Square (Double-Tap in Place):** Double-tap quickly in place on any square to toggle its color highlight (green).
+* **No Accidental Piece Grabs:** Double-tapping on occupied squares starts arrows cleanly without picking up or dragging pieces.
+* **Additive Markings:** Multiple arrows and highlights can be drawn sequentially without previous lines disappearing; lines persist until cleared.
+* **Clear Markings:** Single-tap any square once or make a piece move to clear all arrows and highlights.
+* **Zero Movement Latency:** Standard single-finger piece drags (> 10px) retain 100% native, instant responsiveness.
+* **Pinch-Zoom & Scroll Suppression:** Browser scrolling and pinch-zooming are suppressed during active arrow drawing.
+
 ---
 
 ## 🎮 Included Platforms & Web Apps

@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -193,6 +194,15 @@ public class SecondaryTabManager {
 
         popupWebView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse wasmResp = WasmPatchHelper.shouldInterceptRequest(activity, request);
+                if (wasmResp != null) {
+                    return wasmResp;
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && request != null && request.getUrl() != null) {
                     String scheme = request.getUrl().getScheme();
@@ -219,7 +229,7 @@ public class SecondaryTabManager {
                 if (displayController != null) {
                     displayController.applyZoom(null, popupWebView);
                 }
-                ChessTouchHelper.injectSidebarTouchFix(view, url);
+                ChessTouchHelper.injectTouchEnhancements(view, url);
                 if (callback != null) {
                     callback.onPageFinished();
                 }
