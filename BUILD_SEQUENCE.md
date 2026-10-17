@@ -11,14 +11,21 @@ For a high-level overview and controls reference, see [`README.md`](./README.md)
 A unified build script handles the entire 4-step sequence automatically:
 
 ```bash
-cd /Users/adamlaster/Development/BoardGames/Chess4Board
 ./build_and_deploy.sh
 ```
 
-### Script Options:
-* **Full pipeline (default):** Recompiles Android library, copies AARs, exports Godot APK to `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk`, and installs/launches on Board:
+### Script Options & Environment Diagnosis:
+* **Verify prerequisites & local tool configuration:**
+  ```bash
+  ./build_and_deploy.sh --doctor
+  ```
+* **Full pipeline (default):** Recompiles Android library, copies AARs, exports Godot APK to `../output/Chess4Board.apk`, and installs/launches on Board:
   ```bash
   ./build_and_deploy.sh
+  ```
+* **Deploy to a specific Board device/IP:**
+  ```bash
+  ./build_and_deploy.sh -d 10.0.0.65
   ```
 * **Godot-only updates (skip Java/AAR compilation):**
   ```bash
@@ -31,33 +38,52 @@ cd /Users/adamlaster/Development/BoardGames/Chess4Board
 
 ---
 
+## ⚙️ Environment Setup & Customization
+
+The build pipeline works out of the box with auto-detected standard paths on macOS/Homebrew. When sharing or cloning this repository to a new machine, configure local paths using **`.env`**:
+
+1. Copy the provided template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Adjust any paths in `.env` if your tools or Android SDK are in non-standard locations:
+   * `ANDROID_HOME` — Path to Android SDK (default: `~/Library/Android/sdk`)
+   * `JAVA_HOME` — Path to JDK 17+ (default: auto-detected Homebrew OpenJDK 17 or Android Studio JBR)
+   * `GODOT_BIN` — Path to Godot 4 executable (default: `/Applications/Godot.app/Contents/MacOS/Godot` or `godot` on PATH)
+   * `OUTPUT_DIR` — Path to export output folder (default: `../output`, keeping large binaries out of git)
+   * `BOARD_CONNECT_BIN` — Path to Board Connect CLI (default: `~/.local/bin/board-connect`)
+3. Validate your environment:
+   ```bash
+   ./build_and_deploy.sh --doctor
+   ```
+
+---
+
 ## 📋 Detailed 4-Step Pipeline Breakdown
 
 ### Step 1: Build Android WebView Plugin (AAR)
 Compiles both debug and release Android library binaries containing our custom `GodotWebView` Java implementation (`com.lastersoft.godotwebview`) and Android dependencies.
 
-* **Working Directory:** `/Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView`
+* **Working Directory:** `godot-webview/GodotWebView`
 * **Command:**
   ```bash
-  export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-  export PATH="$JAVA_HOME/bin:$PATH"
   ./gradlew --no-build-cache clean assemble
   ```
 * **Outputs:**
-  * `GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar`
-  * `GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar`
+  * `godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar`
+  * `godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar`
 
 ---
 
 ### Step 2: Copy AARs to Chess 4 Board Project
 Copies the updated native AAR binaries directly into the game's `addons/webview` directory so Godot packages them into the Android export template.
 
-* **Source Directory:** `/Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/build/outputs/aar`
-* **Destination Directory:** `/Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board/addons/webview`
+* **Source Directory:** `godot-webview/GodotWebView/GodotWebView/build/outputs/aar`
+* **Destination Directory:** `chess-4-board/addons/webview`
 * **Command:**
   ```bash
-  cp /Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar /Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board/addons/webview/
-  cp /Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar /Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board/addons/webview/
+  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-debug.aar chess-4-board/addons/webview/
+  cp godot-webview/GodotWebView/GodotWebView/build/outputs/aar/GodotWebView-release.aar chess-4-board/addons/webview/
   ```
 
 ---
@@ -65,27 +91,23 @@ Copies the updated native AAR binaries directly into the game's `addons/webview`
 ### Step 3: Export Android APK via Godot CLI
 Performs a headless compilation and packaging of `chess-4-board` into an Android APK using the Android Gradle build template configured in `export_presets.cfg`.
 
-* **Project Directory:** `/Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board`
+* **Project Directory:** `chess-4-board`
 * **Command:**
   ```bash
-  export ANDROID_HOME="/Users/adamlaster/Library/Android/sdk"
-  export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-  export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
-  mkdir -p /Users/adamlaster/Development/BoardGames/output
-  /Applications/Godot.app/Contents/MacOS/Godot --headless --path /Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board --export-debug "Android" /Users/adamlaster/Development/BoardGames/output/Chess4Board.apk
+  mkdir -p "${OUTPUT_DIR:-../output}"
+  "${GODOT_BIN:-godot}" --headless --path chess-4-board --export-debug "Android" "${OUTPUT_DIR:-../output}/Chess4Board.apk"
   ```
-* **Output:** `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk` (stored out-of-tree so large APK binaries stay outside the git repository)
+* **Output:** `Chess4Board.apk` placed in `OUTPUT_DIR` (default: `../output/Chess4Board.apk`, stored out-of-tree so large APK binaries stay outside the git repository).
 
 ---
 
 ### Step 4: Install and Launch APK on Board Device
 Uploads and installs `Chess4Board.apk` to the target Board device over LAN, then immediately launches the app.
 
-* **Working Directory:** `/Users/adamlaster/Development/BoardGames/output`
+* **Working Directory:** `OUTPUT_DIR` (e.g. `../output`)
 * **Command:**
   ```bash
-  export PATH="$HOME/.local/bin:$PATH"
-  board-connect install /Users/adamlaster/Development/BoardGames/output/Chess4Board.apk --launch
+  board-connect install "${OUTPUT_DIR:-../output}/Chess4Board.apk" --launch
   ```
 * **Output:** Real-time upload progress bar and confirmation from the `board-connect` CLI tool.
 
@@ -93,13 +115,13 @@ Uploads and installs `Chess4Board.apk` to the target Board device over LAN, then
 
 ## 🛠️ Environment & Tool Requirements
 
-| Tool | Resolved Path | Purpose |
-|---|---|---|
-| **JDK 17** | `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` | Compiles Gradle AAR and Android APK |
-| **Android SDK** | `/Users/adamlaster/Library/Android/sdk` | Build tools, platform tools (`adb`), target API 34 |
-| **Godot Engine** | `/Applications/Godot.app/Contents/MacOS/Godot` | Headless game engine exporter |
-| **Board Connect** | `~/.local/bin/board-connect` | Board device deployment & launch tool |
-| **Board Device Config** | `~/.config/board-connect/config.json` | IP: `10.0.0.65:8843` |
+| Tool | Configurable Variable / Env | Default Auto-Detected Path (macOS) | Purpose |
+|---|---|---|---|
+| **JDK 17+** | `JAVA_HOME` | `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` | Compiles Gradle AAR and Android APK |
+| **Android SDK** | `ANDROID_HOME` | `$HOME/Library/Android/sdk` | Build tools, platform tools (`adb`), target API 34+ |
+| **Godot Engine** | `GODOT_BIN` | `/Applications/Godot.app/Contents/MacOS/Godot` | Headless game engine exporter (v4.2+) |
+| **Board Connect** | `BOARD_CONNECT_BIN` | `$HOME/.local/bin/board-connect` | Board device deployment & launch tool |
+| **Output Directory** | `OUTPUT_DIR` | `../output` | Out-of-tree directory for exported APK binaries |
 
 ---
 

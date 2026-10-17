@@ -219,7 +219,7 @@ sequenceDiagram
 * **Rationale:** The Board SDK `.aar` files (`boardNativePlugin-release.aar`, `sessionManager-release.aar`, `systemOverlay-release.aar`) are bundled exclusively within the Godot export template (`chess-4-board/addons/board_sdk/`). Linking them directly into the `GodotWebView` library would create duplicate class collisions at APK packaging time and prevent the AAR from compiling independently. Reflection maintains loose coupling and zero-overhead execution.
 
 ### 5.2 Out-of-Tree APK Export Pipeline
-* **Decision:** The compiled binary `Chess4Board.apk` is exported directly to `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk`.
+* **Decision:** The compiled binary `Chess4Board.apk` is exported by default directly to the out-of-tree sibling directory `../output/Chess4Board.apk` (configurable via `OUTPUT_DIR` in `.env` / `.env.local`).
 * **Rationale:** Mandated by workspace hygiene rules ([`AGENTS.md`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/AGENTS.md)). Large 90+ MB APK binaries are kept entirely outside the git workspace tree to prevent repository bloat, while still remaining easily deployable via `board-connect`.
 
 ### 5.3 Hardware Touch Passthrough over Raw Input

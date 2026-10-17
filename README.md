@@ -67,17 +67,22 @@ Chess4Board/
             └── MenuOverlayView.java       # 2x scaled centered menu overlay card
 ```
 
-> **Note:** Exported APK binaries are written out-of-tree to `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk` to keep large build artifacts out of git history.
+> **Note:** Exported APK binaries are written out-of-tree to `../output/Chess4Board.apk` (configurable via `OUTPUT_DIR` in `.env`) to keep large build artifacts out of git history.
 
 ---
 
 ## 🚀 Quick Start: Build & Deploy
 
-### Prerequisites
-* **JDK 17:** `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` (or Android Studio JBR)
-* **Android SDK:** `~/Library/Android/sdk` (API 34)
-* **Godot Engine 4.7+:** `/Applications/Godot.app/Contents/MacOS/Godot`
-* **Board CLI:** `~/.local/bin/board-connect` (configured for your Board device on LAN)
+### Environment Setup
+The project uses smart auto-detection for standard macOS, Homebrew, and Android Studio paths. To customize paths for your machine or verify tools:
+
+```bash
+# Optional: customize paths for your environment
+cp .env.example .env
+
+# Verify your local environment and installed SDKs
+./build_and_deploy.sh --doctor
+```
 
 ### One-Command Build & Deploy
 From the repository root:
@@ -90,6 +95,8 @@ From the repository root:
 | Command | Description |
 |---|---|
 | `./build_and_deploy.sh` | Full build: compiles `GodotWebView` AARs, copies to `addons/webview/`, exports `Chess4Board.apk`, and installs/launches on Board |
+| `./build_and_deploy.sh --doctor` | Verifies local JDK 17+, Android SDK, Godot binary, and Board CLI configuration |
+| `./build_and_deploy.sh -d <target>` | Installs to a specific Board device or IP address (e.g. `./build_and_deploy.sh -d 10.0.0.65`) |
 | `./build_and_deploy.sh --skip-aar` | Skips Gradle AAR compilation (use when only Godot files/assets changed) |
 | `./build_and_deploy.sh --no-deploy` | Builds the AARs and exports `Chess4Board.apk` without deploying to the Board device |
 

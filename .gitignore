@@ -35,6 +35,11 @@ captures/
 *.swo
 *~
 
+# --- Local Environment Overrides ---
+.env
+.env.local
+.env.*.local
+
 # --- Packaged Binaries & Signing Keys ---
 *.apk
 *.aab

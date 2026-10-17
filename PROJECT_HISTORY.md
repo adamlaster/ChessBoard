@@ -220,6 +220,21 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 13: Local Environment Portability & Configuration System
+1. **Seamless Developer Onboarding & Zero-Friction Portability:**
+   - Introduced [`.env.example`](./.env.example) configuration template and enabled automatic loading of `.env` and `.env.local` in [`build_and_deploy.sh`](./build_and_deploy.sh).
+   - Updated [`.gitignore`](./.gitignore) to ignore `.env`, `.env.local`, and `.env.*.local` so developer-specific path overrides are never accidentally committed.
+   - Enhanced [`build_and_deploy.sh`](./build_and_deploy.sh) with robust auto-detection for `JAVA_HOME` (Apple Silicon & Intel Homebrew OpenJDK 17, Android Studio JBR, Linux OpenJDK, `/usr/libexec/java_home`), `ANDROID_HOME` (`~/Library/Android/sdk`, `~/Android/Sdk`), `GODOT_BIN`, and `BOARD_CONNECT_BIN`.
+   - Preserves exact existing default paths (`../output/Chess4Board.apk`) for zero-change execution on current systems, while allowing full customization via `.env`.
+2. **Environment Doctor Diagnostic Mode:**
+   - Added `./build_and_deploy.sh --doctor` (or `--check`) to inspect local toolchains, SDKs, Godot binary, and target output directories with visual indicators and actionable installation guidance.
+3. **Target Device Parameterization:**
+   - Added `--device <target>` / `-d <target>` flag to [`build_and_deploy.sh`](./build_and_deploy.sh) for deploying to a specific Board IP or hostname on LAN.
+4. **Documentation Synchronization:**
+   - Updated [`README.md`](./README.md), [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`AGENTS.md`](./AGENTS.md) with environment customization workflows and doctor references.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:
