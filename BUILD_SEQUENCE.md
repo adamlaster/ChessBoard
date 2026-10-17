@@ -2,7 +2,7 @@
 
 This document details the complete build, packaging, and deployment pipeline for **Chess 4 Board** (`com.lastersoft.chess4board`) running on the **Board** digital tabletop device.
 
-The project uses a custom Android native plugin (`com.lastersoft.godotwebview.GodotWebView`) integrated with the Board OS SDK—featuring a Board system menu "Chess 4 Board Menu" trigger, 2x tabletop-scaled centered launcher card, Desktop/Mobile User-Agent switching, 4-way orientation cycling, zoom controls, HTML5 fullscreen/DRM video playback, and native multi-touch pass-through.
+For a high-level overview and controls reference, see [`README.md`](./README.md). For detailed component design, view hierarchy, and Mermaid flowcharts, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ---
 
@@ -103,35 +103,10 @@ Uploads and installs `Chess4Board.apk` to the target Board device over LAN, then
 
 ---
 
-## 🎮 Active Sites & Categorized Extra Apps Configuration
+## 📚 Related Documentation
 
-### Root Chess Menu
-* ♟ **Chess.com**: `https://www.chess.com`
-* ♟ **ChessKids.com**: `https://www.chesskids.com`
-* ♟ **Lichess**: `https://lichess.org/analysis`
-* ♟ **ChessReps**: `https://chessreps.com`
+* **[`README.md`](./README.md)** — Project overview, menu controls quick reference, and complete catalog of primary chess suites and extra web applications.
+* **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — Comprehensive system architecture, modular component specifications, view hierarchy, and Mermaid flowcharts.
+* **[`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md)** — Complete chronological engineering log, phase-by-phase development history, and future roadmap.
+* **[`AGENTS.md`](./AGENTS.md)** — Workspace conventions, canonical root file rules, and build/output hygiene.
 
-### 🗂️ Extra Apps Menu (18 Apps Across 3 Categories)
-* **🎲 Games (6)**
-  * 🐑 **Colonist.io (Catan)**: `https://colonist.io`
-  * ✏️ **Dots & Boxes**: `https://gametable.org/games/dots-and-boxes/`
-  * 🎈 **PBS Kids**: `https://pbskids.org`
-  * 🎲 **247 Backgammon**: `https://www.247backgammon.org`
-  * 🔴 **247 Checkers**: `https://www.247checkers.com/`
-  * 🌐 **247 Games (All)**: `https://www.247games.com`
-* **📺 Video (6)**
-  * ▶️ **YouTube**: `https://www.youtube.com`
-  * 🦚 **Peacock**: `https://www.peacocktv.com`
-  * 🦊 **Fox One**: `https://www.fox.com`
-  * ⚾ **MLB.TV**: `https://www.mlb.com/tv`
-  * 🏰 **Disney+**: `https://www.disneyplus.com`
-  * 📦 **Prime Video**: `https://www.amazon.com/gp/video/storefront`
-* **🌐 Web (6)**
-  * 🔍 **Google**: `https://www.google.com`
-  * 🖼️ **Google Photos**: `https://photos.google.com`
-  * 🗺️ **Google Maps**: `https://www.google.com/maps`
-  * 👽 **Reddit**: `https://www.reddit.com`
-  * 📖 **Wikipedia**: `https://www.wikipedia.org`
-  * ⛅ **Weather**: `https://weather.com`
-
-> **Note:** See [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md) in the root directory for the complete chronological history of the project and the roadmap for adding native on-device URL & category management.

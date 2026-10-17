@@ -4,21 +4,15 @@ This document tracks the complete architecture, chronological evolution, enginee
 
 ---
 
-## 1. Project Overview & Architecture
+## 1. Project Context & Documentation Index
 
 **Chess 4 Board** is a custom-engineered web application hub and tabletop gaming portal built for the **Board** hardware device (an Android-based large-format touch tabletop display).
 
-Because the Board OS enforces native SDK validation (`libboard.so` / `libnativeBoardSDK.so`) on all installed APKs, standalone Android APKs cannot be sideloaded directly via `board-connect`. Instead, **Chess 4 Board** wraps a hardware-accelerated Android `WebView` plugin (`GodotWebView`) inside a Godot host application (`chess-4-board`) that includes the Board SDK native libraries.
-
-### Repository Layout
-| Component | Path | Role |
-|---|---|---|
-| **Root Workspace (`Chess4Board`)** | `/Users/adamlaster/Development/BoardGames/Chess4Board` | Top-level repository root containing both `chess-4-board` and `godot-webview`. |
-| **Host Godot App (`chess-4-board`)** | `/Users/adamlaster/Development/BoardGames/Chess4Board/chess-4-board` | Godot project, Board SDK integration, 3-second custom splash screen (`root.gd`), adaptive launcher icons, and APK export configuration (`export_presets.cfg`). |
-| **Native Android Plugin (`godot-webview`)** | `/Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview` | Custom Java Android AAR library (`GodotWebView.java`) providing the Chromium `WebView`, categorized app launcher, back/zoom/refresh/UA/rotate controls, HTML5 fullscreen video handler, and DRM permission bridge. |
-| **Automated Build & Deploy Pipeline** | `/Users/adamlaster/Development/BoardGames/Chess4Board/build_and_deploy.sh` | Single-command root CLI script that compiles Debug/Release AARs via Gradle, copies them into `addons/webview/`, exports `Chess4Board.apk` headlessly to `/Users/adamlaster/Development/BoardGames/output/Chess4Board.apk`, and deploys/launches on the Board device via `board-connect`. |
-| **APK Output Directory** | `/Users/adamlaster/Development/BoardGames/output` | Out-of-tree build output directory where `Chess4Board.apk` is exported and deployed from (keeping large APK binaries outside the git repository). |
-| **Root Documentation & Rules** | `/Users/adamlaster/Development/BoardGames/Chess4Board/` | Single canonical location for `README.md`, `AGENTS.md`, `BUILD_SEQUENCE.md`, and `PROJECT_HISTORY.md`. |
+For current technical specifications, controls, and build guides, refer to the canonical root documentation:
+* **[`README.md`](./README.md)** — Project overview, quick-start guide, active menu controls reference, and full app catalog.
+* **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — System architecture, modular component specifications, view hierarchy, and Mermaid flowcharts.
+* **[`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md)** — Detailed 4-step Gradle AAR, Godot CLI headless export, and `board-connect` deployment pipeline.
+* **[`AGENTS.md`](./AGENTS.md)** — Always-on workspace rules, canonical root file policy, and build/output hygiene.
 
 ---
 
@@ -174,49 +168,65 @@ Because the Board OS enforces native SDK validation (`libboard.so` / `libnativeB
 
 ---
 
-## 3. Current Menu & Controls Reference
+### Phase 10: Multi-Window Second Tab Support & Draggable Floating Dismissal (`✕`)
+1. **Isolated Multi-Window Secondary Tab Container:**
+   - Enabled `setSupportMultipleWindows(true)` and `setJavaScriptCanOpenWindowsAutomatically(true)` on the primary `WebView`.
+   - Implemented `WebChromeClient.onCreateWindow(...)` and `onCloseWindow(...)` to catch `target="_blank"`, `window.open()`, and external links clicked during a game.
+   - Dynamically instantiates an isolated `popupWebView` inside a `popupContainer` overlay, keeping the primary Chess.com game alive underneath without page reload, websocket disconnect, or loss of game state.
+2. **Draggable Floating Dismiss Action Button (`✕`):**
+   - Repurposed the floating button paradigm to display a sleek `58dp` circular **`✕`** dismiss button (dark circle with `#E53935` red border) whenever a secondary tab is active.
+   - Retained full touch-slop dragging and boundary margin clamping so players can reposition the `✕` button anywhere on the 24-inch tabletop to avoid covering content.
+   - Retained 4-second idle auto-fade (`35%` opacity) to prevent distraction during reading/viewing, snapping back to `100%` on touch.
+   - Tapping `✕` immediately tears down `popupWebView` (`stopLoading()`, pauses audio/media, destroys WebView), hides the floating button, and restores focus to the primary game.
+3. **Controls & History Synchronization:**
+   - Updated `updateBackButtonState()` and `backButton` (`[ ⬅ ]`) to step back in the secondary tab's browsing history while it is active.
+   - Updated `refreshButton` and step zoom (`applyCurrentZoom`) to target the secondary tab when open.
 
-### Opening & Exiting via Board System Menu
-* **Board System Menu Button (Hardware/OS Overlay):**
-  * **Resume:** Returns to the current web app
-  * **Chess 4 Board Menu:** Opens the centered **Chess 4 Board** `menuCard` overlay
-  * **Exit to Library:** Terminates the app cleanly via `SessionManagerBridge.terminateApplication()` and returns to the Board OS Library
+---
 
-### Centered Chess 4 Board Menu Card (`menuCard`)
-* **Primary Chess Sites:**
-  * `♟  Chess.com` — `https://www.chess.com`
-  * `♟  ChessKids.com` — `https://www.chesskids.com`
-  * `♟  Lichess` — `https://lichess.org/analysis`
-  * `♟  ChessReps` — `https://chessreps.com`
-* **`🗂️  Extra Apps (18)  ▾`** *(Collapsible Categorized Accordion)*:
-  * **`🎲  Games (6)  ▾`**
-    * `🐑  Colonist.io (Catan)` — `https://colonist.io`
-    * `✏️  Dots & Boxes` — `https://gametable.org/games/dots-and-boxes/`
-    * `🎈  PBS Kids` — `https://pbskids.org`
-    * `🎲  247 Backgammon` — `https://www.247backgammon.org`
-    * `🔴  247 Checkers` — `https://www.247checkers.com/`
-    * `🌐  247 Games (All)` — `https://www.247games.com`
-  * **`📺  Video (6)  ▾`**
-    * `▶️  YouTube` — `https://www.youtube.com`
-    * `🦚  Peacock` — `https://www.peacocktv.com`
-    * `🦊  Fox One` — `https://www.fox.com`
-    * `⚾  MLB.TV` — `https://www.mlb.com/tv`
-    * `🏰  Disney+` — `https://www.disneyplus.com`
-    * `📦  Prime Video` — `https://www.amazon.com/gp/video/storefront`
-  * **`🌐  Web (6)  ▾`**
-    * `🔍  Google` — `https://www.google.com`
-    * `🖼️  Google Photos` — `https://photos.google.com`
-    * `🗺️  Google Maps` — `https://www.google.com/maps`
-    * `👽  Reddit` — `https://www.reddit.com`
-    * `📖  Wikipedia` — `https://www.wikipedia.org`
-    * `⛅  Weather` — `https://weather.com`
-* **Control Row (`[ ⬅ ] [ － ] [ ＋ ] [ ↺ ] [ 🖥/📱 ] [ 90° ] [ ⬇ ]`):**
-  * **`⬅`**: Navigate back in `WebView` history (or exit fullscreen video); dims when no back history exists
-  * **`－` / `＋`**: Step zoom (`75%`, `100%`, `125%`, `150%`, `200%`) via `setTextZoom` + CSS `zoom`
-  * **`↺`**: Reload current page
-  * **`🖥` / `📱`**: Short tap toggles Desktop vs. Mobile User-Agent for current site; **3-second hold** toggles & saves the global default User-Agent (with confirmation dialog)
-  * **`90°`**: Short tap cycles clockwise through all 4 orientations (`Landscape` → `Portrait` → `Reverse Landscape` → `Reverse Portrait`); **long-press** resets to default `Landscape`
-  * **`⬇`**: Close menu overlay
+### Phase 11: Modular Architectural Refactoring & Plugin Decomposition
+1. **Decomposed Monolithic `GodotWebView.java`:**
+   - Decomposed the 1,850-line monolithic Godot plugin into single-responsibility, cohesive classes under `com.lastersoft.godotwebview`:
+     - **`AppCatalog.java`**: Encapsulates primary chess platforms (`MAIN_SITES`), categorized extra applications (`EXTRA_CATEGORIES`), and data models (`SiteEntry`, `CategoryEntry`).
+     - **`BoardBridge.java`**: Encapsulates all reflection-based communication with the native Board SDK (`co.harrishill.board.*`), touch passthrough setup, pause menu action hooking (`PauseResultCallbackImpl`), pause context registration (`setPauseContext`), and clean session termination (`SessionManagerBridge`).
+     - **`UserAgentManager.java`**: Manages Desktop vs. Mobile User-Agent state, `SharedPreferences` persistence (`chess4board_prefs` / `default_desktop_mode`), YouTube query parameter formatting (`app=desktop` / `app=mobile`), button styling, and default confirmation dialog.
+     - **`DisplayController.java`**: Encapsulates step zoom stepping (`75%` to `200%`), 4-way 90° orientation cycling (`ORIENTATION_CYCLE`), long-press reset to Landscape, and layout resize invalidation.
+     - **`FloatingDismissButton.java`**: Encapsulates the 58dp circular draggable action button (`✕`), touch-slop dragging, screen edge clamping, 4-second idle auto-fade (`35%` opacity), and tap handling.
+     - **`SecondaryTabManager.java`**: Encapsulates isolated popup `WebView` lifecycle, multi-window interception (`onCreateWindow` / `onCloseWindow`), custom fullscreen video management, progress bar, and teardown.
+     - **`MenuOverlayView.java`**: Encapsulates the 2x scaled centered menu card, outside-tap scrim backdrop, quick site buttons, collapsible category accordion, bottom control row, and slide-to-exit slider.
+     - **`GodotWebView.java`**: Retained as the lightweight coordinator/facade (~450 lines) implementing `@UsedByGodot` entry points (`open`, `close`, `show_menu`, `prepareBoardTouchPassthrough`) and Godot signal registration (`quit_app_requested`).
+2. **Build Verification & Field Deployment:**
+   - Compiled via Gradle (`./gradlew --no-build-cache assembleDebug`) with zero errors.
+   - Headlessly exported `Chess4Board.apk` via Godot CLI and deployed/launched on the Board hardware tabletop display via `./build_and_deploy.sh`.
+
+---
+
+### Phase 12: Chess.com Desktop Sidebar Touch Ergonomics & Flyout Bridge
+1. **Desktop Sidebar Touch/Hover Mismatch Diagnosis:**
+   - In Desktop User-Agent mode, Chess.com's left navigation sidebar uses `mouseenter` hover events (`Pw.mountSubMenu`) to reveal flyout submenus (`Play Online`, `Computer`, `Tournaments`, etc.).
+   - On physical touchscreens, tapping a category item synthesizes an immediate `click` on the underlying `<a href="...">` tag, which causes the browser to instantly hotlink away from the active chess match without revealing the flyout submenu. Furthermore, `Pw.mountSubMenu` rejects events with `e.buttons > 0`, and unmounts after 100ms when `:hover` is lost upon finger release.
+2. **Implementation & Refinement of `ChessTouchHelper.java`:**
+   - Created [`ChessTouchHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ChessTouchHelper.java) in package `com.lastersoft.godotwebview`.
+   - Injects a client-side bridge on Chess.com page loads that:
+     - Intercepts `click` events in the capture phase on desktop sidebar category wrappers (`[data-interaction="play"]`, `puzzles`, `learn`, `watch`, `community`, `other`, `train`).
+     - **Root Redirect Elimination:** Always cancels default `<a>` tag navigation on category items via `e.preventDefault()`, `stopPropagation()`, and `stopImmediatePropagation()`, ensuring tapping "Play" / "Puzzles" / "Learn" never prematurely redirects the browser away to `/play` or `/puzzles`.
+     - **Toggle & Hover Flyout Ergonomics:** Tapping an unopened category mounts the flyout submenu via synthetic `mouseenter` (`buttons: 0`) and focus tracking (`tabElement.contains(document.activeElement)`); tapping the same open category a second time toggles it closed cleanly.
+     - **Premature Unmount Suppression:** Intercepts and blocks `mouseleave` and `focusout` events on `#sidebar-main-menu` in the capture phase while a submenu is active, preventing Android WebView finger lifting or focus shifts from causing Chess.com's 100ms `performDelayedUnmount` timer to unmount the menu before the user can tap.
+     - **Natural Sub-Item Navigation:** Sub-item clicks inside `[data-interaction-mount-point]` (e.g. *Play Online*, *Bots/Computer*, *Tournaments*) and the top header logo are passed through unimpeded.
+     - **Fast Outside Dismissal:** Tapping anywhere outside the sidebar (e.g. the chessboard or background) dismisses the flyout submenu immediately.
+3. **Build & Field Deployment:**
+   - Integrated into both primary `WebView` and `SecondaryTabManager` page finish listeners.
+   - Verified clean compilation and deployed to the Board hardware display via `./build_and_deploy.sh`.
+
+---
+
+## 3. Current Controls & Platform Catalog Reference
+
+To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:
+* **Active Menu Controls & Gestures:** See [`README.md` (Menu Controls Reference)](./README.md#%EF%B8%8F-menu-controls-reference).
+* **Included Platforms & Web Applications:** See [`README.md` (Included Platforms & Web Apps)](./README.md#-included-platforms--web-apps).
+* **System Architecture & View Hierarchy:** See [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+* **Build & Deployment Sequence:** See [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md).
 
 ---
 
