@@ -80,7 +80,7 @@ public final class HelpDialogHelper {
         RelativeLayout.LayoutParams titleParams = new RelativeLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         titleParams.addRule(RelativeLayout.CENTER_IN_PARENT);
-        titleParams.setMargins((int) (38 * menuDensity), 0, (int) (38 * menuDensity), 0);
+        titleParams.setMargins(0, 0, 0, 0);
         titleContainer.setLayoutParams(titleParams);
 
         TextView titleView = new TextView(activity);
@@ -103,30 +103,6 @@ public final class HelpDialogHelper {
         titleContainer.addView(subtitleView);
 
         headerBar.addView(titleContainer);
-
-        // Top-Right Circular ✕ Close Button
-        int closeBtnSize = (int) (32 * menuDensity);
-        TextView closeHeaderBtn = new TextView(activity);
-        closeHeaderBtn.setText("✕");
-        closeHeaderBtn.setTextColor(Color.WHITE);
-        closeHeaderBtn.setTextSize(13 * 2.0f);
-        closeHeaderBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        closeHeaderBtn.setGravity(Gravity.CENTER);
-
-        GradientDrawable closeBg = new GradientDrawable();
-        closeBg.setShape(GradientDrawable.OVAL);
-        closeBg.setColor(Color.parseColor("#2E2E2E"));
-        closeBg.setStroke((int) (1 * menuDensity), Color.parseColor("#33FFFFFF"));
-        closeHeaderBtn.setBackground(closeBg);
-
-        RelativeLayout.LayoutParams closeParams = new RelativeLayout.LayoutParams(closeBtnSize, closeBtnSize);
-        closeParams.addRule(RelativeLayout.ALIGN_PARENT_END);
-        closeParams.addRule(RelativeLayout.CENTER_VERTICAL);
-        closeHeaderBtn.setLayoutParams(closeParams);
-        closeHeaderBtn.setContentDescription("Close Guide");
-        closeHeaderBtn.setOnClickListener(v -> dismiss());
-
-        headerBar.addView(closeHeaderBtn);
         root.addView(headerBar);
 
         // Scrollable content area
@@ -193,10 +169,6 @@ public final class HelpDialogHelper {
         addItemRow(content,
                 "🖥 / 📱  Desktop / Mobile User-Agent",
                 "Short tap: Toggle between Desktop (🖥) and Mobile (📱) mode for the current session.\n3-second hold: Save Desktop or Mobile as the persistent default for just this site.",
-                menuDensity);
-        addItemRow(content,
-                "◧  Page Margin Gutter",
-                "Short tap: Toggle 106dp right margin (frames the Board OS floating menu button evenly with the bezel).\n3-second hold: Save right margin ON or OFF as the persistent default for just this site.",
                 menuDensity);
         addItemRow(content,
                 "90°  Screen Rotation",

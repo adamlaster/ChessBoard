@@ -26,8 +26,8 @@ func _ready() -> void:
 		"game_name": "ChessBoard",
 		"offer_save_option": false,
 		"custom_buttons": [
-			{ "id": "open_menu", "title": "App Menu", "icon": Board.pause.ICON_NONE },
-			{ "id": "show_help", "title": "Controls Guide", "icon": Board.pause.ICON_NONE }
+			{ "id": "open_launcher", "title": "Launcher", "icon": Board.pause.ICON_NONE },
+			{ "id": "open_controls", "title": "Browser Controls", "icon": Board.pause.ICON_NONE }
 		]
 	})
 
@@ -48,7 +48,7 @@ func _open_my_webview():
 	# Drop Godot engine overhead to zero while WebView is active
 	Engine.max_fps = 1
 	OS.low_processor_usage_mode = true
-	webview_plugin.open("https://www.chess.com")	
+	webview_plugin.open("https://www.chess.com")
 	
 func _on_pause_result(result: BoardPauseResult) -> void:
 	print("_on_pause_result fired!")
@@ -56,8 +56,10 @@ func _on_pause_result(result: BoardPauseResult) -> void:
 		Board.pause.ACTION_RESUME:
 			pass  # gameplay resumes
 		Board.pause.ACTION_CUSTOM_BUTTON:
-			if result.custom_button_id == "open_menu" and webview_plugin:
-				webview_plugin.show_menu()
+			if (result.custom_button_id == "open_launcher" or result.custom_button_id == "open_menu") and webview_plugin:
+				webview_plugin.show_launcher()
+			elif result.custom_button_id == "open_controls" and webview_plugin:
+				webview_plugin.show_browser_controls()
 			elif result.custom_button_id == "show_help" and webview_plugin:
 				webview_plugin.show_help()
 		Board.pause.ACTION_QUIT:

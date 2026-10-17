@@ -602,6 +602,90 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 32: Decoupled Fullscreen Launcher & Standalone Live Browser Controls Overlay
+1. **Decoupled Architecture & UI Evolution:**
+   - **Fullscreen Launcher (`launcherRoot`):** Converted the legacy centered menu dialog into a fullscreen 4-row categorized application catalog (Primary Chess, Games, Watch, Web) with horizontal scrolling cards, dark slate styling (`#F50C0E16`), brand header with live clock, Controls Guide shortcut, and persistent 106dp right-margin gutter clearance to ensure the physical Board OS hardware pause button remains completely unobstructed.
+   - **Standalone Browser Controls Rail (`controlsRail`):** Decoupled browser controls from the app menu into a slim vertical toolbar overlay docked directly above the live browser, preserving 106dp gutter clearance and 14dp rounded pill aesthetics. Houses Close (`✕`), Back (`⬅`), Zoom In (`＋`), Zoom Out (`－`), Refresh (`↺`), Desktop UA (`🖥/📱`), Right Margin (`◧`), Rotation (`90°`), and Launcher switch (`♟`).
+   - **Live Browser Feedback:** Maintained controls rail visibility during zoom adjustments, page refreshing, margin toggling, and temporary desktop UA toggling, enabling users to see immediate visual changes to web content in real time.
+   - **Board OS System Pause Menu:** Replaced the legacy single `"App Menu"` button with dedicated `"Launcher"` and `"Browser Controls"` buttons registered in `chessboard/root.gd` and native reflection fallback in `BoardBridge.java`.
+2. **Google Photos Redirect Loop Resolution:**
+   - Fixed Google Photos reloading issue by updating target URL to `https://photos.google.com/login` (bypassing marketing splash and Android app intent redirects).
+   - Added an `isExplicitNavigation` guard in `GodotWebView.java` to prevent in-flight site transitions from being intercepted as external popups in `shouldOverrideUrlLoading`.
+   - Eliminated mid-flight `uaManager.configureWebSettings()` calls in `onPageStarted` which were resetting the WebView engine and terminating active network connections.
+3. **Hardware Gutter Clearance Enforcement:**
+   - Enforced `Math.max(marginPx, defaultGutter)` on both `launcherRoot` and `controlsRail` in `MenuOverlayView.java`, ensuring all UI overlays consistently reserve the 106dp Board hardware bezel gutter regardless of whether site margin is toggled on or off.
+
+---
+
+### Phase 33: Edge-to-Edge Display Architecture & Upper-Right Corner Cutout
+1. **Full-Width Edge-to-Edge Architecture (Gutter Removal):**
+   - **Gutter Elimination:** Removed the full-height 106dp vertical gutter across all components (`webView`, `progressBar`, `popupWebView`, `launcherRoot`, and `controlsRail`). The browser and secondary tabs now run 100% full width edge-to-edge across the 1920x1080 display.
+   - **Controls & Logic Deprecation:** Removed `isRightMarginEnabled`, `RIGHT_MARGIN_DP`, `getSiteDefaultRightMargin`, `saveSiteDefaultRightMargin`, `applyRightMargin()`, `toggleRightMargin()`, and the `◧` margin toggle button from `GodotWebView.java`, `MenuOverlayView.java`, `UserAgentManager.java`, `SecondaryTabManager.java`, and `HelpDialogHelper.java`.
+2. **Upper-Right Corner Hardware Cutout (`CutoutBackgroundDrawable`):**
+   - **Physical Coordinates:** Measured exact display coordinates of the Board OS floating system menu button from device screen captures: `x=[1828..1907]` (width 79px), `y=[16..95]` (height 79px) on 1920x1080 display (density = 1.5).
+   - **Cutout Dimensions:** Configured `cutoutSize = (int) (74 * density)` (~111px), providing a clean box `[1809..1920, 0..111]` completely containing the Board button with generous margin.
+   - **Inverted Fillet Geometry:** Created `CutoutBackgroundDrawable` in `MenuOverlayView.java`, which renders the dark slate card (`#F50C0E16`) with a smooth inverted fillet notch around the Board button using convex entry arc, vertical wall, concave corner arc, and exit arc.
+   - **Header Bar Alignment:** Added `paddingRight = cutoutSize` to `headerBar` so brand title, badges, action buttons, live clock, and red `✕` close button end cleanly to the left of the cutout.
+   - **Touch Passthrough:** Added touch listeners to both `launcherRoot` and `launcherScrimView` returning `false` for taps within `(x >= w - cutoutSize && y <= cutoutSize)`, allowing direct tactile interaction with the Board OS system menu button at all times.
+   - **Edge-to-Edge Rows:** All 4 application rows below `y = 111px` enjoy 100% full screen width edge-to-edge.
+3. **Browser Controls Rail Docking:**
+   - Docks on the right edge directly below the cutout (`topMargin = cutoutSize + 6dp`, `rightMargin = 6dp`), avoiding any overlap with the Board button.
+   - Formatted as a sleek vertical capsule pill with 8 buttons: Close (`✕`), Back (`⬅`), Zoom In (`＋`), Zoom Out (`－`), Refresh (`↺`), Desktop UA (`🖥/📱`), Rotation (`90°`), and Launcher shortcut (`♟`).
+   - `controlsScrimView` also implements cutout touch passthrough so the Board menu button can be tapped even while Browser Controls are open.
+4. **Hardware Verification on Board (10.0.0.65):**
+   - Verified on physical Board display: web pages (Chess.com, Google Photos) render full-width edge-to-edge; Launcher displays the clean inverted corner cutout around the Board OS button with full touch interactivity; Browser Controls overlay docks gracefully below the Board button with immediate live feedback on the active web page.
+
+---
+
+### Phase 34: Per-Site User-Agent & Custom Right Margin Configuration via Long-Press, Rail Repositioning & Board Menu Simplification
+1. **Per-Site Settings Dialog (`SiteSettingsDialogHelper`):**
+   - **500ms Long-Press Gesture:** In `MenuOverlayView.java` (`setupCardTouchBehavior`), added a 500ms long-press listener to all application/site cards across all 4 categories. Long-pressing any card highlights the card in warm gold (`#FAB005`), performs haptic feedback, and opens the Site Settings modal dialog.
+   - **Dual Configuration Interface:**
+     - **User-Agent Mode:** Segmented toggle between Desktop (`[ 🖥 Desktop ]`) and Mobile (`[ 📱 Mobile ]`).
+     - **Right Margin Value:** Quick preset buttons for Edge-to-Edge (`[ 0 dp (Edge-to-Edge) ]`) and Board Gutter (`[ 106 dp (Gutter) ]`), accompanied by a fine-tuning stepper (`[ － ]` `... dp` `[ ＋ ]`) allowing custom margins from 0 to 200 dp in 10 dp increments.
+   - **Persistence & Backward Compatibility:** Stored per-site margin in `chessboard_prefs` under `site_margin_dp_<siteKey>`, with automatic backward compatibility for legacy boolean preferences (`site_margin_<siteKey>`).
+   - **Live Application & Confirmation:** If the configured site matches the currently active web session, User-Agent and Right Margin are immediately applied live without requiring an app restart: `webView.setLayoutParams(flp)`, `progressBar.setLayoutParams(flp)`, `secondaryTabManager.applyRightMargin(marginPx)`, and `floatingDismissButton.pinToBottomRight(w - marginPx, h)`. Displays a custom 2x tabletop confirmation dialog (`showSaveAckDialog`).
+2. **Browser Controls Rail Repositioning & Vertical Proportioning:**
+   - **Relieved Bezel Crowding:** Slid the Browser Controls rail further down from the Board OS system menu button by setting `railParams.topMargin = cutoutSize + (int) (24 * density)` (~147px / 98dp), creating a comfortable 52px gap below the physical button.
+   - **Complete 1080p Display Fit:** Resized rail buttons to `27 * menuDensity` (54dp) and inter-button spacing to `3.5 * menuDensity` (7dp) with `railWidth = 38 * menuDensity` and `padding = 6 * menuDensity`. The total height of the 8-button rail is ~758px (ending at `y ≈ 905px`), leaving ~175px of clean clearance above the bottom of the screen, ensuring the bottom Launcher shortcut button (`♟`) is never clipped.
+3. **Board OS System Pause Menu Streamlining:**
+   - Removed the `"Controls Guide"` action from the hardware pause screen in `chessboard/root.gd` (`Board.pause.set_context`) and the native reflection fallback in `BoardBridge.java`, leaving a clean, two-action pause menu: `"Launcher"` and `"Browser Controls"`.
+   - The Controls Guide remains instantly accessible directly from the Launcher header via `[ 📖 Controls Guide ]`.
+4. **Controls Guide Modal Polish (`HelpDialogHelper`):**
+   - Removed the top-right circular `✕` close button (`closeHeaderBtn`), resolving the redundancy of having two close buttons.
+   - Centered the title and subtitle in the dialog header, leaving the centered bottom pill button (`doneBtn`) as the sole, intuitive dismissal action.
+5. **Hardware Verification on Board (10.0.0.65):**
+   - Built and deployed via `./build_and_deploy.sh -d 10.0.0.65`. Captured screen captures confirming:
+     - The Launcher displays cleanly with the top-right cutout and header action shortcuts.
+     - The Browser Controls vertical rail floats over the live web browser with a 52px gap beneath the Board OS menu button, with all 8 buttons fully visible and well clear of the screen bottom.
+
+---
+
+### Phase 35: Deadspace Tap Dismissal with Near-Miss Tolerance & Unified Close Button Positioning
+1. **Deadspace Tap Dismissal Engine (`MenuOverlayView.java`):**
+   - **User Problem:** The Launcher required reaching for the top close button to exit. The user requested intuitive dismissal by tapping deadspace (empty margins, space to the right of short rows, header empty areas), but strictly required preventing accidental closure if finger taps slightly miss an app card or header button on the tabletop touch glass. Dragging/swiping cards horizontally must also never dismiss the launcher.
+   - **Root Container Refactor:** Converted `launcherRoot` from `LinearLayout` to `FrameLayout`, separating root touch dispatching from internal layout (`launcherContent`).
+   - **Deadspace Hit-Testing Architecture:**
+     - Overrode `dispatchTouchEvent(MotionEvent ev)` and `onTouchEvent(MotionEvent event)` in `launcherRoot`.
+     - Tracks all application cards (`allCardViews`) and all interactive header controls (`protectedHeaderViews`).
+     - Uses `View.getLocationOnScreen()` for real-time bounding box calculation, ensuring hit testing dynamically reflects horizontal scroll offsets.
+     - **Card Near-Miss Tolerance:** Applied a `36px` (`12 * menuDensity`, ~one fingertip width) tolerance buffer around all app cards. Because inter-card spacing is `21px`, this buffer completely bridges the gap between adjacent cards and shields any near-miss tap around card boundaries from triggering dismissal.
+     - **Header Near-Miss Tolerance:** Applied an `18px` (`12 * density`) tolerance buffer around header buttons (`brandTitle`, `launcherBadge`, `ctrlSwitchBtn`, `guideBtn`, `clockTextView`).
+     - **Drag / Swipe Immunity:** Differentiates taps (`!isDrag`, movement `<= touchSlop`) from scrolls (`dx/dy > touchSlop`). Swiping through card rows or swiping in deadspace will never dismiss the launcher.
+     - **Deadspace Tap Execution:** When an intentional tap lands outside all protected card/header buffers and outside the Board OS cutout notch, triggers `performHapticFeedback(VIRTUAL_KEY)`, dispatches `ACTION_CANCEL` to children to clean up touch states, and invokes `listener.onCloseMenu()`.
+2. **Close Button Coordinate Parity with Browser Controls:**
+   - **Unified Positioning:** Moved `launcherCloseBtn` from `headerBar` into `launcherRoot` at coordinates matching the Browser Controls close button to the exact pixel:
+     - `topMargin = cutoutSize + (int) (24 * density) + (int) (6 * menuDensity)` (~165px)
+     - `rightMargin = (int) (6 * density) + (railWidth - controlBtnSize) / 2` (~25.5px)
+     - `controlBtnSize = (int) (27 * menuDensity)` (54dp)
+   - When users toggle between Launcher and Browser Controls, the red circular close button (`✕`) remains in the identical physical spot on screen directly below the Board OS hardware button cutout.
+   - Sits in the open, unpopulated area of Row 1 (Primary Chess, which only occupies `x ≈ 42..1485px` on a 1920px screen), completely free of card collisions.
+   - The launcher `headerBar` now displays the live clock on the right side, padded away from the cutout notch.
+3. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR, exported Godot APK, and deployed to physical Board at `10.0.0.65` via `build_and_deploy.sh`. Verified edge-to-edge layout, Board OS button passthrough, and seamless control parity.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

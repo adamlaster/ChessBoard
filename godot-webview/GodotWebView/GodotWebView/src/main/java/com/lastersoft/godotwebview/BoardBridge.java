@@ -20,7 +20,7 @@ public final class BoardBridge {
     private static boolean boardPauseListenerHooked = false;
     private static int boardContextRetryCount = 0;
 
-    public static void prepareBoardTouchPassthrough(Activity activity, Runnable onExit, Runnable onShowMenu, Runnable onShowHelp, Handler handler) {
+    public static void prepareBoardTouchPassthrough(Activity activity, Runnable onExit, Runnable onShowLauncher, Runnable onShowControls, Runnable onShowHelp, Handler handler) {
         try {
             Class<?> boardNativeClass = Class.forName("co.harrishill.board.core.BoardNativePlugin");
             Method setSwallow = boardNativeClass.getMethod("setSwallowSystemTouches", boolean.class);
@@ -34,7 +34,7 @@ public final class BoardBridge {
             Log.w(TAG, "BoardNativePlugin touch passthrough setup skipped: " + t.getMessage());
         }
 
-        hookBoardPauseListener(activity, onExit, onShowMenu, onShowHelp);
+        hookBoardPauseListener(activity, onExit, onShowLauncher, onShowControls, onShowHelp);
         ensureBoardPauseContextRegistered(handler);
 
         if (activity != null) {
@@ -46,7 +46,7 @@ public final class BoardBridge {
         }
     }
 
-    public static void hookBoardPauseListener(Activity activity, Runnable onExit, Runnable onShowMenu, Runnable onShowHelp) {
+    public static void hookBoardPauseListener(Activity activity, Runnable onExit, Runnable onShowLauncher, Runnable onShowControls, Runnable onShowHelp) {
         if (boardPauseListenerHooked) return;
         try {
             Class<?> callbackClass = Class.forName("co.harrishill.board.pausescreen.PauseResultCallbackImpl");
@@ -70,9 +70,13 @@ public final class BoardBridge {
                                     if (activity != null && onExit != null) {
                                         activity.runOnUiThread(onExit);
                                     }
-                                } else if ("CUSTOM_ACTION".equals(actionType) && "open_menu".equals(customButtonId)) {
-                                    if (activity != null && onShowMenu != null) {
-                                        activity.runOnUiThread(onShowMenu);
+                                } else if ("CUSTOM_ACTION".equals(actionType) && ("open_launcher".equals(customButtonId) || "open_menu".equals(customButtonId))) {
+                                    if (activity != null && onShowLauncher != null) {
+                                        activity.runOnUiThread(onShowLauncher);
+                                    }
+                                } else if ("CUSTOM_ACTION".equals(actionType) && "open_controls".equals(customButtonId)) {
+                                    if (activity != null && onShowControls != null) {
+                                        activity.runOnUiThread(onShowControls);
                                     }
                                 } else if ("CUSTOM_ACTION".equals(actionType) && "show_help".equals(customButtonId)) {
                                     if (activity != null && onShowHelp != null) {
@@ -128,14 +132,14 @@ public final class BoardBridge {
                                     "00000000-0000-0000-0000-000000000000",
                                     "ChessBoard",
                                     false,
-                                    new String[]{"open_menu", "show_help"},
-                                    new String[]{"App Menu", "Controls Guide"},
+                                    new String[]{"open_launcher", "open_controls"},
+                                    new String[]{"Launcher", "Browser Controls"},
                                     new String[]{"", ""},
                                     null,
                                     null,
                                     null
                             );
-                            Log.i(TAG, "Registered Board pause context with ChessBoard Menu & Help buttons after SystemOverlayService bound");
+                            Log.i(TAG, "Registered Board pause context with Launcher & Browser Controls buttons");
                         }
                         return;
                     }

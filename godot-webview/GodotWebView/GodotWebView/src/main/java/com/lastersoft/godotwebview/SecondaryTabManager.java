@@ -47,22 +47,6 @@ public class SecondaryTabManager {
     private WebChromeClient.CustomViewCallback popupCustomViewCallback = null;
     private int currentRightMarginPx = 0;
 
-    public void applyRightMargin(int marginPx) {
-        this.currentRightMarginPx = marginPx;
-        if (popupContainer != null) {
-            ViewGroup.LayoutParams lp = popupContainer.getLayoutParams();
-            if (lp instanceof FrameLayout.LayoutParams) {
-                FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
-                flp.rightMargin = marginPx;
-                popupContainer.setLayoutParams(flp);
-                popupContainer.requestLayout();
-                if (popupWebView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    popupWebView.evaluateJavascript("window.dispatchEvent(new Event('resize'));", null);
-                }
-            }
-        }
-    }
-
     public boolean isOpen() {
         return popupWebView != null;
     }
@@ -98,6 +82,18 @@ public class SecondaryTabManager {
             uaManager.configureWebSettings(popupWebView.getSettings());
             if (reload) {
                 popupWebView.reload();
+            }
+        }
+    }
+
+    public void applyRightMargin(int marginPx) {
+        this.currentRightMarginPx = marginPx;
+        if (popupContainer != null) {
+            ViewGroup.LayoutParams lp = popupContainer.getLayoutParams();
+            if (lp instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
+                flp.rightMargin = marginPx;
+                popupContainer.setLayoutParams(flp);
             }
         }
     }

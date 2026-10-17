@@ -31,6 +31,7 @@ flowchart TD
             DismissBtn["FloatingDismissButton.java\n(Draggable ✕ with Auto-Fade)"]
             MenuCard["MenuOverlayView.java\n(2x Scaled Tabletop Menu)"]
             UA["UserAgentManager.java\n(Desktop/Mobile UA & Prefs)"]
+            SiteSettings["SiteSettingsDialogHelper.java\n(Per-Site UA & Margin)"]
             Display["DisplayController.java\n(Zoom & 4-Way 90° Rotation)"]
             Catalog["AppCatalog.java\n(Sites & Categorized Apps)"]
             TouchHelper["ChessTouchHelper.java\n(Sidebar Touch & Flyout Bridge)"]
@@ -55,6 +56,7 @@ flowchart TD
     Coordinator --> DismissBtn
     Coordinator --> MenuCard
     Coordinator --> UA
+    Coordinator --> SiteSettings
     Coordinator --> Display
     Coordinator --> Catalog
     Coordinator --> TouchHelper
@@ -75,16 +77,17 @@ flowchart TD
 
 ## 2. Core Architectural Subsystems
 
-The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 11 cohesive classes:
+The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 12 cohesive classes:
 
 | Class | Responsibility | Key Collaborators / Dependencies |
 |---|---|---|
-| [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_menu`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
-| [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"App Menu"` and `"Controls Guide"` action context fallback, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
+| [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_launcher`, `show_browser_controls`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
+| [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"Launcher"` and `"Browser Controls"` action context fallback, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
 | [`SecondaryTabManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SecondaryTabManager.java) | **Multi-Window Popup Subsystem:** Manages the isolated popup `WebView` container (`popupContainer`), progress bar, and WebChromeClient / WebViewClient event hooks. Strips `X-Requested-With` via `androidx.webkit`, catches `<a target="_blank">`, `window.open()`, and outbound links clicked during a chess game without reloading or disconnecting the primary game underneath, and reroutes any stray OAuth popups back to the primary WebView via `onAuthRedirect`. | `FloatingDismissButton`, `MenuOverlayView`, `UserAgentManager`, `DisplayController`, `ChessTouchHelper`, `WasmPatchHelper`, `androidx.webkit` |
 | [`FloatingDismissButton.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/FloatingDismissButton.java) | **Ergonomic Floating Controls:** 58dp circular draggable action button (`✕`). Uses `ViewConfiguration.getScaledTouchSlop()` to differentiate taps from drags, clamps movement within container margins, implements a 4-second idle auto-fade (`35%` opacity) to prevent obscuring game content, and triggers secondary tab teardown on tap. | Android `MotionEvent`, `FrameLayout` |
-| [`MenuOverlayView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/MenuOverlayView.java) | **2x Tabletop Menu Interface:** 2x scaled centered card (`menuCard`) styled in dark acrylic (`#F01A1A1A`) with touch-slop tap dismiss scrim (`scrimView`). Consumes all touches on the card, filtering out drag/swipe gestures on the scrim (`ViewConfiguration.getScaledTouchSlop()`) so the menu dismisses strictly via explicit tap outside or the close button. Houses quick chess buttons, collapsible extra apps accordion, and bottom control row (`[ Back ] [ Zoom+ ] [ Zoom- ] [ Refresh ] [ Desktop ] [ Margin ◧ ] [ 90° ] [ Close ✕ ]` powered by `ControlIconDrawable` Material vector icons). | `AppCatalog`, `UserAgentManager`, `MenuActionListener` |
-| [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java) | **2x Modal Controls & Gestures Guide:** Displays a 2x tabletop-scaled dark acrylic modal dialog (`AlertDialog`) triggered from the Board OS system pause menu detailing all 4 live control systems: Chess Gestures & Touch Ergonomics, Menu Controls Row, Secondary Tabs, and Board OS System Menu. Features a top-right circular `✕` close button, sleek centered pill button, and mutual auto-dismissal when the links menu opens. | Android `AlertDialog`, `ScrollView`, `RelativeLayout`, `LinearLayout` |
+| [`MenuOverlayView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/MenuOverlayView.java) | **Decoupled Launcher & Browser Controls:** Manages two decoupled views: (1) **Fullscreen Launcher:** 4-row categorized application launcher (Primary Chess, Games, Watch, Web) hosted in a custom `FrameLayout` (`launcherRoot`) with `CutoutBackgroundDrawable` notch around the Board OS menu button. Implements deadspace tap dismissal with near-miss protection (36px card buffer, 18px header buffer) so taps between cards never close the launcher, while taps in empty deadspace cleanly dismiss it. Positions the red circular close button (`✕`) below the cutout matching Browser Controls coordinates to the exact pixel. Supports 500ms long-press on any card to configure site settings. (2) **Browser Controls Rail:** Slim vertical toolbar overlay docked directly over the live browser below the Board OS button (`topMargin = cutoutSize + 24dp`), keeping controls (Close, Back, Zoom In/Out, Refresh, Desktop UA, Rotate 90°, and Launcher switch) accessible during live page interaction. | `AppCatalog`, `UserAgentManager`, `SiteSettingsDialogHelper`, `MenuActionListener` |
+| [`SiteSettingsDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SiteSettingsDialogHelper.java) | **Per-Site Settings Subsystem:** Tabletop modal dialog triggered by 500ms long-press on any Launcher card. Allows configuring per-site User-Agent mode (Desktop vs Mobile) and custom Right Margin values (Edge-to-Edge 0dp, 106dp Board Gutter, or 0..200dp stepper), with live update on active session and persistent storage in `SharedPreferences`. | `UserAgentManager`, `AppCatalog`, `GodotWebView` |
+| [`HelpDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java) | **2x Modal Controls & Gestures Guide:** Displays a 2x tabletop-scaled dark acrylic modal dialog (`AlertDialog`) triggered from the Launcher header detailing all 4 live control systems: Chess Gestures & Touch Ergonomics, Menu Controls Row, Secondary Tabs, and Board OS System Menu. Features a sleek centered bottom pill button (`Done`) and mutual auto-dismissal when the links menu opens. | Android `AlertDialog`, `ScrollView`, `RelativeLayout`, `LinearLayout` |
 | [`UserAgentManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/UserAgentManager.java) | **User-Agent Management & Persistence:** Manages Desktop (`🖥`) vs. Mobile (`📱`) modes with per-site persistent storage in `SharedPreferences` (`chessboard_prefs` / `site_ua_<host>`). Strips `X-Requested-With` via `androidx.webkit`, derives desktop User-Agent dynamically from native Chromium engine, dynamically normalizes auth URLs (`isAuthUrl`) to clean native mobile User-Agent for Google/Cloudflare compliance, rewrites YouTube query parameters (`app=desktop` / `app=mobile`), and styles menu toggle buttons. | `SharedPreferences`, `WebSettings`, `AlertDialog`, `androidx.webkit` |
 | [`DisplayController.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/DisplayController.java) | **Zoom Stepping & Tabletop Orientation:** Implements 5-level step zoom (`75%`, `100%`, `125%`, `150%`, `200%`) applied via `setTextZoom` + CSS `document.documentElement.style.zoom`. Cycles clockwise through 4 tabletop orientations (`Landscape` → `Portrait` → `Reverse Landscape` → `Reverse Portrait`) with long-press reset to Landscape, scheduling layout invalidation and resize events. | Android `ActivityInfo`, `Configuration`, `WebView` |
 | [`ChessTouchHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ChessTouchHelper.java) | **Chess Ergonomics & Gesture Bridge:** Injects two client-side bridges: (1) **Sidebar Navigation Bridge:** Intercepts desktop hover/touch mismatch on Chess.com, eliminating premature redirects to `/play`, expanding flyout submenus via synthetic `mouseenter`, and blocking premature unmounts on finger lift. (2) **Single-Finger Double-Tap Right-Click Gesture Bridge:** Translates double-taps on `<wc-chess-board>` / `<cg-board>` into synthetic right-click events (`button: 2`, `buttons: 2`, `which: 3`), enabling tactical arrow drawing (double-tap & drag) and square highlighting (double-tap in place) on touchscreen displays while suppressing browser pinch-zoom and keeping single-finger piece movement 100% native. | Android `WebView` evaluation, Chess.com & Lichess DOM architecture |
@@ -100,28 +103,34 @@ All views are hosted within a single root `FrameLayout` added to the Godot `Acti
 ```text
 Root FrameLayout (Activity Root)
  │
- ├── [Layer 0] Primary WebView (Match Parent)
- │     └── Hardware-accelerated Chromium rendering surface (active game)
+ ├── [Layer 0] Primary WebView (Match Parent, Edge-to-Edge)
+ │     └── Hardware-accelerated Chromium rendering surface (active game) running full screen
  │
  ├── [Layer 1] Primary ProgressBar (Top, 4dp height, #43A047 green)
  │     └── Visible only during page loading (WebChromeClient.onProgressChanged)
  │
- ├── [Layer 2] Secondary Tab Container (FrameLayout, popupContainer)
+ ├── [Layer 2] Secondary Tab Container (FrameLayout, popupContainer, Edge-to-Edge)
  │     │   (Injected below Scrim & Menu so menus can open on top of popups)
  │     ├── Secondary popupWebView (Match Parent)
  │     ├── Secondary popupProgressBar (Top, 4dp)
  │     └── popupCustomView (Fullscreen video playback surface, if active)
  │
- ├── [Layer 3] Fullscreen Backdrop Scrim (View, scrimView)
- │     └── Translucent 30% black (#4D000000), dismisses menu on outside click
+ ├── [Layer 3] Scrim Layers (launcherScrimView / controlsScrimView)
+ │     └── Dismisses Launcher or Controls Rail on outside tap (touch passthrough in top-right cutout)
  │
- ├── [Layer 4] Centered Menu Card (LinearLayout, menuCard)
- │     └── 2x scaled (365dp * 2.0 wide), rounded corners (18dp), elevation (12dp)
+ ├── [Layer 4] Fullscreen Launcher (FrameLayout, launcherRoot)
+ │     ├── CutoutBackgroundDrawable with inverted fillet notch in top-right corner
+ │     ├── launcherContent (LinearLayout, VERTICAL: headerBar, divider, 4 categorized card rows)
+ │     ├── Deadspace hit-testing engine (near-miss protection: 36px card buffer, 18px header buffer)
+ │     └── launcherCloseBtn (✕, topMargin = cutoutSize + 24dp + 6dp, aligned with controlsRail close button)
  │
- ├── [Layer 5] Floating Dismiss Button (Button, floatingButton)
+ ├── [Layer 5] Browser Controls Rail (LinearLayout, controlsRail)
+ │     └── Slim vertical toolbar docked on right edge directly below Board OS button (topMargin = cutoutSize + 24dp)
+ │
+ ├── [Layer 6] Floating Dismiss Button (Button, floatingButton)
  │     └── 58dp circular button ("✕" with red border when secondary tab is open)
  │
- └── [Layer 6] Primary customView (FrameLayout, if active)
+ └── [Layer 7] Primary customView (FrameLayout, if active)
        └── Fullscreen video surface for primary WebView (brings scrim/card/button to front)
 ```
 

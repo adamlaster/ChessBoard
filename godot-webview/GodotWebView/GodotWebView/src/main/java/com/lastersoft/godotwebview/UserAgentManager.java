@@ -27,7 +27,6 @@ public class UserAgentManager {
     public static final String LEGACY_PREFS_NAME = "chess4board_prefs";
     public static final String PREF_DEFAULT_DESKTOP_MODE = "default_desktop_mode";
     public static final String PREF_SITE_UA_PREFIX = "site_ua_";
-    public static final String PREF_SITE_MARGIN_PREFIX = "site_margin_";
 
     public static final String DESKTOP_USER_AGENT =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -350,13 +349,6 @@ public class UserAgentManager {
                 ? "🖥  Desktop Mode is now the default for " + siteKey + "."
                 : "📱  Mobile Mode is now the default for " + siteKey + ".";
         showAckDialog(activity, "Default User-Agent Saved", msg, menuDensity);
-    }
-
-    public void showSiteMarginAckDialog(Activity activity, String siteKey, boolean isMarginEnabled, float menuDensity) {
-        String msg = isMarginEnabled
-                ? "◧  Right Margin is now ON by default for " + siteKey + "."
-                : "◧  Right Margin is now OFF by default for " + siteKey + ".";
-        showAckDialog(activity, "Default Right Margin Saved", msg, menuDensity);
     }
 
     public void showDefaultUaAckDialog(Activity activity, float menuDensity) {

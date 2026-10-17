@@ -81,7 +81,8 @@ ChessBoard/
             ├── ChessTouchHelper.java      # Sidebar navigation & double-tap arrow bridge
             ├── WasmPatchHelper.java       # Wasm binary patcher for Chess.com bot engine OOM
             ├── HelpDialogHelper.java      # 2x modal controls & gestures guide dialog
-            └── MenuOverlayView.java       # 2x scaled centered menu overlay card
+            ├── SiteSettingsDialogHelper.java # Per-site User-Agent & custom Right Margin settings dialog
+            └── MenuOverlayView.java       # Decoupled fullscreen launcher & live browser controls rail
 ```
 
 > **Note:** Exported APK binaries are written out-of-tree to `../output/ChessBoard.apk` (configurable via `OUTPUT_DIR` in `.env`) to keep large build artifacts out of git history.
@@ -121,17 +122,19 @@ From the repository root:
 
 ---
 
-## 🎛️ Menu Controls Reference
+## 🎛️ Browser & Launcher Controls Reference
 
 | Control | Short Tap Action | Long-Press Action |
 |---|---|---|
+| **App / Site Card** *(Launcher)* | Launch the selected web app or game | **Long press (500ms):** Open Site Settings to configure persistent User-Agent (`🖥`/`📱`) and Right Margin (`0dp` / `106dp` / custom) |
+| **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
+| **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button) | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
-| **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) | — |
-| **`↺`** | Reload the current page | — |
-| **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent for current session | **Long press:** Save as persistent default for this site |
-| **`◧`** | Toggle 106dp right margin (frames Board's system button evenly with bezel) | **Long press:** Save as persistent default for this site |
+| **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
+| **`↺`** | Reload the current page live | — |
+| **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
 | **`90°`** | Rotate clockwise (`0°` → `90°` → `180°` → `270°`) | Reset to default Landscape (`0°`) |
-| **`✕`** | Close the ChessBoard Menu overlay | — |
+| **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
 
 ---
@@ -140,9 +143,11 @@ From the repository root:
 
 Pressing the hardware or floating Board system button opens the Board OS pause overlay:
 * **Resume:** Return to the active web page or chess game.
-* **App Menu:** Open the centered 2x scaled site launcher and bottom controls row.
-* **Controls Guide:** Open the 2x scaled dark acrylic tabletop reference guide outlining all touch gestures, controls, and features.
+* **Launcher:** Open the fullscreen 4-row categorized app catalog (Primary Chess, Games, Watch, Web) featuring an upper-right corner cutout around the Board OS button and long-press per-site settings.
+* **Browser Controls:** Open the slim vertical toolbar overlay docked directly on top of the live browser (below the Board OS button) for real-time visual feedback of zoom, UA, reload, and rotation.
 * **Exit to Library:** Safely terminate ChessBoard and return to the Board home screen.
+
+*(Note: The Controls Guide is accessible directly inside the Launcher header via `[ 📖 Controls Guide ]`)*
 
 ---
 
