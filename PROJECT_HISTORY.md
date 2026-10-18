@@ -686,6 +686,27 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 36: Restoring Live Right Margin Gutter Toggle Button on Browser Controls Rail
+1. **Restoration of Right Margin (`◧`) Control to Browser Controls Rail:**
+   - **User Requirement:** While per-site margin defaults can be configured via 500ms long-press on Launcher cards, quick toggling between edge-to-edge (0dp) and the Board menu clearance gutter (106dp) directly over the active web session is essential for viewing web pages that place critical top-right buttons under the Board OS system button.
+   - **Visual Icon & Rail Geometry:**
+     - Added `ControlIconDrawable.Type.RIGHT_MARGIN` (`M16 20H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2zm0-14H4v12h12V6zM20 4h2v16h-2z`).
+     - Positioned the `◧` button between Desktop Mode (`🖥/📱`) and Rotation (`90°`) (button 7 of 9).
+     - Tightened inter-button spacing slightly from `3.5 * menuDensity` to `3 * menuDensity` (9px) so the 9-button rail measures `837px` high, docking cleanly at `y = 147px` with `96px` (~64dp) of generous clearance above the bottom of the 1080p screen.
+2. **Dual Short-Tap / Long-Press Functionality:**
+   - **Short Tap (Live Layout Shift):** Instantly toggles the active margin between `0dp` and `106dp` (`DEFAULT_GUTTER_DP`), shifts the `WebView` and progress bar layout in real time, updates the button stroke and icon color (`#5C7CFA` border / `#91A7FF` icon when active; slate `#202430` / `#CBD5E1` when inactive), and keeps the Browser Controls rail open so the user immediately observes the page reflow.
+   - **Long Press (800ms Default Persistence):** Performs haptic feedback, toggles and saves the target margin as the persistent site default in `SharedPreferences` (`site_margin_dp_<siteKey>`), and presents `SiteSettingsDialogHelper.showSaveAckDialog` confirming the persistent preference.
+3. **Synchronized State & Guide Integration:**
+   - Added `updateRightMarginButtonStyle` hooks in `showBrowserControls()`, `onTabClosed()`, `onSiteSettingsSaved()`, and `navigateToSite()` so the button appearance always reflects the active session's margin.
+   - Re-added the `◧  Right Margin / Board Gutter` row to the tabletop Controls Guide modal (`HelpDialogHelper.java`).
+4. **Catalog Expansion — Fandango Added to Watch Category:**
+   - Added **Fandango** (`https://athome.fandango.com/`, tag `MOVIES`, icon `🎟️`) to the `Watch` category in `AppCatalog.java`.
+   - Expanded the Extra Apps collection to 22 web apps across 3 categories (8 Games, 8 Watch, 6 Web).
+5. **Build & Hardware Deployment:**
+   - Verified Gradle compile and deployed build to Board at `10.0.0.65`.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

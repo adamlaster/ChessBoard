@@ -133,6 +133,7 @@ From the repository root:
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
 | **`↺`** | Reload the current page live | — |
 | **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
+| **`◧`** | Toggle Right Margin gutter live (`0dp` edge-to-edge vs. `106dp` Board clearance) | **Long press:** Save margin mode as persistent default for active site |
 | **`90°`** | Rotate clockwise (`0°` → `90°` → `180°` → `270°`) | Reset to default Landscape (`0°`) |
 | **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
@@ -173,9 +174,9 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **Lichess** (`https://lichess.org/analysis`)
 * **ChessReps** (`https://chessreps.com`)
 
-### 🗂️ Extra Apps (21 Apps Across 3 Categories)
+### 🗂️ Extra Apps (22 Apps Across 3 Categories)
 * **🎲 Games (8):** Colonist.io (Catan), Dots & Boxes, PBS Kids, ABCmouse, AutoDraw (Google), 247 Backgammon, 247 Checkers, 247 Games (All)
-* **📺 Watch (7):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video
+* **📺 Watch (8):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video, Fandango
 * **🌐 Web (6):** Google, Google Photos, Google Maps, Reddit, Wikipedia, Weather
 
 ---

@@ -486,6 +486,29 @@ public class GodotWebView extends GodotPlugin {
                 }
 
                 @Override
+                public void onToggleRightMargin(boolean isLongPressSaveDefault) {
+                    Activity act = getActivity();
+                    if (act == null) return;
+                    float density = act.getResources().getDisplayMetrics().density;
+                    float menuDensity = density * MenuOverlayView.MENU_SCALE;
+                    String rawKey = UserAgentManager.getSiteKey(webView != null ? webView.getUrl() : null);
+                    final String siteKey = rawKey.isEmpty() ? currentSiteKey : rawKey;
+
+                    int targetDp = (currentSiteMarginDp > 0) ? 0 : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+                    applyRightMarginDp(targetDp);
+                    menuOverlayView.updateRightMarginButtonStyle(targetDp > 0, menuDensity);
+
+                    if (isLongPressSaveDefault) {
+                        SiteSettingsDialogHelper.saveSiteDefaultRightMarginDp(act, siteKey, targetDp);
+                        mainHandler.postDelayed(() -> {
+                            if (!act.isFinishing()) {
+                                SiteSettingsDialogHelper.showSaveAckDialog(act, siteKey, uaManager.isDesktopMode(), targetDp, menuDensity);
+                            }
+                        }, 150);
+                    }
+                }
+
+                @Override
                 public void onRotateScreen(boolean isLongPressResetLandscape) {
                     hideMenu();
                     Runnable postRotate = () -> displayController.schedulePostRotateRefresh(
@@ -566,6 +589,7 @@ public class GodotWebView extends GodotPlugin {
                     menuOverlayView.updateDesktopButtonStyle(uaManager, md);
                     int marginDp = SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(act, mainKey);
                     applyRightMarginDp(marginDp);
+                    menuOverlayView.updateRightMarginButtonStyle(marginDp > 0, md);
                 }
                 if (webView != null) {
                     webView.requestFocus();
@@ -628,6 +652,13 @@ public class GodotWebView extends GodotPlugin {
     private void showBrowserControls() {
         HelpDialogHelper.dismiss();
         floatingDismissButton.hide();
+        Activity activity = getActivity();
+        if (activity != null) {
+            float density = activity.getResources().getDisplayMetrics().density;
+            float menuDensity = density * MenuOverlayView.MENU_SCALE;
+            menuOverlayView.updateDesktopButtonStyle(uaManager, menuDensity);
+            menuOverlayView.updateRightMarginButtonStyle(currentSiteMarginDp > 0, menuDensity);
+        }
         menuOverlayView.showBrowserControls(layout, canGoBack());
     }
 
@@ -706,6 +737,7 @@ public class GodotWebView extends GodotPlugin {
             uaManager.setDesktopMode(isDesktop);
             applyUserAgent(true);
             applyRightMarginDp(marginDp);
+            menuOverlayView.updateRightMarginButtonStyle(marginDp > 0, menuDensity);
         }
 
         SiteSettingsDialogHelper.showSaveAckDialog(act, siteKey, isDesktop, marginDp, menuDensity);
@@ -719,10 +751,13 @@ public class GodotWebView extends GodotPlugin {
         currentSiteKey = UserAgentManager.getSiteKey(siteUrl);
 
         if (activity != null) {
+            float density = activity.getResources().getDisplayMetrics().density;
+            float menuDensity = density * MenuOverlayView.MENU_SCALE;
             uaManager.applySiteDefault(activity, currentSiteKey);
             applyUserAgent(false);
             int marginDp = SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(activity, currentSiteKey);
             applyRightMarginDp(marginDp);
+            menuOverlayView.updateRightMarginButtonStyle(marginDp > 0, menuDensity);
         }
 
         if (webView != null) {

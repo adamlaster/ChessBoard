@@ -58,6 +58,7 @@ public class MenuOverlayView {
         void onZoomOut();
         void onRefresh();
         void onToggleDesktopMode(boolean isLongPressSaveDefault);
+        default void onToggleRightMargin(boolean isLongPressSaveDefault) {}
         void onRotateScreen(boolean isLongPressResetLandscape);
         void onCloseMenu();
         default void onOpenBrowserControls() {}
@@ -81,6 +82,9 @@ public class MenuOverlayView {
     private ImageButton backButton;
     private Button desktopModeButton;
     private GradientDrawable desktopModeCircle;
+    private ImageButton rightMarginButton;
+    private GradientDrawable rightMarginCircle;
+    private ControlIconDrawable rightMarginDrawable;
 
     private boolean isLauncherOpen = false;
     private boolean isControlsOpen = false;
@@ -114,7 +118,7 @@ public class MenuOverlayView {
         this.cutoutSize = (int) (74 * density); // ~111px cutout matching Board OS menu button (x=1828..1907, y=16..95)
         int railWidth = (int) (38 * menuDensity);
         int controlBtnSize = (int) (27 * menuDensity);
-        int ctrlSpacing = (int) (3.5f * menuDensity);
+        int ctrlSpacing = (int) (3 * menuDensity);
         int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
 
         allCardViews.clear();
@@ -761,7 +765,67 @@ public class MenuOverlayView {
         });
         controlsRail.addView(desktopModeButton);
 
-        // 7. Screen Rotation (90°)
+        // 7. Right Margin Gutter Toggle (◧)
+        rightMarginCircle = new GradientDrawable();
+        rightMarginCircle.setShape(GradientDrawable.OVAL);
+        rightMarginCircle.setColor(Color.parseColor("#202430"));
+        rightMarginDrawable = new ControlIconDrawable(ControlIconDrawable.Type.RIGHT_MARGIN);
+
+        rightMarginButton = new ImageButton(activity);
+        rightMarginButton.setBackground(rightMarginCircle);
+        rightMarginButton.setImageDrawable(rightMarginDrawable);
+        rightMarginButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        rightMarginButton.setPadding(0, 0, 0, 0);
+        rightMarginButton.setLayoutParams(ctrlBtnParams);
+        rightMarginButton.setContentDescription("Toggle Right Margin (Clear Board Menu)");
+
+        rightMarginButton.setOnTouchListener(new View.OnTouchListener() {
+            private boolean longPressTriggered = false;
+            private final Runnable longPressRunnable = () -> {
+                longPressTriggered = true;
+                rightMarginButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                rightMarginButton.setAlpha(1.0f);
+                if (listener != null) listener.onToggleRightMargin(true);
+            };
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        longPressTriggered = false;
+                        v.setAlpha(0.7f);
+                        handler.postDelayed(longPressRunnable, 800);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float mx = event.getX();
+                        float my = event.getY();
+                        if (mx < -touchSlop || mx > v.getWidth() + touchSlop || my < -touchSlop || my > v.getHeight() + touchSlop) {
+                            handler.removeCallbacks(longPressRunnable);
+                            v.setAlpha(1.0f);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        if (!longPressTriggered) {
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                            if (listener != null) listener.onToggleRightMargin(false);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        return true;
+                }
+                return false;
+            }
+        });
+        controlsRail.addView(rightMarginButton);
+
+        // 8. Screen Rotation (90°)
         GradientDrawable rotateCircle = new GradientDrawable();
         rotateCircle.setShape(GradientDrawable.OVAL);
         rotateCircle.setColor(Color.parseColor("#202430"));
@@ -1070,6 +1134,23 @@ public class MenuOverlayView {
         }
     }
 
+    public void updateRightMarginButtonStyle(boolean isActive, float menuDensity) {
+        if (rightMarginButton == null || rightMarginCircle == null) return;
+        if (isActive) {
+            rightMarginCircle.setColor(Color.parseColor("#1E2433"));
+            rightMarginCircle.setStroke((int) (1.5f * menuDensity), Color.parseColor("#5C7CFA"));
+            if (rightMarginDrawable != null) {
+                rightMarginDrawable.setIconColor(Color.parseColor("#91A7FF"));
+            }
+        } else {
+            rightMarginCircle.setColor(Color.parseColor("#202430"));
+            rightMarginCircle.setStroke(0, Color.TRANSPARENT);
+            if (rightMarginDrawable != null) {
+                rightMarginDrawable.setIconColor(Color.parseColor("#CBD5E1"));
+            }
+        }
+    }
+
     public void bringToFront() {
         if (launcherScrimView != null && isLauncherOpen) launcherScrimView.bringToFront();
         if (launcherRoot != null && isLauncherOpen) launcherRoot.bringToFront();
@@ -1102,6 +1183,9 @@ public class MenuOverlayView {
         backButton = null;
         desktopModeButton = null;
         desktopModeCircle = null;
+        rightMarginButton = null;
+        rightMarginCircle = null;
+        rightMarginDrawable = null;
     }
 
     /**
@@ -1115,6 +1199,7 @@ public class MenuOverlayView {
             ZOOM_OUT("M19 13H5v-2h14v2z"),
             ZOOM_IN("M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"),
             REFRESH("M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"),
+            RIGHT_MARGIN("M16 20H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2zm0-14H4v12h12V6zM20 4h2v16h-2z"),
             HELP("M11.07 12.85c.77-1.39 2.25-2.21 3.11-3.44.91-1.29.4-4.05-2.18-4.05-1.9 0-2.67 1.48-2.67 2.68H7.1C7.1 4.7 9.33 3 12 3c2.65 0 4.22 1.72 4.22 4.07 0 1.94-1.22 3.03-2.14 3.9-.92.88-1.57 1.49-1.89 2.45-.19.57-.22 1.1-.22 2.48h-2.1c0-1.82-.03-2.61.28-3.05zM11 18h2v2h-2z");
 
             final String pathData;

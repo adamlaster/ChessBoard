@@ -74,7 +74,8 @@ public final class AppCatalog {
             new SiteEntry("MLB.TV", "https://www.mlb.com/tv", "⚾", "Baseball Stream", "SPORTS"),
             new SiteEntry("Disney+", "https://www.disneyplus.com", "🏰", "Movies & Shows", "MOVIES"),
             new SiteEntry("Prime Video", "https://www.amazon.com/gp/video/storefront", "📦", "Amazon Prime", "VIDEO"),
-            new SiteEntry("Fox One", "https://www.fox.com", "🦊", "Live TV & Sports", "TV")
+            new SiteEntry("Fox One", "https://www.fox.com", "🦊", "Live TV & Sports", "TV"),
+            new SiteEntry("Fandango", "https://athome.fandango.com/", "🎟️", "Movies & TV", "MOVIES")
         )),
         new CategoryEntry("Web", "🌐", Arrays.asList(
             new SiteEntry("Google", "https://www.google.com", "🔍", "Web Search", "SEARCH"),

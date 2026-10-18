@@ -171,6 +171,10 @@ public final class HelpDialogHelper {
                 "Short tap: Toggle between Desktop (🖥) and Mobile (📱) mode for the current session.\n3-second hold: Save Desktop or Mobile as the persistent default for just this site.",
                 menuDensity);
         addItemRow(content,
+                "◧  Right Margin / Board Gutter",
+                "Short tap: Toggle between edge-to-edge (0dp) and 106dp right margin gutter live.\nLong press: Save margin mode as persistent default for active site.",
+                menuDensity);
+        addItemRow(content,
                 "90°  Screen Rotation",
                 "Short tap: Rotate display clockwise 90° through all 4 tabletop orientations (Landscape → Portrait → Rev. Landscape → Rev. Portrait).\nLong press: Reset display orientation back to default Landscape.",
                 menuDensity);
