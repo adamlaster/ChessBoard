@@ -23,6 +23,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -86,6 +88,35 @@ public class MenuOverlayView {
     private GradientDrawable rightMarginCircle;
     private ControlIconDrawable rightMarginDrawable;
 
+    // Launcher Row and Card Reorder State
+    private LinearLayout rowsContainer;
+    private RowEditHolder currentEditingHolder = null;
+    private Activity activity;
+
+    private static class RowEditHolder {
+        final String categoryTitle;
+        final LinearLayout rowLayout;
+        final LinearLayout cardsRow;
+        final HorizontalScrollView hScrollView;
+        final Button editBtn;
+        final Button upBtn;
+        final Button downBtn;
+        final TextView statusHint;
+
+        RowEditHolder(String categoryTitle, LinearLayout rowLayout, LinearLayout cardsRow,
+                      HorizontalScrollView hScrollView, Button editBtn, Button upBtn,
+                      Button downBtn, TextView statusHint) {
+            this.categoryTitle = categoryTitle;
+            this.rowLayout = rowLayout;
+            this.cardsRow = cardsRow;
+            this.hScrollView = hScrollView;
+            this.editBtn = editBtn;
+            this.upBtn = upBtn;
+            this.downBtn = downBtn;
+            this.statusHint = statusHint;
+        }
+    }
+
     private boolean isLauncherOpen = false;
     private boolean isControlsOpen = false;
     private int cutoutSize = 0;
@@ -111,6 +142,7 @@ public class MenuOverlayView {
 
     @SuppressLint("ClickableViewAccessibility")
     public void setup(Activity activity, FrameLayout rootLayout, UserAgentManager uaManager, MenuActionListener listener) {
+        this.activity = activity;
         float density = activity.getResources().getDisplayMetrics().density;
         float menuDensity = density * MENU_SCALE;
         this.density = density;
@@ -178,6 +210,14 @@ public class MenuOverlayView {
                         break;
 
                     case MotionEvent.ACTION_UP:
+                        if (currentEditingHolder != null) {
+                            boolean nearItem = isTapNearAnyItem(downX, downY) || isTapNearAnyItem(rawX, rawY);
+                            if (!isDrag && !nearItem) {
+                                exitEditMode(true);
+                                return true;
+                            }
+                            break;
+                        }
                         boolean nearItem = isTapNearAnyItem(downX, downY) || isTapNearAnyItem(rawX, rawY);
                         if (!isDrag && !nearItem) {
                             // Tap in deadspace detected! Close the launcher with haptic feedback.
@@ -237,6 +277,8 @@ public class MenuOverlayView {
         int padT = (int) (8 * menuDensity);
         int padB = (int) (8 * menuDensity);
         launcherContent.setPadding(padL, padT, padR, padB);
+        launcherContent.setClipChildren(false);
+        launcherContent.setClipToPadding(false);
         launcherContent.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -359,8 +401,10 @@ public class MenuOverlayView {
         launcherContent.addView(divider);
 
         // 4 Category Rows
-        LinearLayout rowsContainer = new LinearLayout(activity);
+        rowsContainer = new LinearLayout(activity);
         rowsContainer.setOrientation(LinearLayout.VERTICAL);
+        rowsContainer.setClipChildren(false);
+        rowsContainer.setClipToPadding(false);
         LinearLayout.LayoutParams rowsParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f);
         rowsContainer.setLayoutParams(rowsParams);
@@ -368,7 +412,8 @@ public class MenuOverlayView {
         int cardWidth = (int) (115 * menuDensity);
         int cardSpacing = (int) (7 * menuDensity);
 
-        for (AppCatalog.CategoryEntry category : AppCatalog.ALL_CATEGORIES) {
+        List<AppCatalog.CategoryEntry> orderedCategories = AppCatalog.getOrderedCategories(activity);
+        for (AppCatalog.CategoryEntry category : orderedCategories) {
             LinearLayout rowLayout = new LinearLayout(activity);
             rowLayout.setOrientation(LinearLayout.VERTICAL);
             LinearLayout.LayoutParams rowLayoutParams = new LinearLayout.LayoutParams(
@@ -391,6 +436,7 @@ public class MenuOverlayView {
             catTitle.setTextSize(11 * MENU_SCALE);
             catTitle.setTypeface(Typeface.DEFAULT_BOLD);
             catHeader.addView(catTitle);
+            protectedHeaderViews.add(catTitle);
 
             GradientDrawable countBg = new GradientDrawable();
             countBg.setShape(GradientDrawable.RECTANGLE);
@@ -409,6 +455,98 @@ public class MenuOverlayView {
             countParams.setMargins((int) (6 * menuDensity), 0, 0, 0);
             countBadge.setLayoutParams(countParams);
             catHeader.addView(countBadge);
+            protectedHeaderViews.add(countBadge);
+
+            int navBtnHeight = (int) (22 * menuDensity);
+            int navBtnWidth = (int) (26 * menuDensity);
+
+            // Edit / Save Mode Toggle Button: "[ ✎ Edit ]" / "[ ✓ Save ]" placed next to apps count on left
+            GradientDrawable editBg = new GradientDrawable();
+            editBg.setShape(GradientDrawable.RECTANGLE);
+            editBg.setColor(Color.parseColor("#1E2538"));
+            editBg.setCornerRadius(10 * menuDensity);
+            editBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+
+            Button editBtn = new Button(activity);
+            editBtn.setText("✎ Edit");
+            editBtn.setAllCaps(false);
+            editBtn.setTextColor(Color.parseColor("#CBD5E1"));
+            editBtn.setTextSize(8.5f * MENU_SCALE);
+            editBtn.setTypeface(Typeface.DEFAULT_BOLD);
+            editBtn.setGravity(Gravity.CENTER);
+            editBtn.setPadding((int) (8 * menuDensity), 0, (int) (8 * menuDensity), 0);
+            editBtn.setIncludeFontPadding(false);
+            editBtn.setBackground(editBg);
+            LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, navBtnHeight);
+            editParams.setMargins((int) (8 * menuDensity), 0, 0, 0);
+            editBtn.setLayoutParams(editParams);
+            catHeader.addView(editBtn);
+            protectedHeaderViews.add(editBtn);
+
+            // Reorder Row Up Button: "▲"
+            GradientDrawable upBg = new GradientDrawable();
+            upBg.setShape(GradientDrawable.RECTANGLE);
+            upBg.setColor(Color.parseColor("#1E2538"));
+            upBg.setCornerRadius(10 * menuDensity);
+            upBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+
+            Button upBtn = new Button(activity);
+            upBtn.setText("▲");
+            upBtn.setTextColor(Color.parseColor("#E2E8F0"));
+            upBtn.setTextSize(8 * MENU_SCALE);
+            upBtn.setTypeface(Typeface.DEFAULT_BOLD);
+            upBtn.setGravity(Gravity.CENTER);
+            upBtn.setPadding(0, 0, 0, 0);
+            upBtn.setIncludeFontPadding(false);
+            upBtn.setBackground(upBg);
+            upBtn.setVisibility(View.GONE);
+            LinearLayout.LayoutParams upParams = new LinearLayout.LayoutParams(navBtnWidth, navBtnHeight);
+            upParams.setMargins((int) (6 * menuDensity), 0, 0, 0);
+            upBtn.setLayoutParams(upParams);
+            catHeader.addView(upBtn);
+            protectedHeaderViews.add(upBtn);
+
+            // Reorder Row Down Button: "▼"
+            GradientDrawable downBg = new GradientDrawable();
+            downBg.setShape(GradientDrawable.RECTANGLE);
+            downBg.setColor(Color.parseColor("#1E2538"));
+            downBg.setCornerRadius(10 * menuDensity);
+            downBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+
+            Button downBtn = new Button(activity);
+            downBtn.setText("▼");
+            downBtn.setTextColor(Color.parseColor("#E2E8F0"));
+            downBtn.setTextSize(8 * MENU_SCALE);
+            downBtn.setTypeface(Typeface.DEFAULT_BOLD);
+            downBtn.setGravity(Gravity.CENTER);
+            downBtn.setPadding(0, 0, 0, 0);
+            downBtn.setIncludeFontPadding(false);
+            downBtn.setBackground(downBg);
+            downBtn.setVisibility(View.GONE);
+            LinearLayout.LayoutParams downParams = new LinearLayout.LayoutParams(navBtnWidth, navBtnHeight);
+            downParams.setMargins((int) (4 * menuDensity), 0, 0, 0);
+            downBtn.setLayoutParams(downParams);
+            catHeader.addView(downBtn);
+            protectedHeaderViews.add(downBtn);
+
+            // Status hint: "⠿ Drag cards to reorder" (visible only during edit mode)
+            TextView statusHint = new TextView(activity);
+            statusHint.setText("⠿ Drag cards to reorder");
+            statusHint.setTextColor(Color.parseColor("#FAB005"));
+            statusHint.setTextSize(8.5f * MENU_SCALE);
+            statusHint.setTypeface(Typeface.DEFAULT_BOLD);
+            statusHint.setVisibility(View.GONE);
+            LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            hintParams.setMargins((int) (10 * menuDensity), 0, 0, 0);
+            statusHint.setLayoutParams(hintParams);
+            catHeader.addView(statusHint);
+
+            // Spacer between left controls and right edge
+            View catSpacer = new View(activity);
+            catSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
+            catHeader.addView(catSpacer);
 
             rowLayout.addView(catHeader);
 
@@ -427,7 +565,16 @@ public class MenuOverlayView {
             cardsRow.setLayoutParams(new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-            for (AppCatalog.SiteEntry site : category.sites) {
+            RowEditHolder holder = new RowEditHolder(
+                    category.title, rowLayout, cardsRow, hScrollView, editBtn, upBtn, downBtn, statusHint);
+            rowLayout.setTag(holder);
+
+            editBtn.setOnClickListener(v -> toggleRowEditMode(holder));
+            upBtn.setOnClickListener(v -> moveRowUp(holder));
+            downBtn.setOnClickListener(v -> moveRowDown(holder));
+
+            List<AppCatalog.SiteEntry> orderedSites = AppCatalog.getOrderedSitesForCategory(activity, category);
+            for (AppCatalog.SiteEntry site : orderedSites) {
                 GradientDrawable cardBg = new GradientDrawable();
                 cardBg.setShape(GradientDrawable.RECTANGLE);
                 cardBg.setColor(Color.parseColor("#161923"));
@@ -435,6 +582,7 @@ public class MenuOverlayView {
                 cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
 
                 LinearLayout card = new LinearLayout(activity);
+                card.setTag(site);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setBackground(cardBg);
                 int cardPad = (int) (7 * menuDensity);
@@ -520,7 +668,7 @@ public class MenuOverlayView {
                 }
 
                 // Interactive touch handling on card
-                setupCardTouchBehavior(card, cardBg, site, menuDensity, touchSlop, listener);
+                setupCardTouchBehavior(card, cardBg, site, holder, menuDensity, touchSlop, listener);
 
                 cardsRow.addView(card);
                 allCardViews.add(card);
@@ -918,11 +1066,18 @@ public class MenuOverlayView {
 
     @SuppressLint("ClickableViewAccessibility")
     private void setupCardTouchBehavior(View card, GradientDrawable cardBg, AppCatalog.SiteEntry site,
-                                       float menuDensity, int touchSlop, MenuActionListener listener) {
+                                       RowEditHolder holder, float menuDensity, int touchSlop, MenuActionListener listener) {
         card.setOnTouchListener(new View.OnTouchListener() {
-            private float downX, downY;
-            private boolean isDrag = false;
+            private float downRawX, downRawY;
+            private boolean isCardDrag = false;
             private boolean longPressTriggered = false;
+
+            // For Edit Mode Dragging
+            private boolean isEditDragging = false;
+            private int dragStartIndex = -1;
+            private int currentHoverIndex = -1;
+            private float cardPitch = 0;
+
             private final Runnable longPressRunnable = () -> {
                 longPressTriggered = true;
                 card.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -936,11 +1091,145 @@ public class MenuOverlayView {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                boolean inEditMode = (currentEditingHolder == holder);
+
+                if (inEditMode) {
+                    // ==========================================
+                    // EDIT MODE: HORIZONTAL CARD REORDERING
+                    // ==========================================
+                    switch (event.getActionMasked()) {
+                        case MotionEvent.ACTION_DOWN:
+                            downRawX = event.getRawX();
+                            downRawY = event.getRawY();
+                            isEditDragging = false;
+                            dragStartIndex = holder.cardsRow.indexOfChild(card);
+                            currentHoverIndex = dragStartIndex;
+                            cardPitch = Math.max(card.getWidth(), (int) (115 * menuDensity)) + (7 * menuDensity);
+                            disallowParentIntercept(v);
+
+                            cardBg.setStroke((int) (2 * menuDensity), Color.parseColor("#FAB005"));
+                            cardBg.setColor(Color.parseColor("#25231F"));
+                            v.invalidate();
+                            return true;
+
+                        case MotionEvent.ACTION_MOVE:
+                            float deltaX = event.getRawX() - downRawX;
+                            if (!isEditDragging && Math.abs(deltaX) > touchSlop) {
+                                isEditDragging = true;
+                                disallowParentIntercept(v);
+                                v.setScaleX(1.04f);
+                                v.setScaleY(1.04f);
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                    v.setTranslationZ(30 * menuDensity);
+                                }
+                                v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                            }
+
+                            if (isEditDragging && cardPitch > 0) {
+                                v.setTranslationX(deltaX);
+
+                                int count = holder.cardsRow.getChildCount();
+                                int deltaSlots = Math.round(deltaX / cardPitch);
+                                int newHover = Math.max(0, Math.min(count - 1, dragStartIndex + deltaSlots));
+
+                                if (newHover != currentHoverIndex) {
+                                    currentHoverIndex = newHover;
+                                    v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+
+                                    for (int i = 0; i < count; i++) {
+                                        if (i == dragStartIndex) continue;
+                                        View sibling = holder.cardsRow.getChildAt(i);
+                                        float targetX = 0;
+                                        if (dragStartIndex < currentHoverIndex) {
+                                            if (i > dragStartIndex && i <= currentHoverIndex) {
+                                                targetX = -cardPitch;
+                                            }
+                                        } else if (dragStartIndex > currentHoverIndex) {
+                                            if (i >= currentHoverIndex && i < dragStartIndex) {
+                                                targetX = cardPitch;
+                                            }
+                                        }
+                                        sibling.animate()
+                                                .translationX(targetX)
+                                                .setDuration(150)
+                                                .setInterpolator(new DecelerateInterpolator())
+                                                .start();
+                                    }
+                                }
+
+                                // Auto-scroll HorizontalScrollView if card is dragged near boundaries
+                                if (holder.hScrollView != null && holder.hScrollView.getWidth() > 0) {
+                                    int[] scrLoc = new int[2];
+                                    holder.hScrollView.getLocationOnScreen(scrLoc);
+                                    float scrLeft = scrLoc[0];
+                                    float scrRight = scrLoc[0] + holder.hScrollView.getWidth();
+                                    if (event.getRawX() > scrRight - (40 * menuDensity)) {
+                                        holder.hScrollView.smoothScrollBy((int) (12 * menuDensity), 0);
+                                    } else if (event.getRawX() < scrLeft + (40 * menuDensity)) {
+                                        holder.hScrollView.smoothScrollBy((int) (-12 * menuDensity), 0);
+                                    }
+                                }
+                                return true;
+                            }
+                            return true;
+
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            if (isEditDragging) {
+                                final int fromIdx = dragStartIndex;
+                                final int toIdx = currentHoverIndex;
+                                float finalTargetX = (toIdx - fromIdx) * cardPitch;
+
+                                v.animate()
+                                        .translationX(finalTargetX)
+                                        .scaleX(1.0f)
+                                        .scaleY(1.0f)
+                                        .setDuration(150)
+                                        .setInterpolator(new DecelerateInterpolator())
+                                        .withEndAction(() -> {
+                                            v.setTranslationX(0);
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                                v.setTranslationZ(0);
+                                            }
+                                            for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+                                                holder.cardsRow.getChildAt(i).setTranslationX(0);
+                                            }
+
+                                            if (fromIdx != toIdx && fromIdx >= 0 && toIdx >= 0 &&
+                                                    fromIdx < holder.cardsRow.getChildCount() && toIdx < holder.cardsRow.getChildCount()) {
+                                                holder.cardsRow.removeView(card);
+                                                holder.cardsRow.addView(card, toIdx);
+                                            }
+                                            cardBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#40C057"));
+                                            cardBg.setColor(Color.parseColor("#161923"));
+                                            v.invalidate();
+                                        })
+                                        .start();
+
+                                v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                            } else {
+                                v.setScaleX(1.0f);
+                                v.setScaleY(1.0f);
+                                cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
+                                cardBg.setColor(Color.parseColor("#161923"));
+                                v.invalidate();
+                            }
+                            isEditDragging = false;
+                            dragStartIndex = -1;
+                            currentHoverIndex = -1;
+                            return true;
+                    }
+                    return false;
+                }
+
+                // ==========================================
+                // NORMAL MODE: TAP TO LAUNCH, 500MS HOLD TO EDIT
+                // ==========================================
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        downX = event.getX();
-                        downY = event.getY();
-                        isDrag = false;
+                        downRawX = event.getRawX();
+                        downRawY = event.getRawY();
+                        isCardDrag = false;
                         longPressTriggered = false;
                         cardBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#5C7CFA"));
                         cardBg.setColor(Color.parseColor("#22283A"));
@@ -949,14 +1238,18 @@ public class MenuOverlayView {
                         return true;
 
                     case MotionEvent.ACTION_MOVE:
-                        float dx = Math.abs(event.getX() - downX);
-                        float dy = Math.abs(event.getY() - downY);
-                        if (!isDrag && (dx > touchSlop || dy > touchSlop)) {
-                            isDrag = true;
-                            handler.removeCallbacks(longPressRunnable);
-                            cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
-                            cardBg.setColor(Color.parseColor("#161923"));
-                            v.invalidate();
+                        float dx = Math.abs(event.getRawX() - downRawX);
+                        float dy = Math.abs(event.getRawY() - downRawY);
+
+                        if (!longPressTriggered) {
+                            if (!isCardDrag && (dx > touchSlop || dy > touchSlop)) {
+                                isCardDrag = true;
+                                handler.removeCallbacks(longPressRunnable);
+                                cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
+                                cardBg.setColor(Color.parseColor("#161923"));
+                                v.invalidate();
+                            }
+                            return false;
                         }
                         return false;
 
@@ -965,7 +1258,8 @@ public class MenuOverlayView {
                         cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
                         cardBg.setColor(Color.parseColor("#161923"));
                         v.invalidate();
-                        if (!isDrag && !longPressTriggered) {
+
+                        if (!longPressTriggered && !isCardDrag) {
                             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                             if (listener != null) {
                                 listener.onSiteSelected(site.url);
@@ -974,7 +1268,7 @@ public class MenuOverlayView {
                         return true;
 
                     case MotionEvent.ACTION_CANCEL:
-                        isDrag = false;
+                        isCardDrag = false;
                         handler.removeCallbacks(longPressRunnable);
                         cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
                         cardBg.setColor(Color.parseColor("#161923"));
@@ -984,6 +1278,168 @@ public class MenuOverlayView {
                 return false;
             }
         });
+    }
+
+    private void disallowParentIntercept(View v) {
+        if (v == null) return;
+        ViewParent p = v.getParent();
+        while (p != null) {
+            p.requestDisallowInterceptTouchEvent(true);
+            p = p.getParent();
+        }
+    }
+
+    private void toggleRowEditMode(RowEditHolder holder) {
+        if (holder == null) return;
+        if (currentEditingHolder == holder) {
+            exitEditMode(true);
+        } else {
+            if (currentEditingHolder != null) {
+                exitEditMode(true);
+            }
+            enterEditMode(holder);
+        }
+    }
+
+    private void enterEditMode(RowEditHolder holder) {
+        if (holder == null) return;
+        currentEditingHolder = holder;
+
+        // Edit button -> Green "[ ✓ Save ]"
+        holder.editBtn.setText("✓ Save");
+        GradientDrawable saveBg = new GradientDrawable();
+        saveBg.setShape(GradientDrawable.RECTANGLE);
+        saveBg.setColor(Color.parseColor("#143E26"));
+        saveBg.setCornerRadius(10 * menuDensity);
+        saveBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#40C057"));
+        holder.editBtn.setBackground(saveBg);
+        holder.editBtn.setTextColor(Color.parseColor("#8CE99A"));
+
+        // Show nav buttons and status hint
+        holder.upBtn.setVisibility(View.VISIBLE);
+        holder.downBtn.setVisibility(View.VISIBLE);
+        holder.statusHint.setVisibility(View.VISIBLE);
+        updateRowNavButtons(holder);
+
+        // Highlight active row layout
+        GradientDrawable activeRowBg = new GradientDrawable();
+        activeRowBg.setShape(GradientDrawable.RECTANGLE);
+        activeRowBg.setColor(Color.parseColor("#101524"));
+        activeRowBg.setCornerRadius(10 * menuDensity);
+        activeRowBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#4C6EF5"));
+        holder.rowLayout.setBackground(activeRowBg);
+        int pad = (int) (4 * menuDensity);
+        holder.rowLayout.setPadding(pad, pad, pad, pad);
+
+        holder.editBtn.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+    }
+
+    private void exitEditMode(boolean save) {
+        if (currentEditingHolder == null) return;
+        RowEditHolder holder = currentEditingHolder;
+
+        if (save && activity != null) {
+            // 1. Save cards order
+            List<String> siteNames = new ArrayList<>();
+            for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+                View card = holder.cardsRow.getChildAt(i);
+                Object tag = card.getTag();
+                if (tag instanceof AppCatalog.SiteEntry) {
+                    siteNames.add(((AppCatalog.SiteEntry) tag).name);
+                }
+            }
+            AppCatalog.saveSitesOrderForCategory(activity, holder.categoryTitle, siteNames);
+
+            // 2. Save row order
+            saveCurrentRowOrder();
+        }
+
+        // Reset edit button -> Normal "[ ✎ Edit ]"
+        holder.editBtn.setText("✎ Edit");
+        GradientDrawable editBg = new GradientDrawable();
+        editBg.setShape(GradientDrawable.RECTANGLE);
+        editBg.setColor(Color.parseColor("#1E2538"));
+        editBg.setCornerRadius(10 * menuDensity);
+        editBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+        holder.editBtn.setBackground(editBg);
+        holder.editBtn.setTextColor(Color.parseColor("#CBD5E1"));
+
+        // Hide nav buttons and status hint
+        holder.upBtn.setVisibility(View.GONE);
+        holder.downBtn.setVisibility(View.GONE);
+        holder.statusHint.setVisibility(View.GONE);
+
+        // Reset row layout background
+        holder.rowLayout.setBackground(null);
+        holder.rowLayout.setPadding(0, 0, 0, 0);
+
+        // Reset any translation on cards
+        for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+            View card = holder.cardsRow.getChildAt(i);
+            card.setTranslationX(0);
+            card.setScaleX(1.0f);
+            card.setScaleY(1.0f);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                card.setTranslationZ(0);
+            }
+        }
+
+        holder.editBtn.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+        currentEditingHolder = null;
+    }
+
+    private void updateRowNavButtons(RowEditHolder holder) {
+        if (holder == null || rowsContainer == null) return;
+        int idx = rowsContainer.indexOfChild(holder.rowLayout);
+        int count = rowsContainer.getChildCount();
+
+        boolean canUp = idx > 0;
+        boolean canDown = idx < count - 1;
+
+        holder.upBtn.setEnabled(canUp);
+        holder.upBtn.setAlpha(canUp ? 1.0f : 0.25f);
+
+        holder.downBtn.setEnabled(canDown);
+        holder.downBtn.setAlpha(canDown ? 1.0f : 0.25f);
+    }
+
+    private void moveRowUp(RowEditHolder holder) {
+        if (holder == null || rowsContainer == null || currentEditingHolder != holder) return;
+        int idx = rowsContainer.indexOfChild(holder.rowLayout);
+        if (idx > 0) {
+            rowsContainer.removeView(holder.rowLayout);
+            rowsContainer.addView(holder.rowLayout, idx - 1);
+            updateRowNavButtons(holder);
+            saveCurrentRowOrder();
+            holder.rowLayout.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+    }
+
+    private void moveRowDown(RowEditHolder holder) {
+        if (holder == null || rowsContainer == null || currentEditingHolder != holder) return;
+        int idx = rowsContainer.indexOfChild(holder.rowLayout);
+        if (idx < rowsContainer.getChildCount() - 1) {
+            rowsContainer.removeView(holder.rowLayout);
+            rowsContainer.addView(holder.rowLayout, idx + 1);
+            updateRowNavButtons(holder);
+            saveCurrentRowOrder();
+            holder.rowLayout.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+    }
+
+    private void saveCurrentRowOrder() {
+        if (rowsContainer == null || activity == null) return;
+        List<String> order = new ArrayList<>();
+        for (int i = 0; i < rowsContainer.getChildCount(); i++) {
+            View child = rowsContainer.getChildAt(i);
+            Object tag = child.getTag();
+            if (tag instanceof RowEditHolder) {
+                order.add(((RowEditHolder) tag).categoryTitle);
+            } else if (tag instanceof String) {
+                order.add((String) tag);
+            }
+        }
+        AppCatalog.saveRowOrder(activity, order);
     }
 
     private boolean isPointNearView(View view, float rawX, float rawY, int buffer) {
@@ -1100,6 +1556,9 @@ public class MenuOverlayView {
     public void hideLauncher() {
         if (!isLauncherOpen) return;
         isLauncherOpen = false;
+        if (currentEditingHolder != null) {
+            exitEditMode(true);
+        }
         handler.removeCallbacks(clockRunnable);
         if (launcherRoot != null) launcherRoot.setVisibility(View.GONE);
         if (launcherScrimView != null) launcherScrimView.setVisibility(View.GONE);
@@ -1186,6 +1645,12 @@ public class MenuOverlayView {
         rightMarginButton = null;
         rightMarginCircle = null;
         rightMarginDrawable = null;
+        rowsContainer = null;
+        if (currentEditingHolder != null) {
+            exitEditMode(true);
+        }
+        currentEditingHolder = null;
+        activity = null;
     }
 
     /**

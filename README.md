@@ -126,8 +126,11 @@ From the repository root:
 
 | Control | Short Tap Action | Long-Press Action |
 |---|---|---|
-| **App / Site Card** *(Launcher)* | Launch the selected web app or game | **Long press (500ms):** Open Site Settings to configure persistent User-Agent (`🖥`/`📱`) and Right Margin (`0dp` / `106dp` / custom) |
-| **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
+| **App / Site Card** *(Launcher)* | Launch the selected web app or game | **Long press (500ms):** Open Site Settings dialog to edit persistent User-Agent (`🖥`/`📱`) and Right Margin (`0dp` / `106dp` / custom). |
+| **`[ ✎ Edit ]` / `[ ✓ Save ]`** *(Launcher Row Header)* | Toggle Edit Mode for this category row. In edit mode, enables horizontal card dragging and reveals row navigation controls. Tap `[ ✓ Save ]` to persist custom card and row orders. | — |
+| **`[ ▲ ]` / `[ ▼ ]`** *(Launcher Edit Mode)* | Move active category row up or down in the launcher with instant layout reordering and persistent saving | — |
+| **Card Dragging** *(Launcher Edit Mode)* | Touch and drag any card horizontally to reorder apps within the row with smooth displacement animations and auto-scrolling | — |
+| **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher (or exit Edit Mode if active) | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button) | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |

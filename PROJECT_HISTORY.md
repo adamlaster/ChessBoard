@@ -707,6 +707,32 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 37: Dedicated Launcher Row & Card Edit Mode with Horizontal Drag Reordering and [▲] / [▼] Row Navigation
+1. **Dedicated Per-Row Edit Mode Engine:**
+   - **User Problem Addressed:** Long-press + immediate vertical dragging gesture disambiguation on a large touchscreen tabletop proved finicky and conflicted with horizontal scrolling and site settings.
+   - **Header Edit Toggle (`[ ✎ Edit ]` / `[ ✓ Save ]`):** Added a dedicated edit button to each category row header:
+     - Tapping `[ ✎ Edit ]` activates Edit Mode for that specific row, displaying a vibrant green `[ ✓ Save ]` button (`#143E26` background, `#40C057` border), a warm amber `⠿ Drag cards to reorder` status hint, row navigation buttons (`[ ▲ ]` / `[ ▼ ]`), and highlighting the active row with a `#4C6EF5` boundary.
+     - Automatically exits and saves any previously editing row when entering edit mode on another row.
+2. **Row Navigation (`[ ▲ ]` / `[ ▼ ]`):**
+   - Added Up/Down arrow buttons to the header during edit mode to immediately shift the entire category row up or down in `rowsContainer`.
+   - Snappy layout re-indexing with dynamic button disabling/dimming at bounds (`idx == 0` or `idx == count - 1`), instant `SharedPreferences` persistence (`launcher_row_order`), and virtual key haptic feedback.
+3. **Horizontal Card Drag Reordering:**
+   - In edit mode, standard tap-to-launch and 500ms long-press site settings dialog are disabled.
+   - Touching and dragging any card horizontally lifts the card with elevation and amber highlight (`#FAB005`), dynamically sliding sibling cards left or right to make room.
+   - Releasing snaps the card smoothly to its new slot, re-indexes the card in `cardsRow`, and emits confirmation haptics.
+   - Automatic edge scrolling for `HorizontalScrollView` when dragging cards near screen edges.
+4. **Persistent Order Architecture (`AppCatalog.java`):**
+   - Implemented `getOrderedCategories(Context)` and `saveRowOrder(Context, List<String>)` for category row ordering.
+   - Implemented `getOrderedSitesForCategory(Context, CategoryEntry)` and `saveSitesOrderForCategory(Context, String, List<String>)` for per-category app card ordering.
+   - Auto-saves all changes on `[ ✓ Save ]` tap, deadspace tap, or when launcher is closed or destroyed.
+5. **Deadspace Protection:**
+   - Header buttons added to `protectedHeaderViews` to protect from accidental dismissal.
+   - Tapping deadspace while a row is in edit mode exits edit mode and saves changes instead of dismissing the entire launcher.
+6. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR and deployed build to Board at `10.0.0.65`.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

@@ -1,7 +1,13 @@
 package com.lastersoft.godotwebview;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Catalog of primary chess platforms and categorized extra web applications for ChessBoard.
@@ -95,6 +101,125 @@ public final class AppCatalog {
             total += category.sites.size();
         }
         return total;
+    }
+
+    public static final String PREF_ROW_ORDER = "launcher_row_order";
+
+    /**
+     * Returns the categories in user-customized order, falling back to default ALL_CATEGORIES.
+     * Automatically appends any newly added categories that were not present in saved order.
+     */
+    public static List<CategoryEntry> getOrderedCategories(Context context) {
+        if (context == null) return ALL_CATEGORIES;
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        String rawOrder = prefs.getString(PREF_ROW_ORDER, null);
+        if (rawOrder == null || rawOrder.trim().isEmpty()) {
+            SharedPreferences legacyPrefs = context.getSharedPreferences(UserAgentManager.LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+            rawOrder = legacyPrefs.getString(PREF_ROW_ORDER, null);
+        }
+        if (rawOrder == null || rawOrder.trim().isEmpty()) {
+            return ALL_CATEGORIES;
+        }
+
+        String[] titles = rawOrder.split(",");
+        List<CategoryEntry> result = new ArrayList<>();
+        Set<String> added = new HashSet<>();
+
+        for (String title : titles) {
+            String clean = title.trim();
+            for (CategoryEntry cat : ALL_CATEGORIES) {
+                if (cat.title.equalsIgnoreCase(clean) && !added.contains(cat.title)) {
+                    result.add(cat);
+                    added.add(cat.title);
+                    break;
+                }
+            }
+        }
+
+        // Add any categories that were not in the saved list (forward compatibility)
+        for (CategoryEntry cat : ALL_CATEGORIES) {
+            if (!added.contains(cat.title)) {
+                result.add(cat);
+                added.add(cat.title);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Persists the ordered category titles in SharedPreferences.
+     */
+    public static void saveRowOrder(Context context, List<String> order) {
+        if (context == null || order == null || order.isEmpty()) return;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < order.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(order.get(i).trim());
+        }
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(PREF_ROW_ORDER, sb.toString()).apply();
+    }
+
+    public static final String PREF_CAT_SITES_PREFIX = "cat_sites_order_";
+
+    /**
+     * Returns the list of SiteEntry items for a category in user-customized order.
+     * Automatically appends any newly added sites that were not present in saved order.
+     */
+    public static List<SiteEntry> getOrderedSitesForCategory(Context context, CategoryEntry category) {
+        if (context == null || category == null || category.sites == null) {
+            return category != null ? category.sites : new ArrayList<>();
+        }
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        String prefKey = PREF_CAT_SITES_PREFIX + category.title;
+        String rawOrder = prefs.getString(prefKey, null);
+        if (rawOrder == null || rawOrder.trim().isEmpty()) {
+            SharedPreferences legacyPrefs = context.getSharedPreferences(UserAgentManager.LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+            rawOrder = legacyPrefs.getString(prefKey, null);
+        }
+        if (rawOrder == null || rawOrder.trim().isEmpty()) {
+            return category.sites;
+        }
+
+        String[] names = rawOrder.split(",");
+        List<SiteEntry> result = new ArrayList<>();
+        Set<String> added = new HashSet<>();
+
+        for (String name : names) {
+            String clean = name.trim();
+            for (SiteEntry site : category.sites) {
+                if (site.name.equalsIgnoreCase(clean) && !added.contains(site.name)) {
+                    result.add(site);
+                    added.add(site.name);
+                    break;
+                }
+            }
+        }
+
+        // Add any sites that were not in the saved list (e.g. newly added sites)
+        for (SiteEntry site : category.sites) {
+            if (!added.contains(site.name)) {
+                result.add(site);
+                added.add(site.name);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Persists the ordered site names for a specific category in SharedPreferences.
+     */
+    public static void saveSitesOrderForCategory(Context context, String categoryTitle, List<String> siteNames) {
+        if (context == null || categoryTitle == null || siteNames == null || siteNames.isEmpty()) return;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < siteNames.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append(siteNames.get(i).trim());
+        }
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(PREF_CAT_SITES_PREFIX + categoryTitle, sb.toString()).apply();
     }
 
     private AppCatalog() {}

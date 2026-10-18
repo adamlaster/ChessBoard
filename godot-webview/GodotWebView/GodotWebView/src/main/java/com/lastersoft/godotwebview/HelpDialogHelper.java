@@ -147,8 +147,8 @@ public final class HelpDialogHelper {
         // --- SECTION 2: MENU CONTROLS ROW ---
         addSectionHeader(content, "🎛️ Bottom Menu Controls Row", menuDensity);
         addItemRow(content,
-                "App Launcher & Categories",
-                "Tap any primary site button (Chess.com, Lichess, etc.) or expand the Extra Apps category accordion to switch web apps instantly.",
+                "App Launcher & Custom Reordering",
+                "• Tap any app card to launch it.\n• Long press card (500ms): Opens Site Settings to configure User-Agent & Right Margin.\n• [✎ Edit] / [✓ Save] button: Tap to enter edit mode, allowing you to drag cards horizontally to reorder them and use [▲] / [▼] to move that entire category row up/down. Tap [✓ Save] to persist your layout.",
                 menuDensity);
         addItemRow(content,
                 "⬅  Back",
