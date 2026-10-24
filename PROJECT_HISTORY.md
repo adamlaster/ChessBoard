@@ -834,3 +834,79 @@ To avoid information duplication, the live user-facing specifications are mainta
        - **Default User-Agent Preference (Optional):** Per-site flag to remember whether a site prefers Mobile (`📱`) or Desktop (`🖥`) mode.
   3. **Management / Deletion:**
      - Long-pressing any custom app or category button opens a quick native confirmation dialog to **Edit** or **Delete** the entry, or **Reset to Defaults**.
+
+
+---
+
+### 📌 Planned Feature: Multi-Tab Application Architecture & Background Lifecycle Pausing
+* **Goal:** Enable users to run multiple web applications concurrently (e.g. active Chess match in Tab 1, Spotify/YouTube background music in Tab 2, analysis board or community chat in Tab 3) with tabletop switching controls and aggressive background resource throttling to maintain 60 FPS tabletop performance on Board hardware.
+* **Proposed Technical Design:**
+  1. **Unified Multi-Tab Manager (`TabManager.java`):**
+     - Generalize `SecondaryTabManager` into a unified tab orchestration engine managing an ordered list of `TabEntry` models:
+       ```java
+       public class TabEntry {
+           public final String id;
+           public String url;
+           public String title;
+           public String siteKey;
+           public String icon;
+           public WebView webView;
+           public Bundle savedState;       // Serialized state when hibernated
+           public boolean isHibernated;     // True if native WebView was destroyed to save RAM
+           public long lastActiveTimestamp;
+       }
+       ```
+     - Handles tab lifecycle: `createTab(url, openInBackground)`, `switchToTab(id)`, `closeTab(id)`, and `reorderTabs(from, to)`.
+     - Automatically routes per-tab User-Agent modes, margin states (`None`, `Right`, `All 4`), and zoom levels when switching active tabs.
+  2. **Aggressive Background Tab Pausing & Performance Engine:**
+     - **Execution & Animation Freeze:** When a tab transitions to the background, immediately invoke `webView.onPause()` to halt JavaScript timers, `requestAnimationFrame` rendering loops, CSS animations, WebGL draw calls, and video decoding.
+     - **GPU Hardware Layer Release:** Set background WebViews to `webView.setVisibility(View.GONE)` and `webView.setLayerType(View.LAYER_TYPE_NONE, null)` to immediately release costly GPU texture memory back to the Android system.
+     - **LRU Tab Hibernation (Zero-OOM Safety Valve):** On memory-constrained devices, enforce a maximum active WebView threshold (e.g., 3-4 concurrent WebViews). If a new tab is spawned, the Least Recently Used (LRU) background tab serializes its navigation history via `webView.saveState(bundle)` and destroys its native `WebView` (`destroy()`). When the user switches back, `TabManager` transparently re-instantiates the `WebView` and restores its exact state via `webView.restoreState(bundle)`.
+     - **Audio Background Exception:** Provide an optional per-site flag (or background media detection) allowing audio playback tabs (e.g. YouTube, Spotify) to continue background audio without visual rendering overhead.
+  3. **Tabletop Tab Switcher UI & Ergonomics:**
+     - **Browser Controls Rail Switcher Button (`🗂️` / `⧉`):** Add a dedicated tab switcher icon to the persistent right-docked rail showing the open tab count (e.g. `[ 🗂️ 3 ]`). Tapping opens a sleek acrylic slide-out Tab Tray docked alongside the browser.
+     - **Tab Switcher Tray:** Displays touch-friendly vertical tab cards featuring:
+       - App Icon + Page Title + Hostname badge
+       - Active indicator pulse
+       - Quick Close button (`✕`)
+       - `[ ＋ Open New App ]` action button leading directly to the Launcher
+     - **Launcher Open Indicators:** In the Launcher grid, cards for currently running applications display a subtle glowing badge (`● OPEN`). Tapping an already-open card instantly switches directly to its live tab without reloading or resetting game state.
+     - **Card Drag Swiping:** In the Tab Switcher shelf, horizontal card flings dismiss/close tabs with smooth velocity animations.
+
+
+---
+
+### 📌 Feasibility Study & Architecture: Split-Screen Dual-App Tabletop Mode
+* **Goal:** Allow two web applications to run side-by-side (or top-and-bottom in portrait) simultaneously on the tabletop screen (e.g. Chess match on the left + YouTube/Sports stream or companion game on the right) with concurrent playback, independent touch routing, audio focus switching/muting, and adjustable split ratio.
+* **Feasibility Analysis & Technical Findings:**
+  1. **Dual Hardware-Accelerated WebViews (100% Feasible):**
+     - Android Chromium `WebView` fully supports multiple simultaneous hardware-accelerated View instances in a single activity.
+     - View layout can be structured as a split container (`LinearLayout` with horizontal/vertical orientation and layout weights `weight="0.5"`, or two dynamic `FrameLayout` panes).
+     - Benchmarking on Android rockchip/ARM64 SoCs shows two concurrent WebViews render smoothly at 60 FPS as long as background inactive tabs remain paused.
+  2. **Concurrent Media Playback & Hardware Decoders (Feasible with Codec Considerations):**
+     - Modern Android SoCs (including the Board's rockchip architecture) have multi-stream hardware VPU video decoders capable of decoding at least two 1080p/720p streams simultaneously.
+     - `WebSettings.setMediaPlaybackRequiresUserGesture(false)` (already active in ChessBoard) allows both streams to play concurrently without touch-blocking.
+  3. **Audio Routing & Audio Switching (Feasible via DOM/Audio Bridge):**
+     - **Default OS Behavior:** Android's audio subsystem mixes audio from both WebViews together by default (e.g. game move sound effects play over background YouTube audio).
+     - **Audio Focus / Pane Muting:** Because Chromium shares the process audio session, per-WebView audio switching is implemented via a lightweight JavaScript injection bridge:
+       ```javascript
+       // Mute / Unmute specific pane
+       function setPaneMuted(muted) {
+           document.querySelectorAll('video, audio').forEach(el => { el.muted = muted; });
+       }
+       // Observe dynamically spawned media elements
+       new MutationObserver((mutations) => {
+           document.querySelectorAll('video, audio').forEach(el => { if (window._forceMuted) el.muted = true; });
+       }).observe(document.body, { childList: true, subtree: true });
+       ```
+     - **UI Control:** Each pane header or the controls rail can feature an audio toggle (`🔊` / `🔇`) allowing instant one-tap muting or soloing of either pane.
+  4. **Multi-Touch Isolation (100% Feasible):**
+     - Android's native touch dispatcher isolates multi-touch pointer IDs based on view hit bounds. Player 1 interacting with Pane 1 (moving chess pieces or drawing arrows) will not conflict with Player 2 interacting with Pane 2.
+  5. **Tabletop Margins & Hardware Cutout Alignment:**
+     - In Landscape split (Left / Right):
+       - **Left Pane:** Occupies `0` to `width / 2`. Has zero obstruction from the Board OS button, allowing full `0dp` edge-to-edge content.
+       - **Right Pane:** Occupies `width / 2` to `width`. Houses the Board OS button in its top-right corner, applying the `106dp` gutter clearance or `All 4` inset margins independently.
+  6. **Proposed Ergonomics & Split Layout Options:**
+     - **Preset Layouts:** `50 / 50` (equal split), `70 / 30` (dominant game + companion media), `30 / 70` (dominant media + companion app).
+     - **Draggable Center Divider:** A centered divider bar with a touch grip pill (`||`) allowing live dragging to resize pane proportions.
+     - **Split Toggle in Controls Rail:** Add a Split Screen button (`◫` / `◫ Split`) in the Browser Controls rail to select a second app from the Launcher to enter split mode.
