@@ -52,6 +52,7 @@ public class GodotWebView extends GodotPlugin {
     private final SecondaryTabManager secondaryTabManager = new SecondaryTabManager();
     private final FloatingDismissButton floatingDismissButton = new FloatingDismissButton();
     private final MenuOverlayView menuOverlayView = new MenuOverlayView();
+    private final SplitScreenManager splitScreenManager = new SplitScreenManager();
 
     private FrameLayout layout = null;
     private WebView webView = null;
@@ -62,6 +63,7 @@ public class GodotWebView extends GodotPlugin {
     private int currentSiteMarginDp = 0;
     private int currentMarginState = SiteSettingsDialogHelper.MARGIN_MODE_NONE;
     private boolean isExplicitNavigation = false;
+    private boolean isSelectingSplitApp = false;
 
     private String getActiveSiteKey() {
         String currentUrl = null;
@@ -311,6 +313,7 @@ public class GodotWebView extends GodotPlugin {
                     displayController.applyZoom(webView, secondaryTabManager.getWebView());
                     menuOverlayView.updateBackButtonState(canGoBack());
                     ChessTouchHelper.injectTouchEnhancements(view, url);
+                    splitScreenManager.onPrimaryPageFinished(view);
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         CookieManager.getInstance().flush();
                     }
@@ -449,6 +452,15 @@ public class GodotWebView extends GodotPlugin {
             menuOverlayView.setup(activity, layout, uaManager, new MenuOverlayView.MenuActionListener() {
                 @Override
                 public void onSiteSelected(String siteUrl) {
+                    if (isSelectingSplitApp) {
+                        isSelectingSplitApp = false;
+                        Activity act = getActivity();
+                        float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+                        menuOverlayView.setSplitSelectionMode(false, md);
+                        hideMenu();
+                        openSplitScreen(siteUrl);
+                        return;
+                    }
                     navigateToSite(siteUrl);
                 }
 
@@ -530,6 +542,26 @@ public class GodotWebView extends GodotPlugin {
                 }
 
                 @Override
+                public void onToggleSplitScreen(boolean isLongPress) {
+                    Activity act = getActivity();
+                    float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+                    if (splitScreenManager.isSplitActive()) {
+                        if (isLongPress) {
+                            splitScreenManager.closeSplit();
+                            menuOverlayView.updateSplitScreenButtonStyle(false, md);
+                            applyMarginState(currentMarginState, currentSiteMarginDp);
+                        } else {
+                            splitScreenManager.cycleSplitPreset();
+                            updateProgressBarForSplit();
+                        }
+                    } else {
+                        isSelectingSplitApp = true;
+                        menuOverlayView.setSplitSelectionMode(true, md);
+                        showLauncher();
+                    }
+                }
+
+                @Override
                 public void onRotateScreen(boolean isLongPressResetLandscape) {
                     Runnable postRotate = () -> {
                         displayController.schedulePostRotateRefresh(
@@ -555,6 +587,12 @@ public class GodotWebView extends GodotPlugin {
 
                 @Override
                 public void onCloseMenu() {
+                    if (isSelectingSplitApp) {
+                        isSelectingSplitApp = false;
+                        Activity act = getActivity();
+                        float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+                        menuOverlayView.setSplitSelectionMode(false, md);
+                    }
                     hideMenu();
                 }
 
@@ -566,6 +604,20 @@ public class GodotWebView extends GodotPlugin {
                 @Override
                 public void onOpenLauncher() {
                     showLauncher();
+                }
+
+                @Override
+                public void onBrowserControlsVisibilityChanged(boolean visible) {
+                    if (splitScreenManager != null && splitScreenManager.isSplitActive()) {
+                        splitScreenManager.setControlsVisible(visible);
+                    }
+                }
+
+                @Override
+                public void onThemeChanged(ThemeManager.Theme newTheme) {
+                    if (splitScreenManager != null) {
+                        splitScreenManager.applyTheme(newTheme);
+                    }
                 }
 
                 @Override
@@ -595,6 +647,10 @@ public class GodotWebView extends GodotPlugin {
                     int rightMarginPx = (currentMarginState == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT || currentMarginState == SiteSettingsDialogHelper.MARGIN_MODE_ALL) ? marginPx : 0;
                     int bottomMarginPx = (currentMarginState == SiteSettingsDialogHelper.MARGIN_MODE_ALL) ? marginPx : 0;
                     floatingDismissButton.pinToBottomRight(w - rightMarginPx, h - bottomMarginPx);
+                    if (splitScreenManager.isSplitActive()) {
+                        splitScreenManager.updateLayout(w, h, 0, currentMarginState, currentSiteMarginDp);
+                        updateProgressBarForSplit();
+                    }
                     if (oldW > 0 && oldH > 0) {
                         if (menuOverlayView.isLauncherOpen()) {
                             menuOverlayView.hideLauncher();
@@ -665,6 +721,9 @@ public class GodotWebView extends GodotPlugin {
         if (secondaryTabManager.isOpen()) {
             return secondaryTabManager.canGoBack();
         }
+        if (splitScreenManager.isSplitActive() && splitScreenManager.getSecondaryWebView() != null && splitScreenManager.getSecondaryWebView().canGoBack()) {
+            return true;
+        }
         return (customView != null) || (webView != null && webView.canGoBack());
     }
 
@@ -674,6 +733,8 @@ public class GodotWebView extends GodotPlugin {
         } else if (customView != null) {
             exitCustomFullscreen();
             hideMenu();
+        } else if (splitScreenManager.isSplitActive() && splitScreenManager.getSecondaryWebView() != null && splitScreenManager.getSecondaryWebView().canGoBack()) {
+            splitScreenManager.getSecondaryWebView().goBack();
         } else if (webView != null && webView.canGoBack()) {
             webView.goBack();
         }
@@ -694,6 +755,10 @@ public class GodotWebView extends GodotPlugin {
             float menuDensity = density * MenuOverlayView.MENU_SCALE;
             menuOverlayView.updateDesktopButtonStyle(uaManager, menuDensity);
             menuOverlayView.updateRightMarginButtonStyle(currentMarginState, menuDensity);
+            menuOverlayView.updateSplitScreenButtonStyle(splitScreenManager.isSplitActive(), menuDensity);
+        }
+        if (splitScreenManager.isSplitActive()) {
+            splitScreenManager.setControlsVisible(true);
         }
         menuOverlayView.showBrowserControls(layout, canGoBack());
     }
@@ -711,6 +776,9 @@ public class GodotWebView extends GodotPlugin {
     }
 
     private void hideMenu() {
+        if (splitScreenManager.isSplitActive()) {
+            splitScreenManager.setControlsVisible(false);
+        }
         menuOverlayView.hideMenu();
         if (secondaryTabManager.isOpen()) {
             floatingDismissButton.showDismissStyle();
@@ -737,6 +805,13 @@ public class GodotWebView extends GodotPlugin {
         if (activity == null || layout == null) return;
         float density = activity.getResources().getDisplayMetrics().density;
         float menuDensity = density * MenuOverlayView.MENU_SCALE;
+
+        if (splitScreenManager.isSplitActive()) {
+            splitScreenManager.updateLayout(layout.getWidth(), layout.getHeight(), 0, marginState, marginDp);
+            updateProgressBarForSplit();
+            menuOverlayView.updateRightMarginButtonStyle(marginState, menuDensity);
+            return;
+        }
 
         int effectiveDp = (marginDp > 0) ? marginDp : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
         int px = (int) (effectiveDp * density);
@@ -809,6 +884,15 @@ public class GodotWebView extends GodotPlugin {
     }
 
     private void navigateToSite(String siteUrl) {
+        if (splitScreenManager.isSplitActive()) {
+            splitScreenManager.closeSplit();
+            Activity act = getActivity();
+            if (act != null) {
+                float d = act.getResources().getDisplayMetrics().density;
+                float md = d * MenuOverlayView.MENU_SCALE;
+                menuOverlayView.updateSplitScreenButtonStyle(false, md);
+            }
+        }
         closeSecondTab();
         exitCustomFullscreen();
         Activity activity = getActivity();
@@ -831,6 +915,67 @@ public class GodotWebView extends GodotPlugin {
             webView.loadUrl(targetUrl);
         }
         hideMenu();
+    }
+
+    private void openSplitScreen(String siteUrl) {
+        closeSecondTab();
+        exitCustomFullscreen();
+        Activity activity = getActivity();
+        if (activity == null || layout == null || webView == null) return;
+        float density = activity.getResources().getDisplayMetrics().density;
+        float menuDensity = density * MenuOverlayView.MENU_SCALE;
+
+        floatingDismissButton.hide();
+
+        splitScreenManager.openSplit(
+                activity, layout, webView, progressBar, siteUrl, uaManager, density,
+                new SplitScreenManager.SplitScreenCallback() {
+                    @Override
+                    public void onSplitClosed() {
+                        Activity act = getActivity();
+                        if (act != null) {
+                            float d = act.getResources().getDisplayMetrics().density;
+                            float md = d * MenuOverlayView.MENU_SCALE;
+                            menuOverlayView.updateSplitScreenButtonStyle(false, md);
+                            applyMarginState(currentMarginState, currentSiteMarginDp);
+                        }
+                    }
+
+                    @Override
+                    public void onPanesSwapped(boolean isPrimaryOnLeft) {
+                        updateProgressBarForSplit();
+                    }
+
+                    @Override
+                    public void onSplitRatioChanged(float ratio) {
+                        updateProgressBarForSplit();
+                    }
+                }
+        );
+
+        menuOverlayView.updateSplitScreenButtonStyle(true, menuDensity);
+    }
+
+    private void updateProgressBarForSplit() {
+        if (progressBar == null || !splitScreenManager.isSplitActive() || layout == null) return;
+        int totalWidth = layout.getWidth();
+        if (totalWidth <= 0) return;
+        float density = (getActivity() != null) ? getActivity().getResources().getDisplayMetrics().density : 1.0f;
+        float menuDensity = density * MenuOverlayView.MENU_SCALE;
+        int dividerWidth = (int) (12 * menuDensity);
+
+        int primaryWidth = (int) ((totalWidth - dividerWidth) * splitScreenManager.getSplitRatio());
+        int secondaryWidth = totalWidth - dividerWidth - primaryWidth;
+
+        int leftPaneWidth = splitScreenManager.isPrimaryOnLeft() ? primaryWidth : secondaryWidth;
+        int dividerLeft = leftPaneWidth;
+
+        FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) progressBar.getLayoutParams();
+        if (flp != null) {
+            flp.width = primaryWidth;
+            flp.leftMargin = splitScreenManager.isPrimaryOnLeft() ? 0 : (dividerLeft + dividerWidth);
+            progressBar.setLayoutParams(flp);
+        }
     }
 
     private void exitCustomFullscreen() {
@@ -861,6 +1006,7 @@ public class GodotWebView extends GodotPlugin {
     @UsedByGodot
     public void close() {
         runOnUiThread(() -> {
+            splitScreenManager.destroy(layout);
             closeSecondTab();
             floatingDismissButton.destroy();
             exitCustomFullscreen();

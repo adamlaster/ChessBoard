@@ -29,7 +29,7 @@ public class UserAgentManager {
     public static final String PREF_SITE_UA_PREFIX = "site_ua_";
 
     public static final String DESKTOP_USER_AGENT =
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
     public static final String MOBILE_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
 
@@ -167,7 +167,7 @@ public class UserAgentManager {
 
     public String getDesktopUserAgent() {
         if (defaultUserAgent != null && !defaultUserAgent.isEmpty()) {
-            return defaultUserAgent.replaceAll("\\(Linux;[^)]*\\)", "(X11; Linux x86_64)")
+            return defaultUserAgent.replaceAll("\\(Linux;[^)]*\\)", "(Windows NT 10.0; Win64; x64)")
                     .replace(" Mobile", "");
         }
         return DESKTOP_USER_AGENT;

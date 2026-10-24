@@ -223,5 +223,18 @@ public final class AppCatalog {
         prefs.edit().putString(PREF_CAT_SITES_PREFIX + categoryTitle, sb.toString()).apply();
     }
 
+    public static SiteEntry findSiteEntryByUrl(String url) {
+        if (url == null || url.isEmpty()) return null;
+        for (CategoryEntry cat : ALL_CATEGORIES) {
+            for (SiteEntry site : cat.sites) {
+                String siteKey = UserAgentManager.getSiteKey(site.url);
+                if (!siteKey.isEmpty() && url.contains(siteKey)) {
+                    return site;
+                }
+            }
+        }
+        return null;
+    }
+
     private AppCatalog() {}
 }

@@ -44,6 +44,15 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * A draggable floating **`✕`** button with idle auto-fade allows you to close the secondary tab at any time and instantly return to your active game.
 * **Chess.com Desktop Touch Ergonomics:**
   * Injects a client-side bridge into Chess.com to resolve desktop mouse-hover vs. touchscreen tap mismatches. Prevents category taps from immediately hotlinking away from your active board, opening flyout submenus ("Play Online", "Computer", etc.) on first tap, with clean outside-tap dismissal.
+* **Configurable Michigan Sports & Regional UI Themes:**
+  * Implements 6 tabletop brand themes tailored for high contrast and glare-free tabletop gaming:
+    * **University of Michigan:** Michigan Blue (`#00274C`), vibrant Maize (`#FFCB05`), and deep obsidian navy surfaces (`#001226`).
+    * **Detroit Pistons:** Royal Blue (`#1D42BA`), vibrant Red (`#ED174C`), and midnight navy surfaces (`#060C1C`).
+    * **Detroit Lions:** Honolulu Blue (`#0076B6`), vibrant Honolulu Cyan (`#00A3E0`), silver accents, and dark steel surfaces (`#030E19`).
+    * **Detroit Tigers:** Midnight Navy (`#0C2340`), vibrant Tiger Orange (`#FA4616`), and obsidian surfaces (`#020914`).
+    * **Utica Unicorns:** USPBL Unicorn Purple (`#5A2D81`), vibrant Red (`#ED1C24`), and plum surfaces (`#12061A`).
+    * **Classic Slate:** Slate Charcoal (`#121622`), Indigo (`#4C6EF5`), and Cyan (`#22B8CF`).
+  * Includes a scrollable Tabletop Theme Picker modal (`ThemePickerDialogHelper`) accessible from the Launcher header allowing instant dynamic re-theming without page reloads, persisted in `SharedPreferences`.
 * **Widevine DRM & HTML5 Fullscreen Video:**
   * Automatically grants `RESOURCE_PROTECTED_MEDIA_ID` permissions for protected streaming playback and supports native HTML5 fullscreen video surfaces.
 
@@ -82,6 +91,9 @@ ChessBoard/
             ├── WasmPatchHelper.java       # Wasm binary patcher for Chess.com bot engine OOM
             ├── HelpDialogHelper.java      # 2x modal controls & gestures guide dialog
             ├── SiteSettingsDialogHelper.java # Per-site User-Agent & custom Right Margin settings dialog
+            ├── SplitScreenManager.java    # Split-Screen dual-app tabletop subsystem & controls
+            ├── ThemeManager.java          # Dynamic UI theme tokens & persistence (U of M / Classic)
+            ├── ThemePickerDialogHelper.java # Tabletop modal theme picker dialog with preview swatches
             └── MenuOverlayView.java       # Decoupled fullscreen launcher & live browser controls rail
 ```
 
@@ -132,12 +144,17 @@ From the repository root:
 | **Card Dragging** *(Launcher Edit Mode)* | Touch and drag any card horizontally to reorder apps within the row with smooth displacement animations and auto-scrolling | — |
 | **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher (or exit Edit Mode if active) | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
 | **"CHESSBOARD" Title** *(Launcher Header)* | — | **Long press (500ms):** Open ChessBoard project GitHub repository (`https://github.com/adamlaster/ChessBoard`) |
+| **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 6 themes (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate) with instant re-theming and persistent saving | — |
+| **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
 | **`↺`** | Reload the current page live | — |
 | **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
 | **Margin (`◧` / `⧈` / `▢`)** | Cycle tabletop margins: **No margin** (`0dp` edge-to-edge) → **Right margin** (`106dp` Board clearance) → **All 4 sides** (`106dp` inset padding) | **Long press:** Save active margin mode as persistent default for active site |
+| **Split Screen (`◫`)** | Open Split Screen mode (prompts app picker from Launcher, or cycles presets `50/50` → `70/30` → `30/70` when active) | **Long press:** Close Split Screen mode and restore full screen |
+| **Split Controls Bar** *(Top Center)* | `[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]` — Visible exclusively when Browser Controls are open. One-tap audio switching between panes, pane swapping, preset cycling, and clean exit. | **Long press on audio:** Mute both panes (`NONE`) |
+| **Divider Dragging** *(Split Mode)* | Drag center divider thumb to adjust split ratio (`20%` to `80%`). Automatically presents high-performance dark themed overlay with live scaling app icons, titles, and live percentages, completely hiding WebViews for 60fps stutter-free dragging. Snaps to presets upon release. | **Double tap:** Instantly reset to balanced 50/50 split |
 | **`90°`** | Rotate screen clockwise (`0°` → `90°` → `180°` → `270°`). The Browser Controls rail remains persistent and docked across rotation without dismissing. | Reset to default Landscape (`0°`) |
 | **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |

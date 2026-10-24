@@ -26,10 +26,13 @@ flowchart TD
         Coordinator["GodotWebView.java\n(Facade & Coordinator)"]
         
         subgraph Subsystems ["Modular Subsystems"]
+            SplitScreen["SplitScreenManager.java\n(Dual App & Top Controls)"]
             Bridge["BoardBridge.java\n(Board OS Reflection)"]
             Secondary["SecondaryTabManager.java\n(Popup Tab & Multi-Window)"]
             DismissBtn["FloatingDismissButton.java\n(Draggable ✕ with Auto-Fade)"]
             MenuCard["MenuOverlayView.java\n(2x Scaled Tabletop Menu)"]
+            ThemeMgr["ThemeManager.java\n(Michigan & Classic Themes)"]
+            ThemePicker["ThemePickerDialogHelper.java\n(Modal Theme Picker)"]
             UA["UserAgentManager.java\n(Desktop/Mobile UA & Prefs)"]
             SiteSettings["SiteSettingsDialogHelper.java\n(Per-Site UA & Margin)"]
             Display["DisplayController.java\n(Zoom & 4-Way 90° Rotation)"]
@@ -52,9 +55,11 @@ flowchart TD
     
     RootScene --> Coordinator
     Coordinator --> Bridge
+    Coordinator --> SplitScreen
     Coordinator --> Secondary
     Coordinator --> DismissBtn
     Coordinator --> MenuCard
+    Coordinator --> ThemeMgr
     Coordinator --> UA
     Coordinator --> SiteSettings
     Coordinator --> Display
@@ -62,6 +67,9 @@ flowchart TD
     Coordinator --> TouchHelper
     Coordinator --> WasmPatch
     Coordinator --> HelpDialog
+    MenuCard --> ThemePicker
+    ThemeMgr -. Applies Theme .-> MenuCard
+    ThemeMgr -. Applies Theme .-> SplitScreen
 
     Secondary --> PopupWeb
     Coordinator --> PrimaryWeb
@@ -77,11 +85,14 @@ flowchart TD
 
 ## 2. Core Architectural Subsystems
 
-The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 12 cohesive classes:
+The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 15 cohesive classes:
 
 | Class | Responsibility | Key Collaborators / Dependencies |
 |---|---|---|
 | [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_launcher`, `show_browser_controls`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
+| [`SplitScreenManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SplitScreenManager.java) | **Split-Screen Dual-App Tabletop Subsystem:** Manages concurrent, hardware-accelerated dual WebViews (Primary & Secondary), draggable center divider with snap presets (`50/50`, `70/30`, `30/70`), DOM media audio focus bridge with A/B switching and long-press mute-all, themed obsidian drag overlay with live GPU-scaled cards, and top-docked unified split controls bar visible only when Browser Controls are open. | `GodotWebView`, `MenuOverlayView`, `ThemeManager`, `UserAgentManager`, `AppCatalog`, `ChessTouchHelper`, `WasmPatchHelper` |
+| [`ThemeManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemeManager.java) | **Theme System & Palette Tokens:** Manages dynamic UI theme presets (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate), palette color tokens (cutout background, header text, card surfaces, borders, dividers, drag overlays, and active audio accents), and persistent theme configuration in `SharedPreferences` (`chessboard_prefs` / `app_theme_id`). | `SharedPreferences`, `MenuOverlayView`, `SplitScreenManager` |
+| [`ThemePickerDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemePickerDialogHelper.java) | **Tabletop Theme Picker Modal:** 2x tabletop-scaled acrylic modal dialog allowing the user to select between 6 Michigan sports & regional themes with live preview swatches, active selection badge, and immediate dynamic re-theming without reloading pages. | `ThemeManager`, `AlertDialog`, Android UI |
 | [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"Launcher"` and `"Browser Controls"` action context fallback, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
 | [`SecondaryTabManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SecondaryTabManager.java) | **Multi-Window Popup Subsystem:** Manages the isolated popup `WebView` container (`popupContainer`), progress bar, and WebChromeClient / WebViewClient event hooks. Strips `X-Requested-With` via `androidx.webkit`, catches `<a target="_blank">`, `window.open()`, and outbound links clicked during a chess game without reloading or disconnecting the primary game underneath, and reroutes any stray OAuth popups back to the primary WebView via `onAuthRedirect`. | `FloatingDismissButton`, `MenuOverlayView`, `UserAgentManager`, `DisplayController`, `ChessTouchHelper`, `WasmPatchHelper`, `androidx.webkit` |
 | [`FloatingDismissButton.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/FloatingDismissButton.java) | **Ergonomic Floating Controls:** 58dp circular draggable action button (`✕`). Uses `ViewConfiguration.getScaledTouchSlop()` to differentiate taps from drags, clamps movement within container margins, implements a 4-second idle auto-fade (`35%` opacity) to prevent obscuring game content, and triggers secondary tab teardown on tap. | Android `MotionEvent`, `FrameLayout` |
@@ -103,35 +114,48 @@ All views are hosted within a single root `FrameLayout` added to the Godot `Acti
 ```text
 Root FrameLayout (Activity Root)
  │
- ├── [Layer 0] Primary WebView (Match Parent, Edge-to-Edge)
- │     └── Hardware-accelerated Chromium rendering surface (active game) running full screen
+ ├── [Layer 0] Primary WebView (Match Parent or Split Pane Width, Edge-to-Edge)
+ │     └── Hardware-accelerated Chromium rendering surface (active game)
  │
  ├── [Layer 1] Primary ProgressBar (Top, 4dp height, #43A047 green)
  │     └── Visible only during page loading (WebChromeClient.onProgressChanged)
  │
- ├── [Layer 2] Secondary Tab Container (FrameLayout, popupContainer, Edge-to-Edge)
- │     │   (Injected below Scrim & Menu so menus can open on top of popups)
+ ├── [Layer 2] Split Screen Secondary Container (FrameLayout, secondaryContainer)
+ │     ├── Secondary WebView (Hardware-accelerated concurrent app)
+ │     ├── Secondary ProgressBar (Top, 4dp, #22B8CF cyan)
+ │     └── Secondary customView (Fullscreen video playback surface, if active)
+ │
+ ├── [Layer 3] Split Screen Drag Overlay (FrameLayout, dragOverlayView)
+ │     └── Deep obsidian curtain (#F80A0D16) completely hiding WebViews during divider drag; hosts live-scaling Left & Right cards with app badges, titles, percentages, and wireframe skeleton bars for 60 FPS stutter-free dragging
+ │
+ ├── [Layer 4] Split Screen Center Divider (LinearLayout, dividerView)
+ │     └── Centered draggable divider bar with pill handle (double-tap resets to 50/50, drag adjusts ratio 20%..80%, snaps on release)
+ │
+ ├── [Layer 5] Split Controls Bar (LinearLayout, splitControlBar)
+ │     └── Integrated horizontal controls ([ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]) docked top-center, visible exclusively when Browser Controls are open (zero canvas clutter during browsing)
+ │
+ ├── [Layer 6] Secondary Tab Container (FrameLayout, popupContainer, for popup links)
  │     ├── Secondary popupWebView (Match Parent)
  │     ├── Secondary popupProgressBar (Top, 4dp)
  │     └── popupCustomView (Fullscreen video playback surface, if active)
  │
- ├── [Layer 3] Scrim Layer (launcherScrimView)
+ ├── [Layer 7] Scrim Layer (launcherScrimView)
  │     └── Dismisses Launcher on outside tap (touch passthrough in top-right cutout); Browser Controls rail operates without a scrim so web touches pass directly to the active page
  │
- ├── [Layer 4] Fullscreen Launcher (FrameLayout, launcherRoot)
+ ├── [Layer 8] Fullscreen Launcher (FrameLayout, launcherRoot)
  │     ├── CutoutBackgroundDrawable with inverted fillet notch in top-right corner
  │     ├── launcherContent (LinearLayout, VERTICAL: headerBar, divider, 4 categorized card rows)
  │     │     └── Each row header features: Title, App Count Badge, [▲] [▼] row navigation buttons, [ ✎ Edit ] / [ ✓ Save ] toggle, and HorizontalScrollView with reorderable app cards
  │     ├── Deadspace hit-testing engine (near-miss protection: 36px card buffer, 18px header buffer)
  │     └── launcherCloseBtn (✕, topMargin = cutoutSize + 24dp + 6dp, aligned with controlsRail close button)
  │
- ├── [Layer 5] Browser Controls Rail (LinearLayout, controlsRail)
- │     └── Slim vertical toolbar docked on right edge directly below Board OS button (topMargin = cutoutSize + 24dp) with 9 controls: Close (✕), Back, Zoom In, Zoom Out, Refresh, Desktop UA, 3-state Margin (None / Right / All 4 Sides), Rotate 90°, and Launcher switch. Persists during live browsing and across screen rotations without dismissing until explicitly closed via ✕
+ ├── [Layer 9] Browser Controls Rail (LinearLayout, controlsRail)
+ │     └── Slim vertical toolbar docked on right edge directly below Board OS button (topMargin = cutoutSize + 24dp) with 10 controls: Close (✕), Back, Zoom In, Zoom Out, Refresh, Desktop UA, 3-state Margin (None / Right / All 4 Sides), Split Screen (◫), Rotate 90°, and Launcher switch. Persists during live browsing and across screen rotations without dismissing until explicitly closed via ✕
  │
- ├── [Layer 6] Floating Dismiss Button (Button, floatingButton)
- │     └── 58dp circular button ("✕" with red border when secondary tab is open)
+ ├── [Layer 10] Floating Dismiss Button (Button, floatingButton)
+ │     └── 58dp circular button ("✕" with red border when secondary popup tab is open)
  │
- └── [Layer 7] Primary customView (FrameLayout, if active)
+ └── [Layer 11] Primary customView (FrameLayout, if active)
        └── Fullscreen video surface for primary WebView (brings scrim/card/button to front)
 ```
 

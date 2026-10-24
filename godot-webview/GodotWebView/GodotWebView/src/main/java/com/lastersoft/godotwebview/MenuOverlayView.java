@@ -61,10 +61,13 @@ public class MenuOverlayView {
         void onRefresh();
         void onToggleDesktopMode(boolean isLongPressSaveDefault);
         default void onToggleRightMargin(boolean isLongPressSaveDefault) {}
+        default void onToggleSplitScreen(boolean isLongPress) {}
         void onRotateScreen(boolean isLongPressResetLandscape);
         void onCloseMenu();
         default void onOpenBrowserControls() {}
         default void onOpenLauncher() {}
+        default void onBrowserControlsVisibilityChanged(boolean visible) {}
+        default void onThemeChanged(ThemeManager.Theme newTheme) {}
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -72,25 +75,48 @@ public class MenuOverlayView {
     // Launcher Views
     private View launcherScrimView;
     private FrameLayout launcherRoot;
+    private CutoutBackgroundDrawable cutoutBgDrawable;
+    private TextView brandTitleView;
     private TextView clockTextView;
+    private TextView launcherBadge;
+    private GradientDrawable launcherBadgeBg;
+    private Button ctrlSwitchBtn;
+    private GradientDrawable ctrlSwitchBg;
+    private Button guideBtn;
+    private GradientDrawable guideBg;
+    private Button themeBtn;
+    private GradientDrawable themeBg;
     private final List<View> allCardViews = new ArrayList<>();
+    private final List<GradientDrawable> cardBgs = new ArrayList<>();
+    private final List<GradientDrawable> iconBoxBgs = new ArrayList<>();
+    private final List<GradientDrawable> countBgs = new ArrayList<>();
+    private final List<GradientDrawable> editBgs = new ArrayList<>();
+    private final List<GradientDrawable> navBtnBgs = new ArrayList<>();
     private final List<View> protectedHeaderViews = new ArrayList<>();
     private View launcherCloseBtnView;
     private final int[] locationBuffer = new int[2];
 
     // Browser Controls Views
     private LinearLayout controlsRail;
+    private GradientDrawable railBg;
+    private final List<GradientDrawable> railBtnCircles = new ArrayList<>();
     private ImageButton backButton;
     private Button desktopModeButton;
     private GradientDrawable desktopModeCircle;
     private ImageButton rightMarginButton;
     private GradientDrawable rightMarginCircle;
     private ControlIconDrawable rightMarginDrawable;
+    private ImageButton splitScreenButton;
+    private GradientDrawable splitScreenCircle;
+    private ControlIconDrawable splitScreenDrawable;
+    private Button launcherSwitchBtn;
+    private GradientDrawable launcherSwitchCircle;
 
     // Launcher Row and Card Reorder State
     private LinearLayout rowsContainer;
     private RowEditHolder currentEditingHolder = null;
     private Activity activity;
+    private MenuActionListener listener = null;
 
     private static class RowEditHolder {
         final String categoryTitle;
@@ -142,6 +168,7 @@ public class MenuOverlayView {
     @SuppressLint("ClickableViewAccessibility")
     public void setup(Activity activity, FrameLayout rootLayout, UserAgentManager uaManager, MenuActionListener listener) {
         this.activity = activity;
+        this.listener = listener;
         float density = activity.getResources().getDisplayMetrics().density;
         float menuDensity = density * MENU_SCALE;
         this.density = density;
@@ -153,7 +180,15 @@ public class MenuOverlayView {
         int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
 
         allCardViews.clear();
+        cardBgs.clear();
+        iconBoxBgs.clear();
+        countBgs.clear();
+        editBgs.clear();
+        navBtnBgs.clear();
+        railBtnCircles.clear();
         protectedHeaderViews.clear();
+
+        ThemeManager.Theme theme = ThemeManager.getActiveTheme(activity);
 
         // =====================================================================
         // PART 1: FULLSCREEN APP LAUNCHER (4 CATEGORY ROWS)
@@ -251,15 +286,15 @@ public class MenuOverlayView {
             }
         };
 
-        Drawable cutoutBg = new CutoutBackgroundDrawable(
-                Color.parseColor("#F50C0E16"), // 96% deep dark slate
-                Color.parseColor("#222838"),   // border
+        cutoutBgDrawable = new CutoutBackgroundDrawable(
+                theme.launcherBackdropColor,
+                theme.cardBorderColor,
                 1 * menuDensity,
                 14 * menuDensity,             // fillet corner radius
                 cutoutSize,
                 cutoutSize
         );
-        launcherRoot.setBackground(cutoutBg);
+        launcherRoot.setBackground(cutoutBgDrawable);
         FrameLayout.LayoutParams launcherParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         launcherRoot.setLayoutParams(launcherParams);
@@ -291,20 +326,20 @@ public class MenuOverlayView {
         headerBar.setLayoutParams(headerParams);
 
         // Brand Title ("CHESSBOARD" - long-press opens project GitHub repository)
-        TextView brandTitle = new TextView(activity);
-        brandTitle.setText("CHESSBOARD");
-        brandTitle.setTextColor(Color.parseColor("#748FFC"));
-        brandTitle.setTextSize(14.5f * MENU_SCALE);
-        brandTitle.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        brandTitle.setPadding((int) (4 * menuDensity), (int) (2 * menuDensity),
+        brandTitleView = new TextView(activity);
+        brandTitleView.setText("CHESSBOARD");
+        brandTitleView.setTextColor(theme.accentColor);
+        brandTitleView.setTextSize(14.5f * MENU_SCALE);
+        brandTitleView.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        brandTitleView.setPadding((int) (4 * menuDensity), (int) (2 * menuDensity),
                 (int) (4 * menuDensity), (int) (2 * menuDensity));
-        brandTitle.setOnTouchListener(new View.OnTouchListener() {
+        brandTitleView.setOnTouchListener(new View.OnTouchListener() {
             private boolean longPressTriggered = false;
             private float downX, downY;
             private final Runnable longPressRunnable = () -> {
                 longPressTriggered = true;
-                brandTitle.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                brandTitle.setTextColor(Color.parseColor("#BAC8FF"));
+                brandTitleView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                brandTitleView.setTextColor(Color.WHITE);
                 if (listener != null) {
                     listener.onSiteSelected("https://github.com/adamlaster/ChessBoard");
                 }
@@ -312,12 +347,13 @@ public class MenuOverlayView {
 
             @Override
             public boolean onTouch(View v, MotionEvent event) {
+                ThemeManager.Theme curTheme = ThemeManager.getActiveTheme(activity);
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
                         longPressTriggered = false;
                         downX = event.getRawX();
                         downY = event.getRawY();
-                        brandTitle.setTextColor(Color.parseColor("#BAC8FF"));
+                        brandTitleView.setTextColor(Color.WHITE);
                         handler.postDelayed(longPressRunnable, 500);
                         return true;
 
@@ -326,35 +362,35 @@ public class MenuOverlayView {
                         float dy = Math.abs(event.getRawY() - downY);
                         if (dx > touchSlop || dy > touchSlop) {
                             handler.removeCallbacks(longPressRunnable);
-                            brandTitle.setTextColor(Color.parseColor("#748FFC"));
+                            brandTitleView.setTextColor(curTheme.accentColor);
                         }
                         return true;
 
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         handler.removeCallbacks(longPressRunnable);
-                        brandTitle.setTextColor(Color.parseColor("#748FFC"));
+                        brandTitleView.setTextColor(curTheme.accentColor);
                         return true;
                 }
                 return false;
             }
         });
-        headerBar.addView(brandTitle);
-        protectedHeaderViews.add(brandTitle);
+        headerBar.addView(brandTitleView);
+        protectedHeaderViews.add(brandTitleView);
 
         // Launcher Pill Badge
-        GradientDrawable badgeBg = new GradientDrawable();
-        badgeBg.setShape(GradientDrawable.RECTANGLE);
-        badgeBg.setColor(Color.parseColor("#1C2234"));
-        badgeBg.setCornerRadius(4 * menuDensity);
-        badgeBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4868"));
+        launcherBadgeBg = new GradientDrawable();
+        launcherBadgeBg.setShape(GradientDrawable.RECTANGLE);
+        launcherBadgeBg.setColor(theme.badgeBgColor);
+        launcherBadgeBg.setCornerRadius(4 * menuDensity);
+        launcherBadgeBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
 
-        TextView launcherBadge = new TextView(activity);
+        launcherBadge = new TextView(activity);
         launcherBadge.setText("LAUNCHER");
-        launcherBadge.setTextColor(Color.parseColor("#91A7FF"));
+        launcherBadge.setTextColor(theme.badgeTextColor);
         launcherBadge.setTextSize(8.5f * MENU_SCALE);
         launcherBadge.setTypeface(Typeface.DEFAULT_BOLD);
-        launcherBadge.setBackground(badgeBg);
+        launcherBadge.setBackground(launcherBadgeBg);
         launcherBadge.setPadding((int) (6 * menuDensity), (int) (1.5f * menuDensity),
                 (int) (6 * menuDensity), (int) (1.5f * menuDensity));
         LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
@@ -365,16 +401,16 @@ public class MenuOverlayView {
         protectedHeaderViews.add(launcherBadge);
 
         // Switch to Browser Controls Shortcut Button
-        GradientDrawable ctrlSwitchBg = new GradientDrawable();
+        ctrlSwitchBg = new GradientDrawable();
         ctrlSwitchBg.setShape(GradientDrawable.RECTANGLE);
-        ctrlSwitchBg.setColor(Color.parseColor("#1C2234"));
+        ctrlSwitchBg.setColor(theme.badgeBgColor);
         ctrlSwitchBg.setCornerRadius(12 * menuDensity);
-        ctrlSwitchBg.setStroke((int) (1 * menuDensity), Color.parseColor("#5C7CFA"));
+        ctrlSwitchBg.setStroke((int) (1 * menuDensity), theme.accentColor);
 
-        Button ctrlSwitchBtn = new Button(activity);
+        ctrlSwitchBtn = new Button(activity);
         ctrlSwitchBtn.setText("🎛️ Browser Controls");
         ctrlSwitchBtn.setAllCaps(false);
-        ctrlSwitchBtn.setTextColor(Color.parseColor("#91A7FF"));
+        ctrlSwitchBtn.setTextColor(theme.badgeTextColor);
         ctrlSwitchBtn.setTextSize(9.5f * MENU_SCALE);
         ctrlSwitchBtn.setTypeface(Typeface.DEFAULT_BOLD);
         ctrlSwitchBtn.setBackground(ctrlSwitchBg);
@@ -390,13 +426,13 @@ public class MenuOverlayView {
         protectedHeaderViews.add(ctrlSwitchBtn);
 
         // Controls Guide Shortcut Button
-        GradientDrawable guideBg = new GradientDrawable();
+        guideBg = new GradientDrawable();
         guideBg.setShape(GradientDrawable.RECTANGLE);
-        guideBg.setColor(Color.parseColor("#1A202E"));
+        guideBg.setColor(theme.primaryColor);
         guideBg.setCornerRadius(12 * menuDensity);
-        guideBg.setStroke((int) (1 * menuDensity), Color.parseColor("#334155"));
+        guideBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
 
-        Button guideBtn = new Button(activity);
+        guideBtn = new Button(activity);
         guideBtn.setText("📖 Controls Guide");
         guideBtn.setAllCaps(false);
         guideBtn.setTextColor(Color.parseColor("#CBD5E1"));
@@ -412,6 +448,31 @@ public class MenuOverlayView {
         });
         headerBar.addView(guideBtn);
         protectedHeaderViews.add(guideBtn);
+
+        // Theme Picker Button
+        themeBg = new GradientDrawable();
+        themeBg.setShape(GradientDrawable.RECTANGLE);
+        themeBg.setColor(theme.badgeBgColor);
+        themeBg.setCornerRadius(12 * menuDensity);
+        themeBg.setStroke((int) (1 * menuDensity), theme.accentColor);
+
+        themeBtn = new Button(activity);
+        themeBtn.setText(getThemeButtonLabel(theme));
+        themeBtn.setAllCaps(false);
+        themeBtn.setTextColor(theme.accentColor);
+        themeBtn.setTextSize(9.5f * MENU_SCALE);
+        themeBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        themeBtn.setBackground(themeBg);
+        themeBtn.setPadding((int) (10 * menuDensity), 0, (int) (10 * menuDensity), 0);
+        LinearLayout.LayoutParams themeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, (int) (26 * menuDensity));
+        themeParams.setMargins((int) (8 * menuDensity), 0, 0, 0);
+        themeBtn.setLayoutParams(themeParams);
+        themeBtn.setOnClickListener(v -> {
+            ThemePickerDialogHelper.show(activity, menuDensity, this::applyTheme);
+        });
+        headerBar.addView(themeBtn);
+        protectedHeaderViews.add(themeBtn);
 
         // Header Spacer
         View headerSpacer = new View(activity);
@@ -482,8 +543,9 @@ public class MenuOverlayView {
 
             GradientDrawable countBg = new GradientDrawable();
             countBg.setShape(GradientDrawable.RECTANGLE);
-            countBg.setColor(Color.parseColor("#1C212E"));
+            countBg.setColor(theme.primaryColor);
             countBg.setCornerRadius(8 * menuDensity);
+            countBgs.add(countBg);
 
             TextView countBadge = new TextView(activity);
             countBadge.setText(category.sites.size() + " apps");
@@ -505,9 +567,10 @@ public class MenuOverlayView {
             // Edit / Save Mode Toggle Button: "[ ✎ Edit ]" / "[ ✓ Save ]" placed next to apps count on left
             GradientDrawable editBg = new GradientDrawable();
             editBg.setShape(GradientDrawable.RECTANGLE);
-            editBg.setColor(Color.parseColor("#1E2538"));
+            editBg.setColor(theme.primaryColor);
             editBg.setCornerRadius(10 * menuDensity);
-            editBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+            editBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+            editBgs.add(editBg);
 
             Button editBtn = new Button(activity);
             editBtn.setText("✎ Edit");
@@ -529,9 +592,10 @@ public class MenuOverlayView {
             // Reorder Row Up Button: "▲"
             GradientDrawable upBg = new GradientDrawable();
             upBg.setShape(GradientDrawable.RECTANGLE);
-            upBg.setColor(Color.parseColor("#1E2538"));
+            upBg.setColor(theme.primaryColor);
             upBg.setCornerRadius(10 * menuDensity);
-            upBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+            upBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+            navBtnBgs.add(upBg);
 
             Button upBtn = new Button(activity);
             upBtn.setText("▲");
@@ -552,9 +616,10 @@ public class MenuOverlayView {
             // Reorder Row Down Button: "▼"
             GradientDrawable downBg = new GradientDrawable();
             downBg.setShape(GradientDrawable.RECTANGLE);
-            downBg.setColor(Color.parseColor("#1E2538"));
+            downBg.setColor(theme.primaryColor);
             downBg.setCornerRadius(10 * menuDensity);
-            downBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+            downBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+            navBtnBgs.add(downBg);
 
             Button downBtn = new Button(activity);
             downBtn.setText("▼");
@@ -619,9 +684,10 @@ public class MenuOverlayView {
             for (AppCatalog.SiteEntry site : orderedSites) {
                 GradientDrawable cardBg = new GradientDrawable();
                 cardBg.setShape(GradientDrawable.RECTANGLE);
-                cardBg.setColor(Color.parseColor("#161923"));
+                cardBg.setColor(theme.cardBgColor);
                 cardBg.setCornerRadius(9 * menuDensity);
-                cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
+                cardBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+                cardBgs.add(cardBg);
 
                 LinearLayout card = new LinearLayout(activity);
                 card.setTag(site);
@@ -645,8 +711,9 @@ public class MenuOverlayView {
                 // Icon Box
                 GradientDrawable iconBoxBg = new GradientDrawable();
                 iconBoxBg.setShape(GradientDrawable.RECTANGLE);
-                iconBoxBg.setColor(Color.parseColor("#202534"));
+                iconBoxBg.setColor(theme.primaryColor);
                 iconBoxBg.setCornerRadius(5 * menuDensity);
+                iconBoxBgs.add(iconBoxBg);
 
                 TextView iconView = new TextView(activity);
                 iconView.setText(site.icon);
@@ -758,11 +825,11 @@ public class MenuOverlayView {
         // PART 2: DEDICATED SLIM BROWSER CONTROLS RAIL (LIVE OVERLAY ON BROWSER)
         // =====================================================================
         // 2. Controls Rail Container (docked right, below top-right Board button cutout)
-        GradientDrawable railBg = new GradientDrawable();
+        railBg = new GradientDrawable();
         railBg.setShape(GradientDrawable.RECTANGLE);
-        railBg.setColor(Color.parseColor("#F210131E")); // 95% opacity dark slate
+        railBg.setColor(theme.controlsRailBgColor);
         railBg.setCornerRadius(16 * menuDensity);
-        railBg.setStroke((int) (1 * menuDensity), Color.parseColor("#262D3E"));
+        railBg.setStroke((int) (1 * menuDensity), theme.controlsRailBorderColor);
 
         controlsRail = new LinearLayout(activity);
         controlsRail.setOrientation(LinearLayout.VERTICAL);
@@ -809,7 +876,8 @@ public class MenuOverlayView {
         // 2. Back
         GradientDrawable backCircle = new GradientDrawable();
         backCircle.setShape(GradientDrawable.OVAL);
-        backCircle.setColor(Color.parseColor("#202430"));
+        backCircle.setColor(theme.controlsBtnBgColor);
+        railBtnCircles.add(backCircle);
 
         backButton = new ImageButton(activity);
         backButton.setBackground(backCircle);
@@ -826,7 +894,8 @@ public class MenuOverlayView {
         // 3. Zoom In
         GradientDrawable zoomInCircle = new GradientDrawable();
         zoomInCircle.setShape(GradientDrawable.OVAL);
-        zoomInCircle.setColor(Color.parseColor("#202430"));
+        zoomInCircle.setColor(theme.controlsBtnBgColor);
+        railBtnCircles.add(zoomInCircle);
 
         ImageButton zoomInButton = new ImageButton(activity);
         zoomInButton.setBackground(zoomInCircle);
@@ -843,7 +912,8 @@ public class MenuOverlayView {
         // 4. Zoom Out
         GradientDrawable zoomOutCircle = new GradientDrawable();
         zoomOutCircle.setShape(GradientDrawable.OVAL);
-        zoomOutCircle.setColor(Color.parseColor("#202430"));
+        zoomOutCircle.setColor(theme.controlsBtnBgColor);
+        railBtnCircles.add(zoomOutCircle);
 
         ImageButton zoomOutButton = new ImageButton(activity);
         zoomOutButton.setBackground(zoomOutCircle);
@@ -860,7 +930,8 @@ public class MenuOverlayView {
         // 5. Refresh
         GradientDrawable refreshCircle = new GradientDrawable();
         refreshCircle.setShape(GradientDrawable.OVAL);
-        refreshCircle.setColor(Color.parseColor("#202430"));
+        refreshCircle.setColor(theme.controlsBtnBgColor);
+        railBtnCircles.add(refreshCircle);
 
         ImageButton refreshButton = new ImageButton(activity);
         refreshButton.setBackground(refreshCircle);
@@ -995,10 +1066,71 @@ public class MenuOverlayView {
         });
         controlsRail.addView(rightMarginButton);
 
+        // 7B. Split Screen Mode Toggle (◫)
+        splitScreenCircle = new GradientDrawable();
+        splitScreenCircle.setShape(GradientDrawable.OVAL);
+        splitScreenCircle.setColor(Color.parseColor("#202430"));
+        splitScreenDrawable = new ControlIconDrawable(ControlIconDrawable.Type.SPLIT_SCREEN);
+
+        splitScreenButton = new ImageButton(activity);
+        splitScreenButton.setBackground(splitScreenCircle);
+        splitScreenButton.setImageDrawable(splitScreenDrawable);
+        splitScreenButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        splitScreenButton.setPadding(0, 0, 0, 0);
+        splitScreenButton.setLayoutParams(ctrlBtnParams);
+        splitScreenButton.setContentDescription("Split Screen Mode");
+
+        splitScreenButton.setOnTouchListener(new View.OnTouchListener() {
+            private boolean longPressTriggered = false;
+            private final Runnable longPressRunnable = () -> {
+                longPressTriggered = true;
+                splitScreenButton.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                splitScreenButton.setAlpha(1.0f);
+                if (listener != null) listener.onToggleSplitScreen(true);
+            };
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        longPressTriggered = false;
+                        v.setAlpha(0.7f);
+                        handler.postDelayed(longPressRunnable, 800);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float mx = event.getX();
+                        float my = event.getY();
+                        if (mx < -touchSlop || mx > v.getWidth() + touchSlop || my < -touchSlop || my > v.getHeight() + touchSlop) {
+                            handler.removeCallbacks(longPressRunnable);
+                            v.setAlpha(1.0f);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        if (!longPressTriggered) {
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                            if (listener != null) listener.onToggleSplitScreen(false);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setAlpha(1.0f);
+                        handler.removeCallbacks(longPressRunnable);
+                        return true;
+                }
+                return false;
+            }
+        });
+        controlsRail.addView(splitScreenButton);
+
         // 8. Screen Rotation (90°)
         GradientDrawable rotateCircle = new GradientDrawable();
         rotateCircle.setShape(GradientDrawable.OVAL);
-        rotateCircle.setColor(Color.parseColor("#202430"));
+        rotateCircle.setColor(theme.controlsBtnBgColor);
+        railBtnCircles.add(rotateCircle);
 
         Button rotateButton = new Button(activity);
         rotateButton.setText("90°");
@@ -1021,15 +1153,15 @@ public class MenuOverlayView {
         controlsRail.addView(rotateButton);
 
         // 8. Launcher Shortcut Button (Pawn icon)
-        GradientDrawable launcherSwitchCircle = new GradientDrawable();
+        launcherSwitchCircle = new GradientDrawable();
         launcherSwitchCircle.setShape(GradientDrawable.OVAL);
-        launcherSwitchCircle.setColor(Color.parseColor("#1C2234"));
-        launcherSwitchCircle.setStroke((int) (1.5f * menuDensity), Color.parseColor("#5C7CFA"));
+        launcherSwitchCircle.setColor(theme.badgeBgColor);
+        launcherSwitchCircle.setStroke((int) (1.5f * menuDensity), theme.accentColor);
 
-        Button launcherSwitchBtn = new Button(activity);
+        launcherSwitchBtn = new Button(activity);
         launcherSwitchBtn.setText("♟");
         launcherSwitchBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        launcherSwitchBtn.setTextColor(Color.parseColor("#91A7FF"));
+        launcherSwitchBtn.setTextColor(theme.badgeTextColor);
         launcherSwitchBtn.setTextSize(12 * MENU_SCALE);
         launcherSwitchBtn.setPadding(0, 0, 0, 0);
         launcherSwitchBtn.setIncludeFontPadding(false);
@@ -1343,11 +1475,12 @@ public class MenuOverlayView {
         updateRowNavButtons(holder);
 
         // Highlight active row layout
+        ThemeManager.Theme theme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
         GradientDrawable activeRowBg = new GradientDrawable();
         activeRowBg.setShape(GradientDrawable.RECTANGLE);
-        activeRowBg.setColor(Color.parseColor("#101524"));
+        activeRowBg.setColor(theme.cardBgColor);
         activeRowBg.setCornerRadius(10 * menuDensity);
-        activeRowBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#4C6EF5"));
+        activeRowBg.setStroke((int) (1.5f * menuDensity), theme.accentColor);
         holder.rowLayout.setBackground(activeRowBg);
         int pad = (int) (4 * menuDensity);
         holder.rowLayout.setPadding(pad, pad, pad, pad);
@@ -1376,12 +1509,13 @@ public class MenuOverlayView {
         }
 
         // Reset edit button -> Normal "[ ✎ Edit ]"
+        ThemeManager.Theme theme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
         holder.editBtn.setText("✎ Edit");
         GradientDrawable editBg = new GradientDrawable();
         editBg.setShape(GradientDrawable.RECTANGLE);
-        editBg.setColor(Color.parseColor("#1E2538"));
+        editBg.setColor(theme.primaryColor);
         editBg.setCornerRadius(10 * menuDensity);
-        editBg.setStroke((int) (1 * menuDensity), Color.parseColor("#3B4863"));
+        editBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
         holder.editBtn.setBackground(editBg);
         holder.editBtn.setTextColor(Color.parseColor("#CBD5E1"));
 
@@ -1561,6 +1695,9 @@ public class MenuOverlayView {
 
         controlsRail.setVisibility(View.VISIBLE);
         controlsRail.bringToFront();
+        if (listener != null) {
+            listener.onBrowserControlsVisibilityChanged(true);
+        }
     }
 
     /**
@@ -1585,6 +1722,9 @@ public class MenuOverlayView {
         if (!isControlsOpen) return;
         isControlsOpen = false;
         if (controlsRail != null) controlsRail.setVisibility(View.GONE);
+        if (listener != null) {
+            listener.onBrowserControlsVisibilityChanged(false);
+        }
     }
 
     public void hideMenu() {
@@ -1653,10 +1793,121 @@ public class MenuOverlayView {
         updateRightMarginButtonStyle(isActive ? MARGIN_STATE_RIGHT : MARGIN_STATE_NONE, menuDensity);
     }
 
+    public void updateSplitScreenButtonStyle(boolean isSplitActive, float menuDensity) {
+        if (splitScreenButton == null || splitScreenCircle == null) return;
+        ThemeManager.Theme theme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+        if (isSplitActive) {
+            splitScreenCircle.setColor(theme.badgeBgColor);
+            splitScreenCircle.setStroke((int) (1.5f * menuDensity), theme.accentColor);
+            if (splitScreenDrawable != null) {
+                splitScreenDrawable.setIconColor(theme.accentColor);
+            }
+            splitScreenButton.setContentDescription("Split Screen Active (Tap to cycle ratio, Long-press to close)");
+        } else {
+            splitScreenCircle.setColor(theme.controlsBtnBgColor);
+            splitScreenCircle.setStroke(0, Color.TRANSPARENT);
+            if (splitScreenDrawable != null) {
+                splitScreenDrawable.setIconColor(Color.parseColor("#CBD5E1"));
+            }
+            splitScreenButton.setContentDescription("Split Screen Inactive (Tap to pick split app)");
+        }
+    }
+
+    public void setSplitSelectionMode(boolean selecting, float menuDensity) {
+        if (launcherBadge == null || launcherBadgeBg == null) return;
+        ThemeManager.Theme theme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+        if (selecting) {
+            launcherBadge.setText("SELECT APP FOR SPLIT SCREEN");
+            launcherBadgeBg.setColor(theme.badgeBgColor);
+            launcherBadgeBg.setStroke((int) (1.5f * menuDensity), theme.accentColor);
+            launcherBadge.setTextColor(theme.accentColor);
+        } else {
+            launcherBadge.setText("LAUNCHER");
+            launcherBadgeBg.setColor(theme.badgeBgColor);
+            launcherBadgeBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+            launcherBadge.setTextColor(theme.badgeTextColor);
+        }
+    }
+
     public void bringToFront() {
         if (launcherScrimView != null && isLauncherOpen) launcherScrimView.bringToFront();
         if (launcherRoot != null && isLauncherOpen) launcherRoot.bringToFront();
         if (controlsRail != null && isControlsOpen) controlsRail.bringToFront();
+    }
+
+    private String getThemeButtonLabel(ThemeManager.Theme theme) {
+        if (theme != null && theme.buttonLabel != null) {
+            return theme.buttonLabel;
+        }
+        return "🎨 Theme";
+    }
+
+    public void applyTheme(ThemeManager.Theme theme) {
+        if (theme == null) return;
+        ThemeManager.setActiveTheme(activity, theme);
+
+        if (cutoutBgDrawable != null) {
+            cutoutBgDrawable.updateColors(theme.launcherBackdropColor, theme.cardBorderColor);
+        }
+        if (brandTitleView != null) {
+            brandTitleView.setTextColor(theme.accentColor);
+        }
+        if (launcherBadgeBg != null && launcherBadge != null) {
+            launcherBadgeBg.setColor(theme.badgeBgColor);
+            launcherBadgeBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+            launcherBadge.setTextColor(theme.badgeTextColor);
+        }
+        if (ctrlSwitchBg != null && ctrlSwitchBtn != null) {
+            ctrlSwitchBg.setColor(theme.badgeBgColor);
+            ctrlSwitchBg.setStroke((int) (1 * menuDensity), theme.accentColor);
+            ctrlSwitchBtn.setTextColor(theme.badgeTextColor);
+        }
+        if (guideBg != null) {
+            guideBg.setColor(theme.primaryColor);
+            guideBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+        }
+        if (themeBg != null && themeBtn != null) {
+            themeBg.setColor(theme.badgeBgColor);
+            themeBg.setStroke((int) (1 * menuDensity), theme.accentColor);
+            themeBtn.setTextColor(theme.accentColor);
+            themeBtn.setText(getThemeButtonLabel(theme));
+        }
+
+        for (GradientDrawable cBg : cardBgs) {
+            cBg.setColor(theme.cardBgColor);
+            cBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+        }
+        for (GradientDrawable iBg : iconBoxBgs) {
+            iBg.setColor(theme.primaryColor);
+        }
+        for (GradientDrawable cBg : countBgs) {
+            cBg.setColor(theme.primaryColor);
+        }
+        for (GradientDrawable eBg : editBgs) {
+            eBg.setColor(theme.primaryColor);
+            eBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+        }
+        for (GradientDrawable navBg : navBtnBgs) {
+            navBg.setColor(theme.primaryColor);
+            navBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+        }
+
+        if (railBg != null) {
+            railBg.setColor(theme.controlsRailBgColor);
+            railBg.setStroke((int) (1 * menuDensity), theme.controlsRailBorderColor);
+        }
+        for (GradientDrawable circle : railBtnCircles) {
+            circle.setColor(theme.controlsBtnBgColor);
+        }
+        if (launcherSwitchCircle != null && launcherSwitchBtn != null) {
+            launcherSwitchCircle.setColor(theme.badgeBgColor);
+            launcherSwitchCircle.setStroke((int) (1.5f * menuDensity), theme.accentColor);
+            launcherSwitchBtn.setTextColor(theme.badgeTextColor);
+        }
+
+        if (listener != null) {
+            listener.onThemeChanged(theme);
+        }
     }
 
     public void destroy(FrameLayout rootLayout) {
@@ -1674,21 +1925,44 @@ public class MenuOverlayView {
             controlsRail = null;
         }
         allCardViews.clear();
+        cardBgs.clear();
+        iconBoxBgs.clear();
+        countBgs.clear();
+        editBgs.clear();
+        navBtnBgs.clear();
+        railBtnCircles.clear();
         protectedHeaderViews.clear();
+        cutoutBgDrawable = null;
+        brandTitleView = null;
+        themeBtn = null;
+        themeBg = null;
+        ctrlSwitchBtn = null;
+        ctrlSwitchBg = null;
+        guideBtn = null;
+        guideBg = null;
+        railBg = null;
         launcherCloseBtnView = null;
         clockTextView = null;
+        launcherBadge = null;
+        launcherBadgeBg = null;
         backButton = null;
         desktopModeButton = null;
         desktopModeCircle = null;
         rightMarginButton = null;
         rightMarginCircle = null;
         rightMarginDrawable = null;
+        splitScreenButton = null;
+        splitScreenCircle = null;
+        splitScreenDrawable = null;
+        launcherSwitchBtn = null;
+        launcherSwitchCircle = null;
         rowsContainer = null;
         if (currentEditingHolder != null) {
             exitEditMode(true);
         }
         currentEditingHolder = null;
         activity = null;
+        listener = null;
     }
 
     /**
@@ -1705,6 +1979,7 @@ public class MenuOverlayView {
             RIGHT_MARGIN("M16 20H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2zm0-14H4v12h12V6zM20 4h2v16h-2z"),
             ALL_MARGINS("M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 14H6V6h12v12zM8 8h8v8H8z"),
             NO_MARGIN("M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"),
+            SPLIT_SCREEN("M5 4h4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zm10 0h4c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"),
             HELP("M11.07 12.85c.77-1.39 2.25-2.21 3.11-3.44.91-1.29.4-4.05-2.18-4.05-1.9 0-2.67 1.48-2.67 2.68H7.1C7.1 4.7 9.33 3 12 3c2.65 0 4.22 1.72 4.22 4.07 0 1.94-1.22 3.03-2.14 3.9-.92.88-1.57 1.49-1.89 2.45-.19.57-.22 1.1-.22 2.48h-2.1c0-1.82-.03-2.61.28-3.05zM11 18h2v2h-2z");
 
             final String pathData;
@@ -1816,6 +2091,12 @@ public class MenuOverlayView {
             this.cornerRadius = cornerRadius;
             this.cutoutWidth = cutoutWidth;
             this.cutoutHeight = cutoutHeight;
+        }
+
+        public void updateColors(int fillColor, int strokeColor) {
+            this.fillPaint.setColor(fillColor);
+            this.strokePaint.setColor(strokeColor);
+            invalidateSelf();
         }
 
         @Override
