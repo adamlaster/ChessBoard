@@ -296,6 +296,9 @@ public class GodotWebView extends GodotPlugin {
                                     uaManager.setDesktopMode(siteDesktop);
                                     menuOverlayView.updateDesktopButtonStyle(uaManager, md);
                                 }
+                                int siteMarginDp = SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(act, siteKey);
+                                int siteMarginMode = SiteSettingsDialogHelper.getSiteDefaultMarginMode(act, siteKey);
+                                applyMarginState(siteMarginMode, siteMarginDp);
                             }
                         }
                     }

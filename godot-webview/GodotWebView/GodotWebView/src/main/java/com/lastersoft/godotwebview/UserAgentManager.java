@@ -63,11 +63,10 @@ public class UserAgentManager {
     private AlertDialog currentAckDialog = null;
 
     /**
-     * Extracts a clean domain/host key (e.g. "chess.com", "youtube.com") from a URL.
-     * Returns empty string for auth/login URLs to prevent false site-switch triggers.
+     * Extracts a clean domain/host key (e.g. "chess.com", "photos.google.com") from a URL.
      */
     public static String getSiteKey(String url) {
-        if (url == null || url.trim().isEmpty() || isAuthUrl(url)) return "";
+        if (url == null || url.trim().isEmpty()) return "";
         try {
             Uri uri = Uri.parse(url);
             String host = uri.getHost();
@@ -140,7 +139,7 @@ public class UserAgentManager {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putBoolean(PREF_SITE_UA_PREFIX + siteKey, desktopMode)
-                    .apply();
+                    .commit();
         }
     }
 
@@ -155,7 +154,7 @@ public class UserAgentManager {
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putBoolean(PREF_DEFAULT_DESKTOP_MODE, this.defaultDesktopMode)
-                    .apply();
+                    .commit();
         }
     }
 

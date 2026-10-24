@@ -791,6 +791,22 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 42: Fix Launcher Site Settings Persistence & Domain Key Extraction
+1. **Root Cause Analysis of Site Settings Not Saving:**
+   - **Empty Domain Key on Auth/Login URLs:** `UserAgentManager.getSiteKey(url)` previously checked `if (isAuthUrl(url)) return ""` in an effort to prevent false site-switching during OAuth redirections. However, sites with `/login` or `/auth` in their catalog URLs (such as Google Photos: `https://photos.google.com/login`) returned an empty string (`""`) for `siteKey`.
+   - **Rejected Empty Keys:** The SharedPreferences persistence helpers (`saveSiteDefaultRightMarginDp`, `saveSiteDefaultMarginMode`, and `saveSiteDefaultDesktopMode`) explicitly guard against empty keys (`!siteKey.isEmpty()`), causing all save attempts on affected sites to silently drop.
+   - **Asynchronous Disk Writes:** `apply()` was used instead of synchronous `commit()`, leading to potential race conditions on immediate dialog dismissal or re-reading.
+2. **Comprehensive Resolution:**
+   - **Clean Host Extraction in `getSiteKey`:** Removed `isAuthUrl(url)` from `UserAgentManager.getSiteKey(url)`. Domain parsing is now pure host extraction (stripping `www.` / `m.`), correctly resolving `photos.google.com`, `chess.com`, etc. regardless of path or parameters. OAuth redirect protection remains safely handled in `onPageStarted` where `isAuthUrl(url)` routes to `applyAuthUserAgent` before checking domain switches.
+   - **SiteKey Fallback in `SiteSettingsDialogHelper`:** Added fallback to `site.name` sanitized (`replaceAll("[^a-z0-9._-]", "")`) so `siteKey` can never be empty.
+   - **Synchronous `commit()`:** Upgraded all preference mutations to `.commit()` for immediate, synchronous disk persistence.
+   - **App Catalog URL Cleanup:** Normalized Google Photos URL in `AppCatalog.java` to clean canonical `https://photos.google.com`.
+   - **Margin Synchronization in `onPageStarted`:** Added margin state synchronization in `WebViewClient.onPageStarted` so when navigating to a new domain, its saved margin mode and gutter width are applied immediately.
+3. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR and deployed build to Board at `10.0.0.65`.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

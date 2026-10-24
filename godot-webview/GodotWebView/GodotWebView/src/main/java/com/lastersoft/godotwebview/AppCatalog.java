@@ -86,7 +86,7 @@ public final class AppCatalog {
         )),
         new CategoryEntry("Web", "🌐", Arrays.asList(
             new SiteEntry("Google", "https://www.google.com", "🔍", "Web Search", "SEARCH"),
-            new SiteEntry("Google Photos", "https://photos.google.com/login", "🖼️", "Cloud Gallery", "PHOTOS"),
+            new SiteEntry("Google Photos", "https://photos.google.com", "🖼️", "Cloud Gallery", "PHOTOS"),
             new SiteEntry("Google Maps", "https://www.google.com/maps", "🗺️", "Explore & Navigation", "MAPS"),
             new SiteEntry("Reddit", "https://www.reddit.com", "👽", "Discussions & Chess", "COMMUNITY"),
             new SiteEntry("Wikipedia", "https://www.wikipedia.org", "📖", "Encyclopedia", "INFO"),

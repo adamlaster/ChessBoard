@@ -55,7 +55,7 @@ public class SiteSettingsDialogHelper {
             context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putInt(PREF_SITE_MARGIN_MODE_PREFIX + siteKey, marginMode)
-                    .apply();
+                    .commit();
         }
     }
 
@@ -87,7 +87,7 @@ public class SiteSettingsDialogHelper {
             context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .putInt(PREF_SITE_MARGIN_DP_PREFIX + siteKey, marginDp)
-                    .apply();
+                    .commit();
         }
     }
 
@@ -95,7 +95,10 @@ public class SiteSettingsDialogHelper {
                             float menuDensity, OnSettingsSavedListener listener) {
         if (activity == null || activity.isFinishing() || site == null) return;
 
-        final String siteKey = UserAgentManager.getSiteKey(site.url);
+        String rawKey = UserAgentManager.getSiteKey(site.url);
+        final String siteKey = (!rawKey.isEmpty())
+                ? rawKey
+                : site.name.toLowerCase().replaceAll("[^a-z0-9._-]", "");
         final boolean currentDesktop = (uaManager != null)
                 ? uaManager.getSiteDefaultDesktopMode(activity, siteKey)
                 : false;
