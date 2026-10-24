@@ -744,6 +744,53 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 39: Header Brand Title Long-Press Shortcut to GitHub Repository
+1. **Developer Easter Egg / Quick Source Access:**
+   - Attached an `OnTouchListener` to the `"CHESSBOARD"` brand `TextView` in the launcher header bar with 500ms long-press detection and haptic feedback.
+   - Long-pressing navigates directly to `https://github.com/adamlaster/ChessBoard` and closes the launcher.
+   - Touch-slop motion guard cancels the timer on finger drag and resets color to prevent accidental triggers.
+2. **Canonical Documentation Updates:**
+   - Updated `README.md` controls reference table.
+3. **Build & Hardware Deployment:**
+---
+
+### Phase 40: Persistent Browser Controls Rail (Explicit Dismiss via ✕ Only)
+1. **Uninterrupted Tabletop Browsing & Live Gameplay:**
+   - **Problem Addressed:** Previously, opening the Browser Controls rail introduced a transparent full-screen scrim (`controlsScrimView`) that intercepted all page touches and dismissed the rail on any tap outside the rail. This blocked normal webpage interaction (e.g. playing chess moves, scrolling, or clicking) whenever the controls rail was open.
+   - **Solution:** Removed the `controlsScrimView` layer entirely. The Browser Controls rail (`controlsRail`) now docks cleanly on the right edge directly over the live browser without any intercepting backdrop.
+   - **Live Touch Transparency:** Webpage interactions (chess moves, touches, drags, scrolling) pass directly through to `WebView` undisturbed while the rail remains open.
+   - **Strict Explicit Dismissal:** The Browser Controls rail remains persistent and dismisses exclusively when the user taps its `✕` button (or switches to the launcher `♟` or resets orientation `rotateButton`).
+2. **Canonical Documentation Updates:**
+   - Updated `ARCHITECTURE.md` (Section 3 View Hierarchy Layer 3 & Layer 5).
+   - Updated `README.md` (Controls Reference table).
+3. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR and deployed build to Board at `10.0.0.65`.
+
+---
+
+### Phase 41: 3-State Margin Engine (Right, All 4 Sides, None) & Persistent Browser Controls Rail Across Screen Rotation
+1. **Persistent Browser Controls Rail Across Screen Rotation:**
+   - **Problem Addressed:** Tapping the `90°` orientation button rotated the display but triggered `hideMenu()` and the layout change listener, inadvertently closing the Browser Controls rail.
+   - **Solution:** Preserved `controlsRail` during rotation. Updated `onRotateScreen()` and `addOnLayoutChangeListener` to keep the rail open, recomputing top and right layout parameters dynamically in `postRotate()` to ensure the toolbar remains docked below the hardware cutout across 0°, 90°, 180°, and 270° orientations.
+2. **3-State Tabletop Margin Engine (Right Gutter, All 4 Sides, Edge-to-Edge):**
+   - Transformed the binary right margin toggle into a 3-way cyclic margin state engine:
+     - `MARGIN_STATE_NONE` (`0`): Edge-to-edge full screen (0dp margin). Button renders in neutral slate gray (`#202430` background, `#CBD5E1` border/icon) with `NO_MARGIN` vector icon.
+     - `MARGIN_STATE_RIGHT` (`1`): 106dp right gutter clearance. Button renders in active indigo (`#1E2433` background, `#5C7CFA` border, `#91A7FF` icon) with `RIGHT_MARGIN` vector icon.
+     - `MARGIN_STATE_ALL` (`2`): 106dp symmetric inset padding on all 4 borders (left, top, right, bottom). Button renders in active cyan/mint (`#152836` background, `#22B8CF` border, `#66D9E8` icon) with `ALL_MARGINS` dual-frame hollow bezel vector icon using `Path.FillType.EVEN_ODD`.
+   - Applied margin state across primary `WebView`, `ProgressBar`, `SecondaryTabManager` (all 4 sides of `popupContainer`), and `FloatingDismissButton` (pinned with bottom and right clearance).
+3. **Per-Site Settings Dialog Support:**
+   - Updated `SiteSettingsDialogHelper` to display 3 preset buttons: `None (0 dp)`, `Right (106 dp)`, and `All 4 (106 dp)`.
+   - Persisted both `site_margin_mode_<siteKey>` and `site_right_margin_<siteKey>` in `SharedPreferences`.
+   - Updated long-press save acknowledgment popup to clearly state the active mode ("Edge-to-Edge", "Right Gutter", or "All 4 Sides").
+4. **Canonical Documentation Updates:**
+   - Updated `README.md` Controls Reference table.
+   - Updated `ARCHITECTURE.md` component table and view hierarchy.
+   - Updated `HelpDialogHelper.java` Tabletop Controls Guide.
+5. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR and deployed build to Board at `10.0.0.65`.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

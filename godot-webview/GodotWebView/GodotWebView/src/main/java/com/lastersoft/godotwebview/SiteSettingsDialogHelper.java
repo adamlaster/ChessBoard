@@ -24,10 +24,39 @@ import android.widget.TextView;
 public class SiteSettingsDialogHelper {
 
     public static final String PREF_SITE_MARGIN_DP_PREFIX = "site_margin_dp_";
+    public static final String PREF_SITE_MARGIN_MODE_PREFIX = "site_margin_mode_";
     public static final int DEFAULT_GUTTER_DP = 106;
 
+    public static final int MARGIN_MODE_NONE = 0;
+    public static final int MARGIN_MODE_RIGHT = 1;
+    public static final int MARGIN_MODE_ALL = 2;
+
     public interface OnSettingsSavedListener {
-        void onSaved(String siteKey, boolean isDesktop, int marginDp);
+        void onSaved(String siteKey, boolean isDesktop, int marginDp, int marginMode);
+    }
+
+    public static int getSiteDefaultMarginMode(Context context, String siteKey) {
+        if (context != null && siteKey != null && !siteKey.isEmpty()) {
+            SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+            String modeKey = PREF_SITE_MARGIN_MODE_PREFIX + siteKey;
+            if (prefs.contains(modeKey)) {
+                return prefs.getInt(modeKey, MARGIN_MODE_NONE);
+            }
+            int dp = getSiteDefaultRightMarginDp(context, siteKey);
+            if (dp > 0) {
+                return MARGIN_MODE_RIGHT;
+            }
+        }
+        return MARGIN_MODE_NONE;
+    }
+
+    public static void saveSiteDefaultMarginMode(Context context, String siteKey, int marginMode) {
+        if (context != null && siteKey != null && !siteKey.isEmpty()) {
+            context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt(PREF_SITE_MARGIN_MODE_PREFIX + siteKey, marginMode)
+                    .apply();
+        }
     }
 
     public static int getSiteDefaultRightMarginDp(Context context, String siteKey) {
@@ -71,10 +100,12 @@ public class SiteSettingsDialogHelper {
                 ? uaManager.getSiteDefaultDesktopMode(activity, siteKey)
                 : false;
         final int currentMarginDp = getSiteDefaultRightMarginDp(activity, siteKey);
+        final int currentMarginMode = getSiteDefaultMarginMode(activity, siteKey);
 
         // Mutable state holders
         final boolean[] selectedDesktop = new boolean[]{currentDesktop};
-        final int[] selectedMarginDp = new int[]{currentMarginDp};
+        final int[] selectedMarginMode = new int[]{currentMarginMode};
+        final int[] selectedMarginDp = new int[]{(currentMarginDp > 0) ? currentMarginDp : (currentMarginMode == MARGIN_MODE_NONE ? 0 : DEFAULT_GUTTER_DP)};
 
         // Root container
         LinearLayout root = new LinearLayout(activity);
@@ -197,11 +228,11 @@ public class SiteSettingsDialogHelper {
         // Divider
         addDivider(root, activity, menuDensity);
 
-        // 3. Right Margin Section
-        addSectionTitle(root, activity, "◧  Right Margin Value", menuDensity);
+        // 3. Margin Section
+        addSectionTitle(root, activity, "◧  Margin & Tabletop Padding", menuDensity);
 
         TextView marginDesc = new TextView(activity);
-        marginDesc.setText("Set 0 dp for full-width edge-to-edge gaming, or 106 dp if web controls collide with the Board OS menu button.");
+        marginDesc.setText("Configure margin padding: 0 dp edge-to-edge, 106 dp right gutter for Board button clearance, or 106 dp on all 4 sides for inset tabletop gaming.");
         marginDesc.setTextColor(Color.parseColor("#94A3B8"));
         marginDesc.setTextSize(8 * MenuOverlayView.MENU_SCALE);
         LinearLayout.LayoutParams mDescParams = new LinearLayout.LayoutParams(
@@ -210,29 +241,38 @@ public class SiteSettingsDialogHelper {
         marginDesc.setLayoutParams(mDescParams);
         root.addView(marginDesc);
 
-        // Quick Presets Row: [ 0 dp (Full Width) ] [ 106 dp (Gutter) ]
+        // Quick Presets Row: [ None (0 dp) ] [ Right (106 dp) ] [ All 4 (106 dp) ]
         LinearLayout presetRow = new LinearLayout(activity);
         presetRow.setOrientation(LinearLayout.HORIZONTAL);
         presetRow.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, (int) (30 * menuDensity)));
 
-        Button zeroDpBtn = new Button(activity);
-        zeroDpBtn.setText("0 dp (Edge-to-Edge)");
-        zeroDpBtn.setAllCaps(false);
-        zeroDpBtn.setTextSize(8.5f * MenuOverlayView.MENU_SCALE);
-        zeroDpBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams zParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
-        zParams.setMargins(0, 0, (int) (4 * menuDensity), 0);
-        zeroDpBtn.setLayoutParams(zParams);
+        Button noneBtn = new Button(activity);
+        noneBtn.setText("None (0 dp)");
+        noneBtn.setAllCaps(false);
+        noneBtn.setTextSize(8.0f * MenuOverlayView.MENU_SCALE);
+        noneBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams nParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+        nParams.setMargins(0, 0, (int) (3 * menuDensity), 0);
+        noneBtn.setLayoutParams(nParams);
 
-        Button gutterDpBtn = new Button(activity);
-        gutterDpBtn.setText("106 dp (Gutter)");
-        gutterDpBtn.setAllCaps(false);
-        gutterDpBtn.setTextSize(8.5f * MenuOverlayView.MENU_SCALE);
-        gutterDpBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        LinearLayout.LayoutParams gParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
-        gParams.setMargins((int) (4 * menuDensity), 0, 0, 0);
-        gutterDpBtn.setLayoutParams(gParams);
+        Button rightBtn = new Button(activity);
+        rightBtn.setText("Right (106 dp)");
+        rightBtn.setAllCaps(false);
+        rightBtn.setTextSize(8.0f * MenuOverlayView.MENU_SCALE);
+        rightBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams rParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+        rParams.setMargins((int) (3 * menuDensity), 0, (int) (3 * menuDensity), 0);
+        rightBtn.setLayoutParams(rParams);
+
+        Button allSidesBtn = new Button(activity);
+        allSidesBtn.setText("All 4 (106 dp)");
+        allSidesBtn.setAllCaps(false);
+        allSidesBtn.setTextSize(8.0f * MenuOverlayView.MENU_SCALE);
+        allSidesBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams aParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+        aParams.setMargins((int) (3 * menuDensity), 0, 0, 0);
+        allSidesBtn.setLayoutParams(aParams);
 
         // Stepper Row: [ － ]  [ 106 dp ]  [ ＋ ]
         LinearLayout stepperRow = new LinearLayout(activity);
@@ -266,43 +306,56 @@ public class SiteSettingsDialogHelper {
         applyRoundActionStyle(plusBtn, menuDensity);
 
         Runnable updateMarginDisplay = () -> {
+            int mode = selectedMarginMode[0];
             int val = selectedMarginDp[0];
-            if (val == 0) {
+            applyOptionStyle(noneBtn, mode == MARGIN_MODE_NONE, menuDensity);
+            applyOptionStyle(rightBtn, mode == MARGIN_MODE_RIGHT, menuDensity);
+            applyOptionStyle(allSidesBtn, mode == MARGIN_MODE_ALL, menuDensity);
+
+            if (mode == MARGIN_MODE_NONE) {
                 marginValueText.setText("0 dp  (Edge-to-Edge)");
-                applyOptionStyle(zeroDpBtn, true, menuDensity);
-                applyOptionStyle(gutterDpBtn, false, menuDensity);
-            } else if (val == DEFAULT_GUTTER_DP) {
-                marginValueText.setText("106 dp  (Board Gutter)");
-                applyOptionStyle(zeroDpBtn, false, menuDensity);
-                applyOptionStyle(gutterDpBtn, true, menuDensity);
+            } else if (mode == MARGIN_MODE_RIGHT) {
+                marginValueText.setText(val + " dp  (Right Gutter)");
             } else {
-                marginValueText.setText(val + " dp  (Custom)");
-                applyOptionStyle(zeroDpBtn, false, menuDensity);
-                applyOptionStyle(gutterDpBtn, false, menuDensity);
+                marginValueText.setText(val + " dp  (All 4 Sides)");
             }
         };
         updateMarginDisplay.run();
 
-        zeroDpBtn.setOnClickListener(v -> {
+        noneBtn.setOnClickListener(v -> {
+            selectedMarginMode[0] = MARGIN_MODE_NONE;
             selectedMarginDp[0] = 0;
             updateMarginDisplay.run();
         });
-        gutterDpBtn.setOnClickListener(v -> {
-            selectedMarginDp[0] = DEFAULT_GUTTER_DP;
+        rightBtn.setOnClickListener(v -> {
+            selectedMarginMode[0] = MARGIN_MODE_RIGHT;
+            if (selectedMarginDp[0] <= 0) selectedMarginDp[0] = DEFAULT_GUTTER_DP;
+            updateMarginDisplay.run();
+        });
+        allSidesBtn.setOnClickListener(v -> {
+            selectedMarginMode[0] = MARGIN_MODE_ALL;
+            if (selectedMarginDp[0] <= 0) selectedMarginDp[0] = DEFAULT_GUTTER_DP;
             updateMarginDisplay.run();
         });
 
         minusBtn.setOnClickListener(v -> {
             selectedMarginDp[0] = Math.max(0, selectedMarginDp[0] - 10);
+            if (selectedMarginDp[0] == 0) {
+                selectedMarginMode[0] = MARGIN_MODE_NONE;
+            }
             updateMarginDisplay.run();
         });
         plusBtn.setOnClickListener(v -> {
             selectedMarginDp[0] = Math.min(200, selectedMarginDp[0] + 10);
+            if (selectedMarginMode[0] == MARGIN_MODE_NONE) {
+                selectedMarginMode[0] = MARGIN_MODE_RIGHT;
+            }
             updateMarginDisplay.run();
         });
 
-        presetRow.addView(zeroDpBtn);
-        presetRow.addView(gutterDpBtn);
+        presetRow.addView(noneBtn);
+        presetRow.addView(rightBtn);
+        presetRow.addView(allSidesBtn);
         root.addView(presetRow);
 
         stepperRow.addView(minusBtn);
@@ -366,14 +419,16 @@ public class SiteSettingsDialogHelper {
         saveBtn.setOnClickListener(v -> {
             boolean isDesktop = selectedDesktop[0];
             int marginDp = selectedMarginDp[0];
+            int marginMode = selectedMarginMode[0];
 
             if (uaManager != null) {
                 uaManager.saveSiteDefaultDesktopMode(activity, siteKey, isDesktop);
             }
             saveSiteDefaultRightMarginDp(activity, siteKey, marginDp);
+            saveSiteDefaultMarginMode(activity, siteKey, marginMode);
 
             if (listener != null) {
-                listener.onSaved(siteKey, isDesktop, marginDp);
+                listener.onSaved(siteKey, isDesktop, marginDp, marginMode);
             }
             dialog.dismiss();
         });
@@ -438,13 +493,29 @@ public class SiteSettingsDialogHelper {
     }
 
     public static void showSaveAckDialog(Activity activity, String siteKey, boolean isDesktop, int marginDp, float menuDensity) {
+        int mode = (marginDp > 0) ? MARGIN_MODE_RIGHT : MARGIN_MODE_NONE;
+        showSaveAckDialog(activity, siteKey, isDesktop, mode, marginDp, menuDensity);
+    }
+
+    public static void showSaveAckDialog(Activity activity, String siteKey, boolean isDesktop, int marginMode, int marginDp, float menuDensity) {
         if (activity == null || activity.isFinishing()) return;
         activity.runOnUiThread(() -> {
             if (activity.isFinishing()) return;
             String uaStr = isDesktop ? "🖥  Desktop Mode" : "📱  Mobile Mode";
-            String marginStr = (marginDp == 0)
-                    ? "0 dp  (Edge-to-Edge)"
-                    : (marginDp == DEFAULT_GUTTER_DP ? "106 dp  (Board Gutter)" : marginDp + " dp  (Custom)");
+            String marginStr;
+            int effectiveDp = (marginDp > 0) ? marginDp : DEFAULT_GUTTER_DP;
+            switch (marginMode) {
+                case MARGIN_MODE_RIGHT:
+                    marginStr = effectiveDp + " dp  (Right Gutter)";
+                    break;
+                case MARGIN_MODE_ALL:
+                    marginStr = effectiveDp + " dp  (All 4 Sides)";
+                    break;
+                case MARGIN_MODE_NONE:
+                default:
+                    marginStr = "0 dp  (Edge-to-Edge)";
+                    break;
+            }
 
             LinearLayout root = new LinearLayout(activity);
             root.setOrientation(LinearLayout.VERTICAL);
@@ -492,7 +563,7 @@ public class SiteSettingsDialogHelper {
             root.addView(uaView);
 
             TextView marginView = new TextView(activity);
-            marginView.setText("• Right Margin: " + marginStr);
+            marginView.setText("• Margin: " + marginStr);
             marginView.setTextColor(Color.parseColor("#E2E8F0"));
             marginView.setTextSize(9.5f * MenuOverlayView.MENU_SCALE);
             LinearLayout.LayoutParams mvParams = new LinearLayout.LayoutParams(

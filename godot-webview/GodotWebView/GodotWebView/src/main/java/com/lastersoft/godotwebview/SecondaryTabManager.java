@@ -45,7 +45,10 @@ public class SecondaryTabManager {
     private ProgressBar popupProgressBar = null;
     private View popupCustomView = null;
     private WebChromeClient.CustomViewCallback popupCustomViewCallback = null;
+    private int currentLeftMarginPx = 0;
+    private int currentTopMarginPx = 0;
     private int currentRightMarginPx = 0;
+    private int currentBottomMarginPx = 0;
 
     public boolean isOpen() {
         return popupWebView != null;
@@ -86,16 +89,26 @@ public class SecondaryTabManager {
         }
     }
 
-    public void applyRightMargin(int marginPx) {
-        this.currentRightMarginPx = marginPx;
+    public void applyMargins(int leftPx, int topPx, int rightPx, int bottomPx) {
+        this.currentLeftMarginPx = leftPx;
+        this.currentTopMarginPx = topPx;
+        this.currentRightMarginPx = rightPx;
+        this.currentBottomMarginPx = bottomPx;
         if (popupContainer != null) {
             ViewGroup.LayoutParams lp = popupContainer.getLayoutParams();
             if (lp instanceof FrameLayout.LayoutParams) {
                 FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
-                flp.rightMargin = marginPx;
+                flp.leftMargin = leftPx;
+                flp.topMargin = topPx;
+                flp.rightMargin = rightPx;
+                flp.bottomMargin = bottomPx;
                 popupContainer.setLayoutParams(flp);
             }
         }
+    }
+
+    public void applyRightMargin(int marginPx) {
+        applyMargins(0, 0, marginPx, 0);
     }
 
     public void exitPopupCustomFullscreen() {
@@ -164,7 +177,10 @@ public class SecondaryTabManager {
         FrameLayout.LayoutParams popupParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT);
+        popupParams.leftMargin = currentLeftMarginPx;
+        popupParams.topMargin = currentTopMarginPx;
         popupParams.rightMargin = currentRightMarginPx;
+        popupParams.bottomMargin = currentBottomMarginPx;
         popupContainer.setLayoutParams(popupParams);
         popupContainer.setBackgroundColor(Color.BLACK);
 

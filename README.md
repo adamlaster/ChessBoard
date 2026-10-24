@@ -126,18 +126,19 @@ From the repository root:
 
 | Control | Short Tap Action | Long-Press Action |
 |---|---|---|
-| **App / Site Card** *(Launcher)* | Launch the selected web app or game | **Long press (500ms):** Open Site Settings dialog to edit persistent User-Agent (`🖥`/`📱`) and Right Margin (`0dp` / `106dp` / custom). |
+| **App / Site Card** *(Launcher)* | Launch the selected web app or game | **Long press (500ms):** Open Site Settings dialog to edit persistent User-Agent (`🖥`/`📱`) and Margin mode (`0dp` / `Right 106dp` / `All 4 Sides 106dp` / custom). |
 | **`[ ✎ Edit ]` / `[ ✓ Save ]`** *(Launcher Row Header)* | Toggle Edit Mode for this category row. In edit mode, enables horizontal card dragging and reveals row navigation controls. Tap `[ ✓ Save ]` to persist custom card and row orders. | — |
 | **`[ ▲ ]` / `[ ▼ ]`** *(Launcher Edit Mode)* | Move active category row up or down in the launcher with instant layout reordering and persistent saving | — |
 | **Card Dragging** *(Launcher Edit Mode)* | Touch and drag any card horizontally to reorder apps within the row with smooth displacement animations and auto-scrolling | — |
 | **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher (or exit Edit Mode if active) | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
-| **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button) | — |
+| **"CHESSBOARD" Title** *(Launcher Header)* | — | **Long press (500ms):** Open ChessBoard project GitHub repository (`https://github.com/adamlaster/ChessBoard`) |
+| **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
 | **`↺`** | Reload the current page live | — |
 | **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
-| **`◧`** | Toggle Right Margin gutter live (`0dp` edge-to-edge vs. `106dp` Board clearance) | **Long press:** Save margin mode as persistent default for active site |
-| **`90°`** | Rotate clockwise (`0°` → `90°` → `180°` → `270°`) | Reset to default Landscape (`0°`) |
+| **Margin (`◧` / `⧈` / `▢`)** | Cycle tabletop margins: **No margin** (`0dp` edge-to-edge) → **Right margin** (`106dp` Board clearance) → **All 4 sides** (`106dp` inset padding) | **Long press:** Save active margin mode as persistent default for active site |
+| **`90°`** | Rotate screen clockwise (`0°` → `90°` → `180°` → `270°`). The Browser Controls rail remains persistent and docked across rotation without dismissing. | Reset to default Landscape (`0°`) |
 | **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
 | **`✕`** *(Floating)* | Close the secondary tab and return to active game | Drag to reposition anywhere on the tabletop |
 
