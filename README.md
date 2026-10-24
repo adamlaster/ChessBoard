@@ -177,9 +177,9 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **Lichess** (`https://lichess.org/analysis`)
 * **ChessReps** (`https://chessreps.com`)
 
-### 🗂️ Extra Apps (22 Apps Across 3 Categories)
+### 🗂️ Extra Apps (23 Apps Across 3 Categories)
 * **🎲 Games (8):** Colonist.io (Catan), Dots & Boxes, PBS Kids, ABCmouse, AutoDraw (Google), 247 Backgammon, 247 Checkers, 247 Games (All)
-* **📺 Watch (8):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video, Fandango
+* **📺 Watch (9):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video, Fandango, Apple TV
 * **🌐 Web (6):** Google, Google Photos, Google Maps, Reddit, Wikipedia, Weather
 
 ---

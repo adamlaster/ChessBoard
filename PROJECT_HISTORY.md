@@ -733,6 +733,17 @@ For current technical specifications, controls, and build guides, refer to the c
 
 ---
 
+### Phase 38: Catalog Expansion — Apple TV Added to Watch Category
+1. **Catalog Expansion:**
+   - Added **Apple TV** (`https://tv.apple.com`, icon `🍎`, subtitle `Originals & Movies`, tag `TV`) to the `Watch` category in `AppCatalog.java`.
+   - Forward-compatible `getOrderedSitesForCategory` auto-appends newly added sites to the end of any existing saved custom site order for the category.
+2. **Canonical Documentation Updates:**
+   - Updated `README.md` catalog reference to reflect 23 total extra apps (9 in Watch category).
+3. **Build & Hardware Deployment:**
+   - Compiled Gradle AAR and deployed build to Board at `10.0.0.65`.
+
+---
+
 ## 3. Current Controls & Platform Catalog Reference
 
 To avoid information duplication, the live user-facing specifications are maintained in their respective canonical files:

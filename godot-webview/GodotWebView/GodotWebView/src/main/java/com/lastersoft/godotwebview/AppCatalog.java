@@ -81,7 +81,8 @@ public final class AppCatalog {
             new SiteEntry("Disney+", "https://www.disneyplus.com", "🏰", "Movies & Shows", "MOVIES"),
             new SiteEntry("Prime Video", "https://www.amazon.com/gp/video/storefront", "📦", "Amazon Prime", "VIDEO"),
             new SiteEntry("Fox One", "https://www.fox.com", "🦊", "Live TV & Sports", "TV"),
-            new SiteEntry("Fandango", "https://athome.fandango.com/", "🎟️", "Movies & TV", "MOVIES")
+            new SiteEntry("Fandango", "https://athome.fandango.com/", "🎟️", "Movies & TV", "MOVIES"),
+            new SiteEntry("Apple TV", "https://tv.apple.com", "🍎", "Originals & Movies", "TV")
         )),
         new CategoryEntry("Web", "🌐", Arrays.asList(
             new SiteEntry("Google", "https://www.google.com", "🔍", "Web Search", "SEARCH"),
