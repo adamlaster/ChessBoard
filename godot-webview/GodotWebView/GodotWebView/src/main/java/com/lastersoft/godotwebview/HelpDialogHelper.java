@@ -165,7 +165,11 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Top Split Controls Bar",
-                "Docked top-center and visible exclusively when Browser Controls are open: [ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ Play/Pause ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ Back ]  [ ↺ Reload ]  [ 🔄 180° ]  [ ✕ Exit ]. Smooth horizontal scrolling on compact screens; keeps the tabletop 100% clutter-free during normal play.",
+                "Docked top-center and visible exclusively when Browser Controls are open: [ 🔊 LeftApp ]  [ ◧ L-Pad ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ Play/Pause ]  [ ◨ R-Pad ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ Back ]  [ ↺ Reload ]  [ 🔄 180° ]  [ ✕ Exit ]. Smooth horizontal scrolling on compact screens; keeps the tabletop 100% clutter-free during normal play.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Independent Split-Screen Padding ([ ◧ L-Pad ] / [ ◨ R-Pad ])",
+                "Independently adjust margins and tabletop padding on both screens during Duo mode:\n• Short tap: 3-way cycle for that pane (Off 0dp → Outer Edge Inset → All 4 Sides Inset).\n• Long press: Save the active margin mode & dp as the persistent site default for that application.\n• Outer edge padding insets the left screen from the left display bezel (preventing websites like ChessKids from cutting off) and the right screen from the Board OS hardware button.\n• Swapping panes (⇄) automatically carries each app's padding settings to its new position.",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Head-to-Head 180° Inversion (🔄 180°)",
@@ -196,7 +200,7 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Tabletop Duos & One-Tap Split Presets",
-                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, ChessKids + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube).",
+                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, ChessKids + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube). ChessKids + YouTube automatically opens in an optimized 70/30 split so ChessKids renders in full desktop layout without cutoffs.",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "App Launcher & Custom Reordering",
@@ -228,7 +232,7 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "◧  Margin & Tabletop Padding",
-                "Short tap: 3-way cycle between Right Margin (106dp gutter), All 4 Sides (106dp inset padding), and No Margin (0dp edge-to-edge).\nLong press: Save current margin mode as the persistent default for active site.",
+                "Short tap: 3-way cycle between Right Margin (106dp gutter), All 4 Sides (106dp inset padding), and No Margin (0dp edge-to-edge). In split-screen mode, cycles padding for the active pane or use dedicated [ ◧ L-Pad ] / [ ◨ R-Pad ] buttons.\nLong press: Save current margin mode as the persistent default for active site.",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "90°  Screen Rotation",

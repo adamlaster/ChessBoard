@@ -77,6 +77,9 @@ public class UserAgentManager {
                 } else if (host.startsWith("m.")) {
                     host = host.substring(2);
                 }
+                if (host.equals("chesskid.com") || host.equals("chesskids.com")) {
+                    return "chesskids.com";
+                }
                 return host;
             }
         } catch (Exception ignored) {}

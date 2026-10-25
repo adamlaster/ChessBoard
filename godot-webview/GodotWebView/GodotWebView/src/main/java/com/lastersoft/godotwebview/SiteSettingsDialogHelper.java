@@ -46,6 +46,9 @@ public class SiteSettingsDialogHelper {
             if (dp > 0) {
                 return MARGIN_MODE_RIGHT;
             }
+            if (siteKey.equals("chesskids.com") || siteKey.equals("chesskid.com")) {
+                return MARGIN_MODE_RIGHT;
+            }
         }
         return MARGIN_MODE_NONE;
     }
@@ -77,6 +80,9 @@ public class SiteSettingsDialogHelper {
             }
             if (legacyPrefs.contains(boolKey)) {
                 return legacyPrefs.getBoolean(boolKey, false) ? DEFAULT_GUTTER_DP : 0;
+            }
+            if (siteKey.equals("chesskids.com") || siteKey.equals("chesskid.com")) {
+                return DEFAULT_GUTTER_DP;
             }
         }
         return 0; // Default edge-to-edge

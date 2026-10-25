@@ -291,7 +291,7 @@ public class GodotWebView extends GodotPlugin {
                             String host = targetUri.getHost();
                             String currentUrl = view.getUrl();
                             if (currentUrl != null && currentUrl.contains("chess.com") && host != null) {
-                                if (!host.endsWith("chess.com") && !host.endsWith("chesskids.com")) {
+                                if (!host.endsWith("chess.com") && !host.endsWith("chesskids.com") && !host.endsWith("chesskid.com")) {
                                     openUrlInSecondTab(fullTargetUrl);
                                     return true;
                                 }
@@ -557,6 +557,18 @@ public class GodotWebView extends GodotPlugin {
                     if (act == null) return;
                     float density = act.getResources().getDisplayMetrics().density;
                     float menuDensity = density * MenuOverlayView.MENU_SCALE;
+
+                    if (splitScreenManager.isSplitActive()) {
+                        if (!isLongPressSaveDefault) {
+                            splitScreenManager.cycleActivePaneMargin();
+                        } else {
+                            splitScreenManager.saveActivePaneMarginDefault();
+                        }
+                        int activeMode = splitScreenManager.getActivePaneMarginMode();
+                        menuOverlayView.updateRightMarginButtonStyle(activeMode, menuDensity);
+                        return;
+                    }
+
                     String rawKey = UserAgentManager.getSiteKey(webView != null ? webView.getUrl() : null);
                     final String siteKey = rawKey.isEmpty() ? currentSiteKey : rawKey;
 
@@ -792,7 +804,11 @@ public class GodotWebView extends GodotPlugin {
             float density = activity.getResources().getDisplayMetrics().density;
             float menuDensity = density * MenuOverlayView.MENU_SCALE;
             menuOverlayView.updateDesktopButtonStyle(uaManager, menuDensity);
-            menuOverlayView.updateRightMarginButtonStyle(currentMarginState, menuDensity);
+            if (splitScreenManager.isSplitActive()) {
+                menuOverlayView.updateRightMarginButtonStyle(splitScreenManager.getActivePaneMarginMode(), menuDensity);
+            } else {
+                menuOverlayView.updateRightMarginButtonStyle(currentMarginState, menuDensity);
+            }
             menuOverlayView.updateSplitScreenButtonStyle(splitScreenManager.isSplitActive(), menuDensity);
         }
         if (splitScreenManager.isSplitActive()) {
@@ -965,8 +981,17 @@ public class GodotWebView extends GodotPlugin {
 
         floatingDismissButton.hide();
 
+        String primKey = (currentSiteKey != null && !currentSiteKey.isEmpty()) ? currentSiteKey : UserAgentManager.getSiteKey(webView.getUrl());
+        int primMarginDp = (currentSiteMarginDp > 0) ? currentSiteMarginDp : SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(activity, primKey);
+        int primMarginMode = (currentMarginState != SiteSettingsDialogHelper.MARGIN_MODE_NONE) ? currentMarginState : SiteSettingsDialogHelper.getSiteDefaultMarginMode(activity, primKey);
+
+        String secKey = UserAgentManager.getSiteKey(siteUrl);
+        int secMarginDp = SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(activity, secKey);
+        int secMarginMode = SiteSettingsDialogHelper.getSiteDefaultMarginMode(activity, secKey);
+
         splitScreenManager.openSplit(
                 activity, layout, webView, progressBar, siteUrl, uaManager, density,
+                primMarginMode, primMarginDp, secMarginMode, secMarginDp,
                 new SplitScreenManager.SplitScreenCallback() {
                     @Override
                     public void onSplitClosed() {
@@ -982,6 +1007,12 @@ public class GodotWebView extends GodotPlugin {
                     @Override
                     public void onPanesSwapped(boolean isPrimaryOnLeft) {
                         updateProgressBarForSplit();
+                        Activity act = getActivity();
+                        if (act != null) {
+                            float md = act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE;
+                            int activeMode = splitScreenManager.getActivePaneMarginMode();
+                            menuOverlayView.updateRightMarginButtonStyle(activeMode, md);
+                        }
                     }
 
                     @Override
@@ -996,6 +1027,20 @@ public class GodotWebView extends GodotPlugin {
                         isSelectingSplitApp = true;
                         menuOverlayView.setSplitSelectionMode(true, md);
                         showLauncher();
+                    }
+
+                    @Override
+                    public void onPaneMarginChanged(boolean isPrimary, int marginMode, int marginDp) {
+                        if (isPrimary) {
+                            currentMarginState = marginMode;
+                            currentSiteMarginDp = marginDp;
+                        }
+                        Activity act = getActivity();
+                        if (act != null) {
+                            float md = act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE;
+                            int activeMode = splitScreenManager.getActivePaneMarginMode();
+                            menuOverlayView.updateRightMarginButtonStyle(activeMode, md);
+                        }
                     }
                 }
         );

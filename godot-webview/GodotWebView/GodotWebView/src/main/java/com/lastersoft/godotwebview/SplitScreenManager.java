@@ -56,6 +56,7 @@ public class SplitScreenManager {
         default void onPanesSwapped(boolean isPrimaryOnLeft) {}
         default void onSplitRatioChanged(float ratio) {}
         default void onPickSecondaryApp() {}
+        default void onPaneMarginChanged(boolean isPrimary, int marginMode, int marginDp) {}
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -71,8 +72,11 @@ public class SplitScreenManager {
     private boolean isPrimaryMuted = true;
     private boolean isSecondaryMuted = false;
 
-    private int cachedMarginState = 0;
-    private int cachedMarginDp = 0;
+    // Per-pane margin states & dp
+    private int primaryMarginMode = SiteSettingsDialogHelper.MARGIN_MODE_NONE;
+    private int primaryMarginDp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+    private int secondaryMarginMode = SiteSettingsDialogHelper.MARGIN_MODE_NONE;
+    private int secondaryMarginDp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
 
     // Views
     private FrameLayout secondaryContainer = null;
@@ -102,9 +106,11 @@ public class SplitScreenManager {
     private LinearLayout splitControlBar = null;
     private GradientDrawable splitControlBarBg = null;
     private Button leftAudioBtn = null;
+    private Button leftMarginBtn = null;
     private Button swapBtn = null;
     private Button presetBtn = null;
     private Button playPauseBtn = null;
+    private Button rightMarginBtn = null;
     private Button rightAudioBtn = null;
     private Button changeAppBtn = null;
     private Button secBackBtn = null;
@@ -172,6 +178,45 @@ public class SplitScreenManager {
         return activeAudio;
     }
 
+    public int getPrimaryMarginMode() {
+        return primaryMarginMode;
+    }
+
+    public int getPrimaryMarginDp() {
+        return primaryMarginDp;
+    }
+
+    public int getSecondaryMarginMode() {
+        return secondaryMarginMode;
+    }
+
+    public int getSecondaryMarginDp() {
+        return secondaryMarginDp;
+    }
+
+    public int getActivePaneMarginMode() {
+        if (activeAudio == AudioFocusPane.PRIMARY) {
+            return primaryMarginMode;
+        } else if (activeAudio == AudioFocusPane.SECONDARY) {
+            return secondaryMarginMode;
+        } else {
+            return isPrimaryOnLeft ? primaryMarginMode : secondaryMarginMode;
+        }
+    }
+
+    public boolean openSplit(Activity act,
+                              FrameLayout root,
+                              WebView primaryView,
+                              ProgressBar primaryProgress,
+                              String targetUrl,
+                              UserAgentManager userAgentMgr,
+                              float density,
+                              SplitScreenCallback cb) {
+        return openSplit(act, root, primaryView, primaryProgress, targetUrl, userAgentMgr, density,
+                SiteSettingsDialogHelper.MARGIN_MODE_NONE, SiteSettingsDialogHelper.DEFAULT_GUTTER_DP,
+                SiteSettingsDialogHelper.MARGIN_MODE_NONE, SiteSettingsDialogHelper.DEFAULT_GUTTER_DP, cb);
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     public boolean openSplit(Activity act,
                               FrameLayout root,
@@ -180,6 +225,10 @@ public class SplitScreenManager {
                               String targetUrl,
                               UserAgentManager userAgentMgr,
                               float density,
+                              int primMarginMode,
+                              int primMarginDp,
+                              int secMarginMode,
+                              int secMarginDp,
                               SplitScreenCallback cb) {
         if (act == null || root == null || primaryView == null) return false;
 
@@ -192,6 +241,19 @@ public class SplitScreenManager {
         this.secondarySiteKey = UserAgentManager.getSiteKey(targetUrl);
         this.callback = cb;
         this.isSplitActive = true;
+        this.primaryMarginMode = primMarginMode;
+        this.primaryMarginDp = (primMarginDp > 0) ? primMarginDp : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+        this.secondaryMarginMode = secMarginMode;
+        this.secondaryMarginDp = (secMarginDp > 0) ? secMarginDp : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+
+        String primKey = (primaryView != null) ? UserAgentManager.getSiteKey(primaryView.getUrl()) : "";
+        if ("chesskids.com".equals(primKey)) {
+            this.splitRatio = isPrimaryOnLeft ? 0.70f : 0.30f;
+        } else if ("chesskids.com".equals(this.secondarySiteKey)) {
+            this.splitRatio = isPrimaryOnLeft ? 0.30f : 0.70f;
+        } else {
+            this.splitRatio = 0.50f;
+        }
 
         float menuDensity = density * MenuOverlayView.MENU_SCALE;
 
@@ -366,7 +428,7 @@ public class SplitScreenManager {
         secondaryWebView.loadUrl(finalUrl);
 
         // 8. Apply layout
-        updateLayout(root.getWidth(), root.getHeight(), 0, 0, 0);
+        applyLayoutInternal(root.getWidth(), root.getHeight(), primaryMarginMode, primaryMarginDp);
 
         return true;
     }
@@ -591,6 +653,15 @@ public class SplitScreenManager {
         });
         splitControlBar.addView(leftAudioBtn);
 
+        // 1B. Left Pane Margin / Padding Button
+        leftMarginBtn = createBarButton(act, menuDensity);
+        leftMarginBtn.setOnClickListener(v -> cycleLeftPaneMargin());
+        leftMarginBtn.setOnLongClickListener(v -> {
+            savePaneMarginDefault(true);
+            return true;
+        });
+        splitControlBar.addView(leftMarginBtn);
+
         // 2. Swap Button
         swapBtn = createBarButton(act, menuDensity);
         swapBtn.setText("⇄ Swap");
@@ -614,6 +685,15 @@ public class SplitScreenManager {
         playPauseBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
         playPauseBtn.setOnClickListener(v -> toggleActiveMediaPlayback());
         splitControlBar.addView(playPauseBtn);
+
+        // 4B. Right Pane Margin / Padding Button
+        rightMarginBtn = createBarButton(act, menuDensity);
+        rightMarginBtn.setOnClickListener(v -> cycleRightPaneMargin());
+        rightMarginBtn.setOnLongClickListener(v -> {
+            savePaneMarginDefault(false);
+            return true;
+        });
+        splitControlBar.addView(rightMarginBtn);
 
         // 5. Right Audio Button
         rightAudioBtn = createBarButton(act, menuDensity);
@@ -731,6 +811,39 @@ public class SplitScreenManager {
             leftAudioBtn.setText((isLeftMuted ? "🔇 " : "🔊 ") + leftInfo.name);
             leftAudioBtn.setTextColor(isLeftMuted ? Color.parseColor("#FF6B6B") : activeAccent);
             leftAudioBtn.setBackground(createButtonPillBackground(menuDensity, !isLeftMuted, activeAccent));
+        }
+
+        int leftMode = isPrimaryOnLeft ? primaryMarginMode : secondaryMarginMode;
+        int rightMode = isPrimaryOnLeft ? secondaryMarginMode : primaryMarginMode;
+
+        if (leftMarginBtn != null) {
+            String label;
+            if (leftMode == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT) {
+                label = "◧ L-Pad: Left";
+            } else if (leftMode == SiteSettingsDialogHelper.MARGIN_MODE_ALL) {
+                label = "◧ L-Pad: All 4";
+            } else {
+                label = "◧ L-Pad: Off";
+            }
+            leftMarginBtn.setText(label);
+            boolean isPadActive = (leftMode != SiteSettingsDialogHelper.MARGIN_MODE_NONE);
+            leftMarginBtn.setTextColor(isPadActive ? activeAccent : Color.parseColor("#CBD5E1"));
+            leftMarginBtn.setBackground(createButtonPillBackground(menuDensity, isPadActive, activeAccent));
+        }
+
+        if (rightMarginBtn != null) {
+            String label;
+            if (rightMode == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT) {
+                label = "◨ R-Pad: Right";
+            } else if (rightMode == SiteSettingsDialogHelper.MARGIN_MODE_ALL) {
+                label = "◨ R-Pad: All 4";
+            } else {
+                label = "◨ R-Pad: Off";
+            }
+            rightMarginBtn.setText(label);
+            boolean isPadActive = (rightMode != SiteSettingsDialogHelper.MARGIN_MODE_NONE);
+            rightMarginBtn.setTextColor(isPadActive ? activeAccent : Color.parseColor("#CBD5E1"));
+            rightMarginBtn.setBackground(createButtonPillBackground(menuDensity, isPadActive, activeAccent));
         }
 
         if (rightAudioBtn != null) {
@@ -1148,12 +1261,20 @@ public class SplitScreenManager {
         if (targetUrl == null || targetUrl.trim().isEmpty() || secondaryWebView == null) return;
         this.secondarySiteUrl = targetUrl;
         this.secondarySiteKey = UserAgentManager.getSiteKey(targetUrl);
+        if (activity != null) {
+            this.secondaryMarginMode = SiteSettingsDialogHelper.getSiteDefaultMarginMode(activity, secondarySiteKey);
+            this.secondaryMarginDp = SiteSettingsDialogHelper.getSiteDefaultRightMarginDp(activity, secondarySiteKey);
+            if (this.secondaryMarginDp <= 0) {
+                this.secondaryMarginDp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+            }
+        }
         if (uaManager != null && activity != null) {
             uaManager.applySiteDefault(activity, secondarySiteKey);
             uaManager.configureWebSettings(secondaryWebView.getSettings(), targetUrl);
         }
         String finalUrl = (uaManager != null) ? uaManager.adjustYouTubeTargetUrl(targetUrl) : targetUrl;
         secondaryWebView.loadUrl(finalUrl);
+        applyLayoutUpdate();
         updateControlBarButtons();
     }
 
@@ -1207,14 +1328,18 @@ public class SplitScreenManager {
         }
 
         isSecondaryFlipped = false;
+        splitRatio = 0.50f;
+        isPrimaryOnLeft = true;
         if (splitControlBarWrapper != null && rootLayout != null) {
             rootLayout.removeView(splitControlBarWrapper);
             splitControlBarWrapper = null;
             splitControlBar = null;
             leftAudioBtn = null;
+            leftMarginBtn = null;
             swapBtn = null;
             presetBtn = null;
             playPauseBtn = null;
+            rightMarginBtn = null;
             rightAudioBtn = null;
             changeAppBtn = null;
             secBackBtn = null;
@@ -1246,10 +1371,15 @@ public class SplitScreenManager {
         }
     }
 
+    public void updateLayout(int rootWidth, int rootHeight) {
+        if (!isSplitActive || rootWidth <= 0 || rootHeight <= 0) return;
+        applyLayoutInternal(rootWidth, rootHeight, primaryMarginMode, primaryMarginDp);
+    }
+
     public void updateLayout(int rootWidth, int rootHeight, int orientation, int currentMarginState, int currentMarginDp) {
         if (!isSplitActive || rootWidth <= 0 || rootHeight <= 0) return;
-        this.cachedMarginState = currentMarginState;
-        this.cachedMarginDp = currentMarginDp;
+        this.primaryMarginMode = currentMarginState;
+        this.primaryMarginDp = currentMarginDp;
         applyLayoutInternal(rootWidth, rootHeight, currentMarginState, currentMarginDp);
     }
 
@@ -1258,8 +1388,89 @@ public class SplitScreenManager {
         int w = rootLayout.getWidth();
         int h = rootLayout.getHeight();
         if (w > 0 && h > 0) {
-            applyLayoutInternal(w, h, cachedMarginState, cachedMarginDp);
+            applyLayoutInternal(w, h, primaryMarginMode, primaryMarginDp);
         }
+    }
+
+    public void cycleLeftPaneMargin() {
+        if (!isSplitActive) return;
+        if (isPrimaryOnLeft) {
+            primaryMarginMode = (primaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(true, primaryMarginMode, primaryMarginDp);
+        } else {
+            secondaryMarginMode = (secondaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(false, secondaryMarginMode, secondaryMarginDp);
+        }
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+        applyLayoutUpdate();
+        updateControlBarButtons();
+    }
+
+    public void cycleRightPaneMargin() {
+        if (!isSplitActive) return;
+        if (isPrimaryOnLeft) {
+            secondaryMarginMode = (secondaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(false, secondaryMarginMode, secondaryMarginDp);
+        } else {
+            primaryMarginMode = (primaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(true, primaryMarginMode, primaryMarginDp);
+        }
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+        applyLayoutUpdate();
+        updateControlBarButtons();
+    }
+
+    public void cycleActivePaneMargin() {
+        if (!isSplitActive) return;
+        boolean targetPrimary = (activeAudio == AudioFocusPane.PRIMARY);
+        if (activeAudio == AudioFocusPane.NONE) {
+            targetPrimary = isPrimaryOnLeft;
+        }
+        if (targetPrimary) {
+            primaryMarginMode = (primaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(true, primaryMarginMode, primaryMarginDp);
+        } else {
+            secondaryMarginMode = (secondaryMarginMode + 1) % 3;
+            if (callback != null) callback.onPaneMarginChanged(false, secondaryMarginMode, secondaryMarginDp);
+        }
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+        applyLayoutUpdate();
+        updateControlBarButtons();
+    }
+
+    public void savePaneMarginDefault(boolean isLeft) {
+        if (activity == null || !isSplitActive) return;
+        boolean isPrimary = isLeft ? isPrimaryOnLeft : !isPrimaryOnLeft;
+        String url = isPrimary ? (primaryWebView != null ? primaryWebView.getUrl() : null) : secondarySiteUrl;
+        String siteKey = UserAgentManager.getSiteKey(url);
+        if (siteKey.isEmpty()) return;
+
+        int mode = isPrimary ? primaryMarginMode : secondaryMarginMode;
+        int dp = isPrimary ? primaryMarginDp : secondaryMarginDp;
+        if (dp <= 0) dp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+        int savedDp = (mode == SiteSettingsDialogHelper.MARGIN_MODE_NONE) ? 0 : dp;
+
+        SiteSettingsDialogHelper.saveSiteDefaultMarginMode(activity, siteKey, mode);
+        SiteSettingsDialogHelper.saveSiteDefaultRightMarginDp(activity, siteKey, savedDp);
+
+        boolean isDesktop = (uaManager != null) ? uaManager.getSiteDefaultDesktopMode(activity, siteKey) : true;
+        float menuDensity = activity.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE;
+        SiteSettingsDialogHelper.showSaveAckDialog(activity, siteKey, isDesktop, mode, savedDp, menuDensity);
+
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+        }
+    }
+
+    public void saveActivePaneMarginDefault() {
+        boolean isLeft = (activeAudio == AudioFocusPane.PRIMARY) ? isPrimaryOnLeft : !isPrimaryOnLeft;
+        savePaneMarginDefault(isLeft);
     }
 
     private void applyLayoutInternal(int rootWidth, int rootHeight, int currentMarginState, int currentMarginDp) {
@@ -1272,11 +1483,6 @@ public class SplitScreenManager {
         int totalWidth = rootWidth;
         int totalHeight = rootHeight;
 
-        // Tabletop margin clearance on right edge for Board OS menu button
-        int effectiveDp = (currentMarginDp > 0) ? currentMarginDp : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
-        int rightGutterPx = (currentMarginState == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT || currentMarginState == SiteSettingsDialogHelper.MARGIN_MODE_ALL)
-                ? (int) (effectiveDp * density) : 0;
-
         int primaryWidth = (int) ((totalWidth - dividerWidth) * splitRatio);
         int secondaryWidth = totalWidth - dividerWidth - primaryWidth;
 
@@ -1285,52 +1491,91 @@ public class SplitScreenManager {
 
         int dividerLeft = leftPaneWidth;
 
-        // Apply to Primary Pane
-        FrameLayout.LayoutParams primLp = (FrameLayout.LayoutParams) primaryWebView.getLayoutParams();
-        if (primLp == null) {
-            primLp = new FrameLayout.LayoutParams(primaryWidth, totalHeight);
-        }
-        primLp.width = primaryWidth;
-        primLp.height = totalHeight;
-        primLp.topMargin = 0;
-        primLp.bottomMargin = 0;
-        if (isPrimaryOnLeft) {
-            primLp.leftMargin = 0;
-            primLp.rightMargin = 0;
-        } else {
-            primLp.leftMargin = dividerLeft + dividerWidth;
-            primLp.rightMargin = rightGutterPx;
-            primLp.width = Math.max(100, rightPaneWidth - rightGutterPx);
-        }
-        primaryWebView.setLayoutParams(primLp);
+        int leftMarginMode = isPrimaryOnLeft ? primaryMarginMode : secondaryMarginMode;
+        int leftMarginDp = isPrimaryOnLeft ? primaryMarginDp : secondaryMarginDp;
+        if (leftMarginDp <= 0) leftMarginDp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+        int leftPx = (leftMarginMode != SiteSettingsDialogHelper.MARGIN_MODE_NONE) ? (int) (leftMarginDp * density) : 0;
 
+        int rightMarginMode = isPrimaryOnLeft ? secondaryMarginMode : primaryMarginMode;
+        int rightMarginDp = isPrimaryOnLeft ? secondaryMarginDp : primaryMarginDp;
+        if (rightMarginDp <= 0) rightMarginDp = SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+        int rightPx = (rightMarginMode != SiteSettingsDialogHelper.MARGIN_MODE_NONE) ? (int) (rightMarginDp * density) : 0;
+
+        // Apply to Left Pane
+        View leftView = isPrimaryOnLeft ? primaryWebView : secondaryContainer;
+        FrameLayout.LayoutParams leftLp = (FrameLayout.LayoutParams) leftView.getLayoutParams();
+        if (leftLp == null) {
+            leftLp = new FrameLayout.LayoutParams(leftPaneWidth, totalHeight);
+        }
+        if (leftMarginMode == SiteSettingsDialogHelper.MARGIN_MODE_ALL) {
+            leftLp.leftMargin = leftPx;
+            leftLp.rightMargin = leftPx;
+            leftLp.topMargin = leftPx;
+            leftLp.bottomMargin = leftPx;
+            leftLp.width = Math.max(100, leftPaneWidth - (leftPx * 2));
+            leftLp.height = Math.max(100, totalHeight - (leftPx * 2));
+        } else if (leftMarginMode == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT) {
+            // Outer edge inset for Left Pane
+            leftLp.leftMargin = leftPx;
+            leftLp.rightMargin = 0;
+            leftLp.topMargin = 0;
+            leftLp.bottomMargin = 0;
+            leftLp.width = Math.max(100, leftPaneWidth - leftPx);
+            leftLp.height = totalHeight;
+        } else {
+            leftLp.leftMargin = 0;
+            leftLp.rightMargin = 0;
+            leftLp.topMargin = 0;
+            leftLp.bottomMargin = 0;
+            leftLp.width = leftPaneWidth;
+            leftLp.height = totalHeight;
+        }
+        leftView.setLayoutParams(leftLp);
+
+        // Apply to Right Pane
+        View rightView = isPrimaryOnLeft ? secondaryContainer : primaryWebView;
+        FrameLayout.LayoutParams rightLp = (FrameLayout.LayoutParams) rightView.getLayoutParams();
+        if (rightLp == null) {
+            rightLp = new FrameLayout.LayoutParams(rightPaneWidth, totalHeight);
+        }
+        if (rightMarginMode == SiteSettingsDialogHelper.MARGIN_MODE_ALL) {
+            rightLp.leftMargin = dividerLeft + dividerWidth + rightPx;
+            rightLp.rightMargin = rightPx;
+            rightLp.topMargin = rightPx;
+            rightLp.bottomMargin = rightPx;
+            rightLp.width = Math.max(100, rightPaneWidth - (rightPx * 2));
+            rightLp.height = Math.max(100, totalHeight - (rightPx * 2));
+        } else if (rightMarginMode == SiteSettingsDialogHelper.MARGIN_MODE_RIGHT) {
+            // Outer edge inset for Right Pane
+            rightLp.leftMargin = dividerLeft + dividerWidth;
+            rightLp.rightMargin = rightPx;
+            rightLp.topMargin = 0;
+            rightLp.bottomMargin = 0;
+            rightLp.width = Math.max(100, rightPaneWidth - rightPx);
+            rightLp.height = totalHeight;
+        } else {
+            rightLp.leftMargin = dividerLeft + dividerWidth;
+            rightLp.rightMargin = 0;
+            rightLp.topMargin = 0;
+            rightLp.bottomMargin = 0;
+            rightLp.width = rightPaneWidth;
+            rightLp.height = totalHeight;
+        }
+        rightView.setLayoutParams(rightLp);
+
+        // Apply to Primary ProgressBar
         if (primaryProgressBar != null) {
-            FrameLayout.LayoutParams pbLp = (FrameLayout.LayoutParams) primaryProgressBar.getLayoutParams();
-            if (pbLp != null) {
-                pbLp.width = primLp.width;
-                pbLp.leftMargin = primLp.leftMargin;
-                primaryProgressBar.setLayoutParams(pbLp);
+            FrameLayout.LayoutParams primLp = (FrameLayout.LayoutParams) primaryWebView.getLayoutParams();
+            if (primLp != null) {
+                FrameLayout.LayoutParams pbLp = (FrameLayout.LayoutParams) primaryProgressBar.getLayoutParams();
+                if (pbLp != null) {
+                    pbLp.width = primLp.width;
+                    pbLp.leftMargin = primLp.leftMargin;
+                    pbLp.topMargin = primLp.topMargin;
+                    primaryProgressBar.setLayoutParams(pbLp);
+                }
             }
         }
-
-        // Apply to Secondary Pane
-        FrameLayout.LayoutParams secLp = (FrameLayout.LayoutParams) secondaryContainer.getLayoutParams();
-        if (secLp == null) {
-            secLp = new FrameLayout.LayoutParams(secondaryWidth, totalHeight);
-        }
-        secLp.height = totalHeight;
-        secLp.topMargin = 0;
-        secLp.bottomMargin = 0;
-        if (!isPrimaryOnLeft) {
-            secLp.leftMargin = 0;
-            secLp.rightMargin = 0;
-            secLp.width = leftPaneWidth;
-        } else {
-            secLp.leftMargin = dividerLeft + dividerWidth;
-            secLp.rightMargin = rightGutterPx;
-            secLp.width = Math.max(100, rightPaneWidth - rightGutterPx);
-        }
-        secondaryContainer.setLayoutParams(secLp);
 
         // Apply to Divider
         if (dividerView != null) {

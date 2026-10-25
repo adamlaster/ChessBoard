@@ -92,8 +92,8 @@ The native plugin lives in package `com.lastersoft.godotwebview` and is modulari
 | Class | Responsibility | Key Collaborators / Dependencies |
 |---|---|---|
 | [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_launcher`, `show_browser_controls`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
-| [`BezelGestureFrameLayout.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BezelGestureFrameLayout.java) | **Root Bezel Gesture Container:** Specialized `FrameLayout` subclass serving as the root layout container. Intercepts bezel-initiated edge swipe gestures (top bezel downward swipe -> Fullscreen Launcher, right bezel leftward swipe below cutout -> Browser Controls rail). Overrides `requestDisallowInterceptTouchEvent` during gesture tracking, enforces strict directional dominance, aborts on multi-touch pointers, and avoids the Board OS hardware button corner cutout. | `GodotWebView`, Android `MotionEvent`, `ViewConfiguration` |
-| [`SplitScreenManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SplitScreenManager.java) | **Split-Screen Dual-App Tabletop Subsystem:** Manages concurrent, hardware-accelerated dual WebViews (Primary & Secondary), draggable center divider with snap presets (`50/50`, `70/30`, `30/70`), DOM media audio focus bridge with A/B switching and long-press mute-all, 180° head-to-head inversion, secondary pane hot-swap & history navigation, media play/pause quick control, themed obsidian drag overlay with live GPU-scaled cards, and top-docked unified scrollable split controls bar visible only when Browser Controls are open. | `GodotWebView`, `MenuOverlayView`, `ThemeManager`, `UserAgentManager`, `AppCatalog`, `ChessTouchHelper`, `WasmPatchHelper` |
+| [`BezelGestureFrameLayout.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BezelGestureFrameLayout.java) | **Root Bezel Gesture Container:** Specialized `FrameLayout` subclass serving as the root layout container. Intercepts bezel-initiated edge swipe gestures (top bezel downward swipe -> Fullscreen Launcher, right bezel leftward swipe below cutout -> Browser Controls rail). Overrides `requestDisallowInterceptTouchEvent` during gesture tracking, enforces strict directional dominance, aborts on multi-touch pointers, and avoids the Board OS hardware button corner cutout. Actively consumes `ACTION_DOWN` and evaluates edge swipes directly in `onTouchEvent` when touches land in empty split-screen margin gutters, guaranteeing reliable bezel gesture triggering across all margin modes. | `GodotWebView`, Android `MotionEvent`, `ViewConfiguration` |
+| [`SplitScreenManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SplitScreenManager.java) | **Split-Screen Dual-App Tabletop Subsystem:** Manages concurrent, hardware-accelerated dual WebViews (Primary & Secondary), draggable center divider with snap presets (`50/50`, `70/30`, `30/70`), DOM media audio focus bridge with A/B switching and long-press mute-all, 180° head-to-head inversion, secondary pane hot-swap & history navigation, media play/pause quick control, themed obsidian drag overlay with live GPU-scaled cards, independent dual-pane margin & padding adjustments (`[ ◧ L-Pad ]` / `[ ◨ R-Pad ]`) with per-site persistence, automatic responsive split presets (70/30 for ChessKid to enforce Desktop Landscape layout), and top-docked unified scrollable split controls bar visible only when Browser Controls are open. | `GodotWebView`, `MenuOverlayView`, `ThemeManager`, `UserAgentManager`, `SiteSettingsDialogHelper`, `AppCatalog`, `ChessTouchHelper`, `WasmPatchHelper` |
 | [`ThemeManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemeManager.java) | **Theme System & Palette Tokens:** Manages dynamic UI theme presets (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, Tournament Walnut, Club Emerald, Midnight Carbon, and Classic Slate), palette color tokens (cutout background, header text, card surfaces, borders, dividers, drag overlays, and active audio accents), and persistent theme configuration in `SharedPreferences` (`chessboard_prefs` / `app_theme_id`). | `SharedPreferences`, `MenuOverlayView`, `SplitScreenManager` |
 | [`ThemePickerDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemePickerDialogHelper.java) | **Tabletop Theme Picker Modal:** 2x tabletop-scaled acrylic modal dialog allowing the user to select between 9 team, classic, and boardroom themes with live preview swatches, active selection badge, and immediate dynamic re-theming without reloading pages. | `ThemeManager`, `AlertDialog`, Android UI |
 | [`BoardBridge.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BoardBridge.java) | **Board OS Hardware Bridge:** Reflection-based integration with `co.harrishill.board.*`. Sets `BoardNativePlugin.setSwallowSystemTouches(false)` to preserve standard touch input, hooks `PauseResultCallbackImpl` to intercept system pause menu actions, registers `"Launcher"` and `"Browser Controls"` action context fallback, and invokes `SessionManagerBridge.terminateApplication()` on exit. | `co.harrishill.board.core.BoardNativePlugin`, `co.harrishill.board.pausescreen.PauseResultCallbackImpl`, `co.harrishill.board.session.SessionManagerBridge` |
@@ -135,7 +135,7 @@ Root BezelGestureFrameLayout (Activity Root, Bezel Edge Gesture Detection)
  │     └── Centered draggable divider bar with pill handle (double-tap resets to 50/50, drag adjusts ratio 20%..80%, snaps on release)
  │
  ├── [Layer 5] Split Controls Bar (HorizontalScrollView splitControlBarWrapper, LinearLayout splitControlBar)
- │     └── Integrated horizontal controls ([ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]) docked top-center, visible exclusively when Browser Controls are open (zero canvas clutter during browsing)
+ │     └── Integrated horizontal controls ([ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◧ L-Pad ]  [ ◨ R-Pad ]  [ ◫ Presets ]  [ ⏯ ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]) docked top-center, visible exclusively when Browser Controls are open (zero canvas clutter during browsing)
  │
  ├── [Layer 6] Secondary Tab Container (FrameLayout, popupContainer, for popup links)
  │     ├── Secondary popupWebView (Match Parent)
@@ -306,7 +306,7 @@ sequenceDiagram
     Menu->>Split: enterSplitScreen(selectedUrl)
     Split->>Primary: Adjust LayoutParams width (50% screen)
     Split->>Secondary: Instantiate concurrent WebView (50% screen)
-    Split->>Bar: Dock top-center [ 🔊 LeftApp ] [ ⇄ Swap ] [ ◫ Presets ] [ 🔇 RightApp ] [ ✕ Exit ]
+    Split->>Bar: Dock top-center [ 🔊 LeftApp ] [ ⇄ Swap ] [ ◧ L-Pad ] [ ◨ R-Pad ] [ ◫ Presets ] [ 🔇 RightApp ] [ ✕ Exit ]
     Secondary->>User: Renders secondary app concurrent with primary match
 
     opt Divider Dragging (Deferred Redraw)
@@ -325,6 +325,19 @@ sequenceDiagram
         Split->>Primary: Inject DOM audio muting script
         Split->>Secondary: Inject DOM audio unmuting script
         Split->>Bar: Update button states ([ 🔇 LeftApp ] / [ 🔊 RightApp ])
+    end
+
+    opt Dual-Pane Margin & Tabletop Padding Adjustments
+        User->>Bar: Tap [ ◧ L-Pad ] or [ ◨ R-Pad ]
+        Bar->>Split: cycleLeftPaneMargin() / cycleRightPaneMargin()
+        Split->>Primary: Adjust leftMargin / rightMargin (Off 0dp -> Outer Inset -> All 4 Sides Inset)
+        Split->>Secondary: Adjust leftMargin / rightMargin
+        Bar->>Bar: Update pill button styles (None: muted, Outer: semi-accent, All: solid accent)
+        opt Persistent Save on Long-Press
+            User->>Bar: Long-press [ ◧ L-Pad ] or [ ◨ R-Pad ]
+            Bar->>Split: savePaneMarginDefault(isLeft)
+            Split->>Split: Save site_margin_mode_<host> & site_margin_dp_<host> to SharedPreferences
+        end
     end
 ```
 
@@ -395,6 +408,14 @@ sequenceDiagram
 ### 5.9 Tabletop App Duos Preset Architecture
 * **Decision:** Model Tabletop Duos by extending the existing `SiteEntry` data class with an optional `secondaryUrl` and boolean `isDuo()`, placing them directly into standard `CategoryEntry` collections.
 * **Rationale:** Avoids introducing bespoke view types, fragmented adapter logic, or dedicated persistence schemas. Tabletop Duos seamlessly inherit category row navigation (`[▲]`/`[▼]`), horizontal scrolling, drag reordering, and `SharedPreferences` ordering persistence with zero architectural bloat.
+
+### 5.10 Independent Dual-Pane Margins & Outer Edge Insets
+* **Decision:** Decouple margin and padding configuration across both split-screen panes, providing separate `primaryMarginMode`/`primaryMarginDp` and `secondaryMarginMode`/`secondaryMarginDp` state, dedicated top bar controls (`[ ◧ L-Pad ]` and `[ ◨ R-Pad ]`), and canonical domain key aliasing (`chesskid.com` <-> `chesskids.com`).
+* **Rationale:** In single-screen mode (1920px), responsive sites center their boards or apply padding. In split-screen mode (~954px), sites like ChessKids render flush against the display's physical left bezel, clipping game elements and boards. Applying margins globally only to the right edge (to clear the Board OS hardware button) left the left pane with 0 left margin. Independent dual-pane padding allows the Left pane to inset its outer left edge by 106dp (or all 4 sides) while the Right pane independently protects its right edge from the Board OS button, guaranteeing distortion-free rendering and zero cutoff for both users.
+
+### 5.11 Bezel Swipe Touch Claiming in Margins & Responsive Split Presets
+* **Decision:** Ensure `BezelGestureFrameLayout.onTouchEvent(DOWN)` returns `true` when tracking edge touches in margin gutters, and configure `SplitScreenManager` to automatically initialize `splitRatio = 0.70f` (and inject fallback responsive CSS) for ChessKids.
+* **Rationale:** In Android view dispatch, if `onInterceptTouchEvent` does not claim `ACTION_DOWN` because it is waiting for directional displacement (`ACTION_MOVE`), and the touch lands in empty margin space (where no child view exists), `super.onTouchEvent(DOWN)` returns `false`. This causes Android to drop all subsequent `ACTION_MOVE` and `ACTION_UP` events, completely breaking edge gestures in split margin zones. Returning `true` during edge tracking guarantees full gesture stream capture. Additionally, responsive web frameworks like ChessKid's Vue bundle switch to Mobile Portrait mode whenever `width < height`, stacking tall mascot headers above a 100%-width board and pushing ranks 1 and 2 off-screen. Setting split ratio to 70% ensures `width (1335px) > height (1080px)`, cleanly triggering native Desktop Landscape mode so the full 8x8 chessboard renders 100% visible with zero cutoffs.
 
 ---
 

@@ -30,6 +30,20 @@ public final class ChessTouchHelper {
 
     private static final String TAG = "GodotWebView.Touch";
 
+    private static final String CHESSKID_RESPONSIVE_FIX_JS =
+        "(function() {" +
+        "    if (window.__chesskid_responsive_fix_init) return;" +
+        "    window.__chesskid_responsive_fix_init = true;" +
+        "    var s = document.createElement('style');" +
+        "    s.id = '__chesskid_responsive_fix_style';" +
+        "    s.textContent = '@media (max-width: 1050px) { ' +" +
+        "        '.puzzles-page__pawn-background { display: none !important; } ' +" +
+        "        '.chess-board { max-width: calc(100vh - 120px) !important; margin: 0 auto !important; } ' +" +
+        "        '.content-sidebar-interactive { overflow-y: auto !important; } ' +" +
+        "    }';" +
+        "    document.head.appendChild(s);" +
+        "})();";
+
     private static final String CHESS_TOUCH_FIX_JS =
         "(function() {" +
         "    if (window.__chessboard_touch_init) return;" +
@@ -688,6 +702,12 @@ public final class ChessTouchHelper {
             if (host.equals("chess.com") || host.endsWith(".chess.com")) {
                 evaluate(webView, CHESS_ARROW_TOUCH_JS);
                 Log.i(TAG, "Injected two-finger right-click arrow bridge into " + targetUrl);
+            }
+
+            if (host.equals("chesskid.com") || host.endsWith(".chesskid.com") ||
+                host.equals("chesskids.com") || host.endsWith(".chesskids.com")) {
+                evaluate(webView, CHESSKID_RESPONSIVE_FIX_JS);
+                Log.i(TAG, "Injected ChessKid responsive split-screen layout bridge into " + targetUrl);
             }
         } catch (Exception e) {
             Log.w(TAG, "Error checking host/path for touch enhancements: " + e.getMessage());

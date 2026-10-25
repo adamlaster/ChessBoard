@@ -152,50 +152,13 @@ public class BezelGestureFrameLayout extends FrameLayout {
 
                 // --- 1. TOP BEZEL SWIPE (DOWNWARD -> LAUNCHER) ---
                 if (trackingTopBezel) {
-                    // Abort ONLY if user swiped significantly off the top edge,
-                    // or moved horizontally > 36dp while vertical travel is minimal (< 12dp)
-                    if (dy < -touchSlop * 2 || (Math.abs(dx) > 36.0f * density && dy < 12.0f * density)) {
-                        Log.d(TAG, "Aborted Top Bezel tracking: dx=" + dx + ", dy=" + dy);
-                        trackingTopBezel = false;
-                        return false;
-                    }
-
-                    boolean distanceMet = (dy >= swipeThresholdPx && dy >= Math.abs(dx));
-                    boolean flingMet = (vy >= flingVelocityPx && dy >= 16.0f * density && vy >= Math.abs(vx));
-
-                    if (distanceMet || flingMet) {
-                        Log.d(TAG, "Top Bezel Swipe Triggered! dy=" + dy + ", vy=" + vy);
-                        gestureIntercepted = true;
-                        trackingTopBezel = false;
-                        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                        if (listener != null) {
-                            listener.onTopBezelSwipe();
-                        }
+                    if (checkTopBezelSwipe(dx, dy, vx, vy, swipeThresholdPx, flingVelocityPx)) {
                         return true;
                     }
                 }
-
                 // --- 2. RIGHT BEZEL SWIPE (LEFTWARD -> BROWSER CONTROLS) ---
                 else if (trackingRightBezel) {
-                    // Abort ONLY if user swiped significantly off the right edge,
-                    // or moved vertically > 36dp while horizontal travel is minimal (< 12dp)
-                    if (dx > touchSlop * 2 || (Math.abs(dy) > 36.0f * density && Math.abs(dx) < 12.0f * density)) {
-                        Log.d(TAG, "Aborted Right Bezel tracking: dx=" + dx + ", dy=" + dy);
-                        trackingRightBezel = false;
-                        return false;
-                    }
-
-                    boolean distanceMet = (dx <= -swipeThresholdPx && Math.abs(dx) >= Math.abs(dy));
-                    boolean flingMet = (vx <= -flingVelocityPx && dx <= -16.0f * density && Math.abs(vx) >= Math.abs(vy));
-
-                    if (distanceMet || flingMet) {
-                        Log.d(TAG, "Right Bezel Swipe Triggered! dx=" + dx + ", vx=" + vx);
-                        gestureIntercepted = true;
-                        trackingRightBezel = false;
-                        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                        if (listener != null) {
-                            listener.onRightBezelSwipe();
-                        }
+                    if (checkRightBezelSwipe(dx, dy, vx, vy, swipeThresholdPx, flingVelocityPx)) {
                         return true;
                     }
                 }
@@ -217,10 +180,68 @@ public class BezelGestureFrameLayout extends FrameLayout {
         return super.onInterceptTouchEvent(ev);
     }
 
+    private boolean checkTopBezelSwipe(float dx, float dy, float vx, float vy, float swipeThresholdPx, float flingVelocityPx) {
+        // Abort ONLY if user swiped significantly off the top edge,
+        // or moved horizontally > 36dp while vertical travel is minimal (< 12dp)
+        if (dy < -touchSlop * 2 || (Math.abs(dx) > 36.0f * density && dy < 12.0f * density)) {
+            Log.d(TAG, "Aborted Top Bezel tracking: dx=" + dx + ", dy=" + dy);
+            trackingTopBezel = false;
+            return false;
+        }
+
+        boolean distanceMet = (dy >= swipeThresholdPx && dy >= Math.abs(dx));
+        boolean flingMet = (vy >= flingVelocityPx && dy >= 16.0f * density && vy >= Math.abs(vx));
+
+        if (distanceMet || flingMet) {
+            Log.d(TAG, "Top Bezel Swipe Triggered! dy=" + dy + ", vy=" + vy);
+            gestureIntercepted = true;
+            trackingTopBezel = false;
+            performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            if (listener != null) {
+                listener.onTopBezelSwipe();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean checkRightBezelSwipe(float dx, float dy, float vx, float vy, float swipeThresholdPx, float flingVelocityPx) {
+        // Abort ONLY if user swiped significantly off the right edge,
+        // or moved vertically > 36dp while horizontal travel is minimal (< 12dp)
+        if (dx > touchSlop * 2 || (Math.abs(dy) > 36.0f * density && Math.abs(dx) < 12.0f * density)) {
+            Log.d(TAG, "Aborted Right Bezel tracking: dx=" + dx + ", dy=" + dy);
+            trackingRightBezel = false;
+            return false;
+        }
+
+        boolean distanceMet = (dx <= -swipeThresholdPx && Math.abs(dx) >= Math.abs(dy));
+        boolean flingMet = (vx <= -flingVelocityPx && dx <= -16.0f * density && Math.abs(vx) >= Math.abs(vy));
+
+        if (distanceMet || flingMet) {
+            Log.d(TAG, "Right Bezel Swipe Triggered! dx=" + dx + ", vx=" + vx);
+            gestureIntercepted = true;
+            trackingRightBezel = false;
+            performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            if (listener != null) {
+                listener.onRightBezelSwipe();
+            }
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        int action = ev.getActionMasked();
+        float x = ev.getX();
+        float y = ev.getY();
+
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        }
+        velocityTracker.addMovement(ev);
+
         if (gestureIntercepted) {
-            int action = ev.getActionMasked();
             if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 gestureIntercepted = false;
                 if (velocityTracker != null) {
@@ -230,6 +251,46 @@ public class BezelGestureFrameLayout extends FrameLayout {
             }
             return true;
         }
+
+        // When tracking a bezel gesture and no child view consumed ACTION_DOWN
+        // (e.g. touch landed in the 106dp right gutter/margin during Duo mode),
+        // onTouchEvent must consume the touch stream and detect the swipe directly.
+        if (trackingTopBezel || trackingRightBezel) {
+            float swipeThresholdPx = SWIPE_THRESHOLD_DP * density;
+            float flingVelocityPx = FLING_VELOCITY_DP * density;
+
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    // Touch landed in empty margin/gutter area. Claim the gesture!
+                    return true;
+
+                case MotionEvent.ACTION_MOVE:
+                    float dx = x - downX;
+                    float dy = y - downY;
+                    velocityTracker.computeCurrentVelocity(1000);
+                    float vx = velocityTracker.getXVelocity();
+                    float vy = velocityTracker.getYVelocity();
+
+                    if (trackingTopBezel) {
+                        checkTopBezelSwipe(dx, dy, vx, vy, swipeThresholdPx, flingVelocityPx);
+                    } else if (trackingRightBezel) {
+                        checkRightBezelSwipe(dx, dy, vx, vy, swipeThresholdPx, flingVelocityPx);
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    trackingTopBezel = false;
+                    trackingRightBezel = false;
+                    gestureIntercepted = false;
+                    if (velocityTracker != null) {
+                        velocityTracker.recycle();
+                        velocityTracker = null;
+                    }
+                    return true;
+            }
+        }
+
         return super.onTouchEvent(ev);
     }
 }

@@ -1086,3 +1086,68 @@ To avoid information duplication, the live user-facing specifications are mainta
 3. **Controls Guide & Canonical Documentation:**
    - Updated `HelpDialogHelper.java` Controls Guide with the updated 6 Duos list and bezel swipe behavior.
    - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 48: Independent Dual-Pane Padding & Margin Adjustments in Tabletop Duo Mode
+1. **Root Cause Analysis — Left-Side Clipping in Duo Mode:**
+   - In single-screen mode, `ChessKids` operates within the full 1920px display width, centering its layout with ample blank margin on either side, or honoring `MARGIN_MODE_ALL` (106dp inset).
+   - In split-screen Duo mode (~954px width per pane), responsive container constraints push content against $x = 0$.
+   - Previously, `SplitScreenManager.java` hard-coded `primLp.leftMargin = 0` whenever the primary pane was on the left, and applied a single global margin state (`cachedMarginState`) strictly to the right edge of the right pane (`secLp.rightMargin = rightGutterPx`).
+   - Consequently, neither pane could have its left edge or inner edges padded, causing web apps like ChessKids to cut off against the physical display bezel with zero ability for users to inset the view.
+2. **Independent Per-Pane Margin Architecture (`SplitScreenManager.java`):**
+   - Refactored `SplitScreenManager` from a single global margin state to independent, persistent margin states and dp configurations for both panes:
+     - `primaryMarginMode`, `primaryMarginDp`: Primary application margin mode and gutter width.
+     - `secondaryMarginMode`, `secondaryMarginDp`: Secondary application margin mode and gutter width.
+   - Initialized during `openSplit` by reading saved persistent site defaults from `SiteSettingsDialogHelper` for both apps, ensuring each site's preferred layout persists across single and split sessions.
+3. **Dual-Pane Layout Computation (`applyLayoutInternal`):**
+   - Dynamically resolves whichever app is positioned on the left (`leftView`, `leftMarginMode`, `leftPx`) and right (`rightView`, `rightMarginMode`, `rightPx`):
+     - **Left Pane:**
+       - `MARGIN_MODE_NONE`: Edge-to-edge ($0\text{dp}$).
+       - `MARGIN_MODE_RIGHT` (Outer Edge): Insets left edge from display bezel (`leftMargin = leftPx`, `width = leftPaneWidth - leftPx`). Completely cures left-edge clipping on sites like ChessKids.
+       - `MARGIN_MODE_ALL`: Insets all 4 sides (`leftMargin = leftPx`, `rightMargin = leftPx`, `topMargin = leftPx`, `bottomMargin = leftPx`, `width = leftPaneWidth - 2 * leftPx`, `height = totalHeight - 2 * leftPx`).
+     - **Right Pane:**
+       - `MARGIN_MODE_NONE`: Inset only by divider width (`leftMargin = dividerLeft + dividerWidth`, `rightMargin = 0`).
+       - `MARGIN_MODE_RIGHT` (Outer Edge): Clears Board OS hardware button and right bezel (`leftMargin = dividerLeft + dividerWidth`, `rightMargin = rightPx`, `width = rightPaneWidth - rightPx`).
+       - `MARGIN_MODE_ALL`: Insets all 4 sides (`leftMargin = dividerLeft + dividerWidth + rightPx`, `rightMargin = rightPx`, `topMargin = rightPx`, `bottomMargin = rightPx`, `width = rightPaneWidth - 2 * rightPx`).
+   - Sizing and progress bars automatically track swapped pane orientation (`swapPanes`) and dynamic ratio adjustments (`cycleSplitPreset` and divider drag).
+4. **Top Split Controls Bar Quick Inset Toggles (`[ ◧ L-Pad ]` & `[ ◨ R-Pad ]`):**
+   - Added dedicated padding control pill buttons to the horizontally scrolling top split bar:
+     - `[ ◧ L-Pad: Off / Left / All 4 ]`: Positioned in the Left App control cluster adjacent to `leftAudioBtn`.
+     - `[ ◨ R-Pad: Off / Right / All 4 ]`: Positioned in the Right App control cluster adjacent to `rightAudioBtn`.
+   - **1-Tap Quick Cycling:** Short tap cycles that pane's margin mode (`Off` → `Outer Edge` → `All 4 Sides` → `Off`) with haptic feedback and live layout reflow.
+   - **Active State Highlighting:** Dynamically highlights with the active theme's accent color when padded.
+   - **Long-Press Site Default Persistence:** Long-pressing either button saves that pane's active margin mode and dp as the persistent site default in SharedPreferences with a 2x tabletop confirmation toast.
+   - **Browser Controls Rail Synchronization:** In Duo mode, the rail's `rightMarginButton` (`◧`) toggles padding on whichever pane has active audio focus (`splitScreenManager.getActivePaneMarginMode()`), keeping rail icons and split bar pills perfectly synchronized.
+5. **Domain Key Aliasing & Canonical URL Normalization:**
+   - `UserAgentManager.getSiteKey(url)`: Aliases both `chesskid.com` and `chesskids.com` to canonical `"chesskids.com"`, ensuring saved settings (User-Agent, margin mode, margin dp) resolve seamlessly regardless of URL variants or HTTP 301 redirects.
+   - `AppCatalog.java`: Updated catalog entries to canonical `https://www.chesskid.com` to eliminate redirect latency.
+   - `SiteSettingsDialogHelper`: Configured out-of-the-box `MARGIN_MODE_RIGHT` (106dp) default for ChessKids so it renders without clipping on first launch.
+6. **In-App Help & Canonical Documentation:**
+   - Updated `HelpDialogHelper.java` Controls Guide with independent dual-pane padding documentation and updated top split control bar reference.
+   - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 49: Margin Gutter Bezel Swipe Interception Fix & ChessKids Duo 70/30 Resolution Preset
+1. **Bezel Swipe Delivery in Margin Gutters (`BezelGestureFrameLayout.java`):**
+   - **Root Cause Analysis:** Diagnosed why right-bezel swiping failed during Duo mode: when the right pane has an outer margin (106dp gutter clearing the Board OS button), touches in the rightmost 64dp bezel zone land in empty container space where no child view exists.
+   - `onInterceptTouchEvent` returned `false` on `ACTION_DOWN` to allow child views to receive the event. Since no child claimed it, Android fell back to `BezelGestureFrameLayout.onTouchEvent(DOWN)`. Because `gestureIntercepted` was not yet set, it called `super.onTouchEvent()` which returned `false`. Android immediately marked the gesture unhandled and silently discarded all subsequent `ACTION_MOVE` and `ACTION_UP` events for that touch.
+   - **Solution:** Refactored `BezelGestureFrameLayout.java` so `onTouchEvent` claims the touch (`return true`) on `ACTION_DOWN` whenever tracking a bezel gesture (`trackingTopBezel || trackingRightBezel`), tracks movement velocity, and directly triggers `onRightBezelSwipe()` / `onTopBezelSwipe()` on `MOVE`. Right and top bezel swipes now trigger 100% reliably regardless of whether touches land on a child WebView or in an empty margin/gutter.
+2. **ChessKids Responsive Resolution & 70/30 Duo Preset (`SplitScreenManager.java`):**
+   - **Root Cause Analysis:** ChessKid's responsive Vue web app (`use-screen.js`) evaluates `width < height`. In a 50/50 split (954x1080, or 848x1080 with margin), the pane is narrower than it is tall, forcing ChessKid into Mobile Portrait mode. In this mode, a 338px mascot banner is stacked directly on top of the chessboard, and the board container (`.chess-board__board`) enforces `width: 100%; padding-bottom: 100%`. The total combined height exceeds the 1080px display height by over 100px, pushing ranks 1 and 2 off the bottom of the screen.
+   - **70/30 Split Preset for ChessKids:** Configured `SplitScreenManager.java` to automatically initialize `splitRatio = 0.70f` whenever `ChessKids` is opened in split-screen / Duo mode. At 1335px width (70% of 1920px), `width > height`, so ChessKid stays in its native Desktop Landscape layout: the full 8x8 chessboard renders 100% visible, centered, and the puzzle/mascot card docks cleanly on the right. YouTube on the right gets 30% width (~570px), perfectly proportioned for video feeds.
+   - **Fallback CSS Responsive Bridge (`ChessTouchHelper.java`):** Injected `CHESSKID_RESPONSIVE_FIX_JS` on `chesskid.com` / `chesskids.com` that hides the oversized top mascot banner and caps board max-height to `calc(100vh - 120px)` in viewports <= 1050px, preventing board cutoffs even if the user manually toggles to 50/50.
+3. **In-App Help & Canonical Documentation:**
+   - Updated `HelpDialogHelper.java` Controls Guide with the 70/30 Duo preset behavior.
+   - Updated `PROJECT_HISTORY.md`, `README.md`, and `ARCHITECTURE.md`.
+
+---
+
+### Phase 50: Interactive Music & DJ Web Apps for Tabletop Gaming
+1. **Interactive Audio & DJ Decks Integration (`AppCatalog.java`):**
+   - **ButtonBass DJ Edition (`https://buttonbass.com/DJ.html`):** Integrated full dual-deck virtual turntable simulator into the **Games** catalog (`🎧 DJ Turntables`). Features realistic spinning vinyl platters, real-time tactile finger scratching via custom Web Audio `AudioWorklet` Catmull-Rom interpolation, 14-album crate with 140 pre-loaded tracks (8-bit, hip-hop, synthwave, lo-fi, etc.), pitch bend, crossfader, and hands-free Auto-Mix mode. Runs 100% in-browser with zero accounts or ads.
+   - **Patatap Audiovisual Soundboard (`https://patatap.com`):** Added to the **Games** catalog (`🎹 Patatap`). An intuitive audiovisual playground where every tap on the tabletop touchscreen triggers animations, geometric particle explosions, and synchronized synthesizer/percussion samples.
+2. **Catalog & Documentation Synchronization:**
+   - Updated `AppCatalog.java` Games category with both new entries and verified automatic append ordering for existing users.
+   - Updated `README.md` and `PROJECT_HISTORY.md`.

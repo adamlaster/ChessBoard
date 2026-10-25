@@ -67,7 +67,7 @@ public final class AppCatalog {
     public static final List<SiteEntry> MAIN_SITES = Arrays.asList(
         new SiteEntry("Chess.com", "https://www.chess.com", "♟", "Play & Puzzles", "DEFAULT"),
         new SiteEntry("Lichess", "https://lichess.org/analysis", "♞", "Analysis & Play", "OPEN SOURCE"),
-        new SiteEntry("ChessKids", "https://www.chesskids.com", "👑", "Lessons & Games", "KIDS"),
+        new SiteEntry("ChessKids", "https://www.chesskid.com", "👑", "Lessons & Games", "KIDS"),
         new SiteEntry("ChessReps", "https://chessreps.com", "🎯", "Repertoire Training", "TRAINER")
     );
 
@@ -75,7 +75,7 @@ public final class AppCatalog {
         new CategoryEntry("Primary Chess", "♟", MAIN_SITES),
         new CategoryEntry("Tabletop Duos", "◫", Arrays.asList(
             new SiteEntry("Chess + YouTube", "https://www.chess.com", "https://www.youtube.com", "♟️▶️", "Play & Watch", "DUO"),
-            new SiteEntry("ChessKids + YouTube", "https://www.chesskids.com", "https://www.youtube.com", "🧒▶️", "Kids & Watch", "DUO"),
+            new SiteEntry("ChessKids + YouTube", "https://www.chesskid.com", "https://www.youtube.com", "🧒▶️", "Kids & Watch", "DUO"),
             new SiteEntry("Chess + Apple TV", "https://www.chess.com", "https://tv.apple.com", "♟️🍎", "Play & Stream", "DUO"),
             new SiteEntry("Lichess + Twitch", "https://lichess.org/analysis", "https://www.twitch.tv", "♞🟣", "Analysis & Stream", "DUO"),
             new SiteEntry("Chess + Reddit", "https://www.chess.com", "https://www.reddit.com/r/chess", "♟️👽", "Play & Community", "DUO"),
@@ -83,6 +83,8 @@ public final class AppCatalog {
         )),
         new CategoryEntry("Games", "🎲", Arrays.asList(
             new SiteEntry("AutoDraw", "https://www.autodraw.com", "🎨", "Google AI Drawing", "AI"),
+            new SiteEntry("DJ Turntables", "https://buttonbass.com/DJ.html", "🎧", "Mix & Scratch Decks", "DJ"),
+            new SiteEntry("Patatap", "https://patatap.com", "🎹", "Touch Sound & Visuals", "AUDIO"),
             new SiteEntry("Colonist.io", "https://colonist.io", "🐑", "Catan Board Game", "CATAN"),
             new SiteEntry("ABCmouse", "https://app.abcmouse.com/app/", "🐭", "Early Learning & Games", "KIDS"),
             new SiteEntry("Dots & Boxes", "https://gametable.org/games/dots-and-boxes/", "✏️", "Classic Grid Game"),

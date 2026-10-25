@@ -164,15 +164,15 @@ From the repository root:
 | **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 9 authentic team, classic, and boardroom themes with instant re-theming and persistent saving | — |
 | **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, split-screen multitasking, tabletop themes, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
 | **Top Bezel Swipe** *(Downward)* | Pull down from top edge bezel (`y <= 64dp`, travel 36dp or fast fling) into the screen to instantly reveal the Fullscreen Launcher | — |
-| **Right Bezel Swipe** *(Leftward)* | Pull in from right edge bezel (`x >= width - 64dp`, travel 36dp or fast fling, below cutout) to instantly reveal the docked Browser Controls rail | — |
+| **Right Bezel Swipe** *(Leftward)* | Pull in from right edge bezel (`x >= width - 64dp`, travel 36dp or fast fling, below cutout) to instantly reveal the docked Browser Controls rail across full screen and split-screen margin gutters | — |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
 | **`↺`** | Reload the current page live | — |
 | **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
-| **Margin (`◧` / `⧈` / `▢`)** | Cycle tabletop margins: **No margin** (`0dp` edge-to-edge) → **Right margin** (`106dp` Board clearance) → **All 4 sides** (`106dp` inset padding) | **Long press:** Save active margin mode as persistent default for active site |
+| **Margin (`◧` / `⧈` / `▢`)** | Cycle tabletop margins: **No margin** (`0dp` edge-to-edge) → **Right margin** (`106dp` Board clearance) → **All 4 sides** (`106dp` inset padding). In split-screen mode, cycles padding for the active pane or use dedicated `[ ◧ L-Pad ]` / `[ ◨ R-Pad ]` buttons in the top bar. | **Long press:** Save active margin mode as persistent default for active site |
 | **Split Screen (`◫`)** | Open Split Screen mode (prompts app picker from Launcher, or cycles presets `50/50` → `70/30` → `30/70` when active) | **Long press:** Close Split Screen mode and restore full screen |
-| **Split Controls Bar** *(Top Center)* | `[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]` — Visible exclusively when Browser Controls are open. One-tap audio switching, media play/pause, pane swapping, preset cycling, secondary app hot-swap, secondary history back/reload, 180° head-to-head inversion, and clean exit. | **Long press on audio:** Mute both panes (`NONE`) |
+| **Split Controls Bar** *(Top Center)* | `[ 🔊 LeftApp ]  [ ◧ L-Pad ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ ]  [ ◨ R-Pad ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]` — Visible exclusively when Browser Controls are open. One-tap audio switching, independent dual-screen padding (`[ ◧ L-Pad ]` and `[ ◨ R-Pad ]` cycle `Off` → `Outer Edge` → `All 4 Sides`), media play/pause, pane swapping, preset cycling, secondary app hot-swap, secondary history back/reload, 180° head-to-head inversion, and clean exit. | **Long press on audio:** Mute both panes (`NONE`). **Long press on L-Pad / R-Pad:** Save pane margin as site default. |
 | **Divider Dragging** *(Split Mode)* | Drag center divider thumb to adjust split ratio (`20%` to `80%`). Automatically presents high-performance dark themed overlay with live scaling app icons, titles, and live percentages, completely hiding WebViews for 60fps stutter-free dragging. Snaps to presets upon release. | **Double tap:** Instantly reset to balanced 50/50 split |
 | **`90°`** | Rotate screen clockwise (`0°` → `90°` → `180°` → `270°`). The Browser Controls rail remains persistent and docked across rotation without dismissing. | Reset to default Landscape (`0°`) |
 | **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
@@ -222,8 +222,8 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **Chess + Reddit** (`Play & Community`)
 * **Colonist + YouTube** (`Catan & Stream`)
 
-### 🗂️ Extra Apps (23 Apps Across 3 Categories)
-* **🎲 Games (8):** Colonist.io (Catan), Dots & Boxes, PBS Kids, ABCmouse, AutoDraw (Google), 247 Backgammon, 247 Checkers, 247 Games (All)
+### 🗂️ Extra Apps (25 Apps Across 3 Categories)
+* **🎲 Games (10):** DJ Turntables (ButtonBass), Patatap, AutoDraw (Google), Colonist.io (Catan), ABCmouse, Dots & Boxes, PBS Kids, 247 Backgammon, 247 Checkers, 247 Games (All)
 * **📺 Watch (9):** YouTube, Peacock, Fox One, CBS Sports, MLB.TV, Disney+, Prime Video, Fandango, Apple TV
 * **🌐 Web (6):** Google, Google Photos, Google Maps, Reddit, Wikipedia, Weather
 
