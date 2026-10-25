@@ -65,6 +65,10 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
     * **Midnight Carbon:** Stealth Carbon (`#171A22`), Electric Ice Cyan accent (`#38BDF8`), Ice badge text (`#E0F2FE`), and carbon backdrop (`#090A0D`).
     * **Classic Slate:** Slate Charcoal (`#121622`), Indigo (`#4C6EF5`), and Cyan (`#22B8CF`).
   * Includes a scrollable Tabletop Theme Picker modal (`ThemePickerDialogHelper`) accessible from the Launcher header allowing instant dynamic re-theming without page reloads, persisted in `SharedPreferences`.
+* **Bezel Edge Swipes & Bidirectional Dismiss (Top & Right Gestures):**
+  * **Top Bezel Swipe (downward):** Swiping down from the top edge (`y <= 64dp`) by `36dp` (or fast fling) into the screen reveals the Fullscreen Launcher. Swiping up on the open Launcher dismisses it.
+  * **Right Bezel Swipe (leftward):** Swiping left from the right edge (`x >= width - 64dp`) by `36dp` (or fast fling) below the Board OS cutout (`y > 106dp`) reveals the docked Browser Controls rail. Swiping right on the open Browser Controls rail dismisses it.
+  * **Touch Safety & Corner Clearance:** Generous 64dp edge landing zone with `VelocityTracker` support, resilient directional filtering (eliminating micro-movement aborts), multi-touch pinch safety (`ACTION_POINTER_DOWN` abort), and complete clearance of the Board OS hardware button corner cutout (`106dp`), ensuring zero interference with chess pieces, tactical arrows, or system controls.
 * **Widevine DRM & HTML5 Fullscreen Video:**
   * Automatically grants `RESOURCE_PROTECTED_MEDIA_ID` permissions for protected streaming playback and supports native HTML5 fullscreen video surfaces.
 
@@ -93,6 +97,7 @@ ChessBoard/
     └── GodotWebView/
         └── GodotWebView/src/main/java/com/lastersoft/godotwebview/
             ├── GodotWebView.java          # Godot plugin coordinator & facade
+            ├── BezelGestureFrameLayout.java # Root container with edge/bezel swipe gesture detection
             ├── AppCatalog.java            # Chess platforms & categorized apps
             ├── BoardBridge.java           # Native Board SDK reflection bridge
             ├── UserAgentManager.java      # Desktop/Mobile UA manager & prefs
@@ -156,8 +161,10 @@ From the repository root:
 | **Card Dragging** *(Launcher Edit Mode)* | Touch and drag any card horizontally to reorder apps within the row with smooth displacement animations and auto-scrolling | — |
 | **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher (or exit Edit Mode if active) | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
 | **"CHESSBOARD" Title** *(Launcher Header)* | — | **Long press (500ms):** Open ChessBoard project GitHub repository (`https://github.com/adamlaster/ChessBoard`) |
-| **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 6 themes (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate) with instant re-theming and persistent saving | — |
+| **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 9 authentic team, classic, and boardroom themes with instant re-theming and persistent saving | — |
 | **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, split-screen multitasking, tabletop themes, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
+| **Top Bezel Swipe** *(Downward)* | Pull down from top edge bezel (`y <= 64dp`, travel 36dp or fast fling) into the screen to instantly reveal the Fullscreen Launcher. Swipe up while Launcher is open to dismiss | — |
+| **Right Bezel Swipe** *(Leftward)* | Pull in from right edge bezel (`x >= width - 64dp`, travel 36dp or fast fling, below cutout) to instantly reveal the docked Browser Controls rail. Swipe right while rail is open to dismiss | — |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |

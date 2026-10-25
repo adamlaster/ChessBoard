@@ -144,6 +144,10 @@ public final class HelpDialogHelper {
                 "Desktop Sidebar Menus",
                 "On Chess.com desktop mode, tapping main sidebar categories (Play, Puzzles, Learn, etc.) opens and stabilizes flyout submenus so options can be chosen without navigating away. Tap outside to dismiss.",
                 activeTheme, menuDensity);
+        addItemRow(content,
+                "Bezel Swipes (Edge Gestures)",
+                "• Top Bezel Swipe (downward): Pull down from the top edge of the bezel to instantly reveal the Fullscreen Launcher. Swipe up to dismiss.\n• Right Bezel Swipe (leftward): Pull in from the right edge of the bezel (below the Board OS button) to instantly reveal the docked Browser Controls rail. Swipe right to dismiss.",
+                activeTheme, menuDensity);
 
         // --- SECTION 2: SPLIT SCREEN & DUAL-APP MULTITASKING ---
         addSectionHeader(content, "◫ Split Screen & Dual-App Multitasking", activeTheme, menuDensity);

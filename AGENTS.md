@@ -23,6 +23,7 @@ Whenever you add or modify features, web apps/categories, menu controls, or buil
 - **Clean Godot Resource Tree:** Keep `chessboard/` free of unused test scripts, duplicate icons, or unused `.tflite` models (`ChessBoard` uses native touch passthrough via `GodotWebView.prepareBoardTouchPassthrough()`).
 
 ## 4. Git Commit & Push Confirmation Rule
+- **Documentation Prerequisite:** Part of merging and pushing is making sure the docs are fully up to date *before* committing or pushing. Always ensure [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md), [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md) (as applicable) contemplate all current changes before staging.
 - **Explicit Confirmation Required:** NEVER run `git commit` or `git push` autonomously.
 - Always summarize the modified/staged files, ensure the user has verified and tested the changes on device, and wait for the user's explicit confirmation before committing and pushing.
 - **Secondary Branch Target:** When working on a secondary/experimental branch, all confirmed commits and pushes must remain strictly on that branch (`git push origin <branch-name>`). NEVER push to or merge into `main` unless the user explicitly instructs to merge into `main`.

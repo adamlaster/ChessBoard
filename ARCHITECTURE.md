@@ -26,6 +26,7 @@ flowchart TD
         Coordinator["GodotWebView.java\n(Facade & Coordinator)"]
         
         subgraph Subsystems ["Modular Subsystems"]
+            BezelLayout["BezelGestureFrameLayout.java\n(Bezel Edge Gesture Detection)"]
             SplitScreen["SplitScreenManager.java\n(Dual App & Top Controls)"]
             Bridge["BoardBridge.java\n(Board OS Reflection)"]
             Secondary["SecondaryTabManager.java\n(Popup Tab & Multi-Window)"]
@@ -54,6 +55,7 @@ flowchart TD
     BoardSession <--> Bridge
     
     RootScene --> Coordinator
+    Coordinator --> BezelLayout
     Coordinator --> Bridge
     Coordinator --> SplitScreen
     Coordinator --> Secondary
@@ -85,11 +87,12 @@ flowchart TD
 
 ## 2. Core Architectural Subsystems
 
-The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 15 cohesive classes:
+The native plugin lives in package `com.lastersoft.godotwebview` and is modularized into 16 cohesive classes:
 
 | Class | Responsibility | Key Collaborators / Dependencies |
 |---|---|---|
 | [`GodotWebView.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/GodotWebView.java) | **Plugin Facade & Coordinator:** Extends `GodotPlugin`, exposes `@UsedByGodot` entry points (`open`, `close`, `show_launcher`, `show_browser_controls`, `show_help`, `prepareBoardTouchPassthrough`), binds primary `WebViewClient` and `WebChromeClient`, and manages top-level view lifecycle. | Coordinates all component managers; interacts directly with Godot Engine. |
+| [`BezelGestureFrameLayout.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/BezelGestureFrameLayout.java) | **Root Bezel Gesture Container:** Specialized `FrameLayout` subclass serving as the root layout container. Intercepts bezel-initiated edge swipe gestures (top bezel downward swipe -> Fullscreen Launcher, right bezel leftward swipe below cutout -> Browser Controls rail). Overrides `requestDisallowInterceptTouchEvent` during gesture tracking, enforces strict directional dominance, aborts on multi-touch pointers, and avoids the Board OS hardware button corner cutout. | `GodotWebView`, Android `MotionEvent`, `ViewConfiguration` |
 | [`SplitScreenManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/SplitScreenManager.java) | **Split-Screen Dual-App Tabletop Subsystem:** Manages concurrent, hardware-accelerated dual WebViews (Primary & Secondary), draggable center divider with snap presets (`50/50`, `70/30`, `30/70`), DOM media audio focus bridge with A/B switching and long-press mute-all, 180° head-to-head inversion, secondary pane hot-swap & history navigation, media play/pause quick control, themed obsidian drag overlay with live GPU-scaled cards, and top-docked unified scrollable split controls bar visible only when Browser Controls are open. | `GodotWebView`, `MenuOverlayView`, `ThemeManager`, `UserAgentManager`, `AppCatalog`, `ChessTouchHelper`, `WasmPatchHelper` |
 | [`ThemeManager.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemeManager.java) | **Theme System & Palette Tokens:** Manages dynamic UI theme presets (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, Tournament Walnut, Club Emerald, Midnight Carbon, and Classic Slate), palette color tokens (cutout background, header text, card surfaces, borders, dividers, drag overlays, and active audio accents), and persistent theme configuration in `SharedPreferences` (`chessboard_prefs` / `app_theme_id`). | `SharedPreferences`, `MenuOverlayView`, `SplitScreenManager` |
 | [`ThemePickerDialogHelper.java`](file:///Users/adamlaster/Development/BoardGames/Chess4Board/godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/ThemePickerDialogHelper.java) | **Tabletop Theme Picker Modal:** 2x tabletop-scaled acrylic modal dialog allowing the user to select between 9 team, classic, and boardroom themes with live preview swatches, active selection badge, and immediate dynamic re-theming without reloading pages. | `ThemeManager`, `AlertDialog`, Android UI |
@@ -109,10 +112,10 @@ The native plugin lives in package `com.lastersoft.godotwebview` and is modulari
 
 ## 3. View Hierarchy & Z-Ordering
 
-All views are hosted within a single root `FrameLayout` added to the Godot `Activity`. The Z-order layering guarantees that controls, popups, and scrims stack correctly without intercepting underlying touch events when hidden:
+All views are hosted within a single root `BezelGestureFrameLayout` (subclass of `FrameLayout`) added to the Godot `Activity`. The container intercepts bezel edge swipes (top downward swipe to reveal Launcher, right leftward swipe below the Board OS cutout to reveal Browser Controls) while preserving Board OS hardware button touches and 100% native child touch dispatch. The Z-order layering guarantees that controls, popups, and scrims stack correctly without intercepting underlying touch events when hidden:
 
 ```text
-Root FrameLayout (Activity Root)
+Root BezelGestureFrameLayout (Activity Root, Bezel Edge Gesture Detection)
  │
  ├── [Layer 0] Primary WebView (Match Parent or Split Pane Width, Edge-to-Edge)
  │     └── Hardware-accelerated Chromium rendering surface (active game)

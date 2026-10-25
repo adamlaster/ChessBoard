@@ -167,7 +167,47 @@ public class GodotWebView extends GodotPlugin {
             displayController.resetZoom();
 
             if (layout == null) {
-                layout = new FrameLayout(activity);
+                BezelGestureFrameLayout bezelLayout = new BezelGestureFrameLayout(activity);
+                bezelLayout.setBezelSwipeListener(new BezelGestureFrameLayout.BezelSwipeListener() {
+                    @Override
+                    public void onTopBezelSwipe() {
+                        showLauncher();
+                    }
+
+                    @Override
+                    public void onRightBezelSwipe() {
+                        showBrowserControls();
+                    }
+
+                    @Override
+                    public void onSwipeUpToCloseLauncher() {
+                        activity.runOnUiThread(() -> {
+                            if (menuOverlayView != null) {
+                                menuOverlayView.hideLauncher();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onSwipeRightToCloseControls() {
+                        activity.runOnUiThread(() -> {
+                            if (menuOverlayView != null) {
+                                menuOverlayView.hideBrowserControls();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public boolean isLauncherOpen() {
+                        return menuOverlayView != null && menuOverlayView.isLauncherOpen();
+                    }
+
+                    @Override
+                    public boolean isControlsOpen() {
+                        return menuOverlayView != null && menuOverlayView.isControlsOpen();
+                    }
+                });
+                layout = bezelLayout;
                 layout.setBackgroundColor(Color.BLACK);
                 activity.addContentView(layout, new ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,

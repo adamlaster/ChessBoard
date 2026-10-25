@@ -1052,3 +1052,24 @@ To avoid information duplication, the live user-facing specifications are mainta
    - Wrapped `splitControlBar` in `HorizontalScrollView` (`splitControlBarWrapper`) to ensure all 10 controls fit elegantly on any display size or portrait rotation without clipping.
 7. **Controls Guide & Canonical Documentation:**
    - Updated `HelpDialogHelper.java`, `PROJECT_HISTORY.md`, `README.md`, and `ARCHITECTURE.md`.
+
+---
+
+### Phase 46: Bezel Edge Gestures — Top & Right Edge Swipes for Tabletop Navigation
+1. **Bezel Gesture Detection (`BezelGestureFrameLayout.java`):**
+   - Implemented a specialized root `FrameLayout` subclass that intercepts edge-initiated bezel swipe gestures on the large touch tabletop surface:
+     - **Top Bezel Swipe (downward):** Swiping down from the top edge (`y <= 64dp`) by at least `36dp` (or fast fling `>= 450dp/s`) reveals the Fullscreen Launcher (`showLauncher()`).
+     - **Right Bezel Swipe (leftward):** Swiping left from the right edge (`x >= width - 64dp`) by at least `36dp` (or fast fling) below the Board OS cutout (`y > 106dp`) reveals the docked Browser Controls rail (`showBrowserControls()`).
+     - **Bidirectional Swipe-to-Dismiss:** Swiping up on the open Launcher dismisses it; swiping right on the open Browser Controls rail dismisses it.
+2. **Touch Safety, Board OS Cutout & Interference Prevention:**
+   - **Generous Landing Zone & Velocity Support:** Generous `64dp` edge zone eliminates false misses when swiping quickly across the physical bezel; `VelocityTracker` enables immediate response on fast flicks.
+   - **Board OS Corner Clearance:** Excludes the top-right hardware button cutout area (`106dp * density`) from both top and right bezel zones (`x < width - cutoutPx` for top, `y > cutoutPx` for right) so the system pause menu button remains 100% accessible.
+   - **Resilient Directional Filtering:** Eliminates micro-movement aborts, only aborting if travel clearly exceeds perpendicular threshold (`> 36dp`) or reverses direction off-screen.
+   - **Multi-Touch Pinch Safety:** Automatically aborts edge gesture tracking on `ACTION_POINTER_DOWN` so multi-touch pinch-to-zoom is never interrupted.
+   - **Chromium Touch Stealing Guard:** Overrides `requestDisallowInterceptTouchEvent` while tracking edge swipes so underlying `WebView` scrolling or dragging cannot cancel or swallow bezel gestures.
+   - **Haptic Confirmation:** Triggers `performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)` upon successful gesture threshold crossing.
+3. **Controls Guide & Canonical Documentation Alignment:**
+   - Updated `HelpDialogHelper.java` with a dedicated "Bezel Swipes (Edge Gestures)" entry under Tabletop Chess Gestures (including swipe-to-dismiss).
+   - Updated `README.md` and `ARCHITECTURE.md` with `BezelGestureFrameLayout` subsystem details and gesture references.
+4. **Workspace Rules Alignment (`AGENTS.md`):**
+   - Added Rule 4 documentation prerequisite: part of merging and pushing is ensuring all canonical root documentation files are fully up to date before staging, committing, or pushing.
