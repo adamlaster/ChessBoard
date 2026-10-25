@@ -12,18 +12,19 @@ The following project-wide files must exist **exclusively** in the repository ro
 
 **Do NOT** create or sync duplicate copies of these files inside `chessboard/`, `godot-webview/`, or `~/Documents/AI_Markdown/`.
 
-## 2. Keep Root Documentation Up to Date
-Whenever you add or modify features, web apps/categories, menu controls, or build/deployment behavior:
-1. Update [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md) with the new phase/changes.
-2. Update [`README.md`](./README.md) and [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md) if user-facing features, app lists, controls, or build steps changed.
-3. Update [`ARCHITECTURE.md`](./ARCHITECTURE.md) if components, view hierarchies, or system interactions changed.
+## 2. Keep Documentation Up to Date (Root Docs & In-App Help)
+Whenever you add or modify features, web apps/categories, menu controls, gestures, or build/deployment behavior:
+1. Update in-app documentation in [`HelpDialogHelper.java`](./godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java) ("Controls & Gestures Guide" modal) whenever user-facing controls, shortcuts, gestures, themes, or multitasking features change.
+2. Update [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md) with the new phase/changes.
+3. Update [`README.md`](./README.md) and [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md) if user-facing features, app lists, controls, or build steps changed.
+4. Update [`ARCHITECTURE.md`](./ARCHITECTURE.md) if components, view hierarchies, or system interactions changed.
 
 ## 3. Build & Output Hygiene
 - **Out-of-Tree APK Output:** Always export `ChessBoard.apk` to `/Users/adamlaster/Development/BoardGames/output/ChessBoard.apk` (never inside the git repository).
 - **Clean Godot Resource Tree:** Keep `chessboard/` free of unused test scripts, duplicate icons, or unused `.tflite` models (`ChessBoard` uses native touch passthrough via `GodotWebView.prepareBoardTouchPassthrough()`).
 
 ## 4. Git Commit & Push Confirmation Rule
-- **Documentation Prerequisite:** Part of merging and pushing is making sure the docs are fully up to date *before* committing or pushing. Always ensure [`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md), [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md) (as applicable) contemplate all current changes before staging.
+- **Documentation Prerequisite:** Part of merging and pushing is making sure the docs are fully up to date *before* committing or pushing. "Updating the docs" explicitly includes updating the in-app help/controls guide ([`HelpDialogHelper.java`](./godot-webview/GodotWebView/GodotWebView/src/main/java/com/lastersoft/godotwebview/HelpDialogHelper.java)) as well as root canonical documentation ([`PROJECT_HISTORY.md`](./PROJECT_HISTORY.md), [`README.md`](./README.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md), and [`BUILD_SEQUENCE.md`](./BUILD_SEQUENCE.md)). All documentation must contemplate current changes before staging.
 - **Explicit Confirmation Required:** NEVER run `git commit` or `git push` autonomously.
 - Always summarize the modified/staged files, ensure the user has verified and tested the changes on device, and wait for the user's explicit confirmation before committing and pushing.
 - **Secondary Branch Target:** When working on a secondary/experimental branch, all confirmed commits and pushes must remain strictly on that branch (`git push origin <branch-name>`). NEVER push to or merge into `main` unless the user explicitly instructs to merge into `main`.
