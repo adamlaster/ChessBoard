@@ -285,6 +285,76 @@ sequenceDiagram
 
 ---
 
+### 4.5 Split-Screen Dual-App Multitasking & Audio Isolation Flow
+Manages concurrent side-by-side apps with deferred divider dragging and single-source audio focus:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant Menu as MenuOverlayView
+    participant Split as SplitScreenManager
+    participant Primary as Primary WebView
+    participant Secondary as Secondary WebView
+    participant Bar as SplitControlBar
+    participant Overlay as DragOverlayView
+
+    User->>Menu: Tap Split Screen (◫)
+    Menu->>Split: enterSplitScreen(selectedUrl)
+    Split->>Primary: Adjust LayoutParams width (50% screen)
+    Split->>Secondary: Instantiate concurrent WebView (50% screen)
+    Split->>Bar: Dock top-center [ 🔊 LeftApp ] [ ⇄ Swap ] [ ◫ Presets ] [ 🔇 RightApp ] [ ✕ Exit ]
+    Secondary->>User: Renders secondary app concurrent with primary match
+
+    opt Divider Dragging (Deferred Redraw)
+        User->>Split: Touch and drag center divider thumb
+        Split->>Overlay: Show obsidian curtain completely hiding WebViews
+        Split->>Overlay: Update GPU-scaled cards with app icons, titles, and live %
+        User->>Split: Release finger
+        Split->>Overlay: GONE (curtain dismissed)
+        Split->>Primary: Apply final width & requestLayout()
+        Split->>Secondary: Apply final width & requestLayout()
+    end
+
+    opt Audio Focus Switching
+        User->>Bar: Tap [ 🔇 RightApp ]
+        Bar->>Split: setAudioFocus(SECONDARY)
+        Split->>Primary: Inject DOM audio muting script
+        Split->>Secondary: Inject DOM audio unmuting script
+        Split->>Bar: Update button states ([ 🔇 LeftApp ] / [ 🔊 RightApp ])
+    end
+```
+
+---
+
+### 4.6 Dynamic Tabletop Theme Switching Flow
+Enables instant live re-theming without reloading web pages or interrupting active matches:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant Menu as MenuOverlayView
+    participant Picker as ThemePickerDialogHelper
+    participant Mgr as ThemeManager
+    participant Split as SplitScreenManager
+    participant Prefs as SharedPreferences
+
+    User->>Menu: Tap [ Theme: ... ] in Launcher header
+    Menu->>Picker: show(activity, menuDensity)
+    Picker->>User: Displays 2x modal with 6 scrollable theme cards & preview swatches
+    User->>Picker: Selects new theme (e.g., Detroit Lions)
+    Picker->>Mgr: setActiveTheme(Lions)
+    Mgr->>Prefs: Persist app_theme_id = "lions"
+    Picker->>Menu: applyTheme(Lions)
+    Menu->>Menu: Update cutoutBg, title, buttons, badges, rail, cards
+    Menu->>Split: applyTheme(Lions)
+    Split->>Split: Update divider handle, track, drag curtain, control bar
+    Picker->>User: Dismiss dialog; UI updated immediately without reload
+```
+
+---
+
 ## 5. Architectural Design Decisions & Trade-Offs
 
 ### 5.1 Reflection for Board SDK Integration
@@ -306,6 +376,14 @@ sequenceDiagram
 ### 5.5 Network-Layer WebAssembly Interception vs. JS Monkey-Patching
 * **Decision:** Intercept and rewrite WebAssembly binary headers at the native Android network layer via `WebViewClient.shouldInterceptRequest()` rather than JavaScript monkey-patching `window.WebAssembly`.
 * **Rationale:** Chess.com executes its Chess Explanation Engine (CEE / Komodo) inside a dedicated `Worker` spawned from an external blob/script. JavaScript injected into the main page frame cannot override or monkey-patch `self.WebAssembly` inside web workers. Intercepting the HTTP request allows the native layer to deliver a patched binary with safe initial memory limits (32 MB instead of 386 MB) to both main-frame and worker threads alike.
+
+### 5.6 Deferred WebView Redraw via GPU-Scaled Drag Overlay
+* **Decision:** While dragging the center split-screen divider, both WebViews are completely hidden behind a dark themed overlay curtain (`dragOverlayView`), rendering GPU-accelerated scaling cards and wireframe skeleton bars instead of resizing WebViews live.
+* **Rationale:** Live resizing of complex DOM trees and hardware-accelerated Chromium video surfaces triggers continuous reflow, texture re-allocation, and noticeable GPU stutter. Deferring the layout pass until finger release while updating lightweight RenderThread transforms (`setScaleX`/`setScaleY`) during dragging achieves a locked 60 FPS touch response.
+
+### 5.7 DOM MutationObserver Audio Isolation Bridge
+* **Decision:** Manage audio isolation between concurrent split panes via injected JavaScript DOM `MutationObserver` and `<audio>` / `<video>` element muting rather than Android `AudioManager` focus requests.
+* **Rationale:** Chromium `WebView` instances inside a single Android application process share the underlying OS audio track by default. Requesting Android audio focus at the OS level mutes the entire app process. Injecting targeted DOM muting scripts into the inactive pane allows true independent per-pane audio switching and simultaneous silent video playback.
 
 ---
 

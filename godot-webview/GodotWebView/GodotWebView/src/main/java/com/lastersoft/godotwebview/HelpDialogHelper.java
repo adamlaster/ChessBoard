@@ -10,7 +10,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
@@ -19,7 +18,7 @@ import android.widget.TextView;
 /**
  * Displays a comprehensive, 2x scaled dark modal dialog outlining all controls,
  * gestures (single-finger double-tap arrows, piece movement, long presses),
- * and interface features of ChessBoard.
+ * split-screen multitasking, tabletop themes, and interface features of ChessBoard.
  */
 public final class HelpDialogHelper {
 
@@ -46,6 +45,8 @@ public final class HelpDialogHelper {
         if (activity == null || activity.isFinishing()) return;
         dismiss();
 
+        ThemeManager.Theme activeTheme = ThemeManager.getActiveTheme(activity);
+
         int screenWidth = activity.getResources().getDisplayMetrics().widthPixels;
         int screenHeight = activity.getResources().getDisplayMetrics().heightPixels;
 
@@ -61,12 +62,12 @@ public final class HelpDialogHelper {
 
         GradientDrawable rootBg = new GradientDrawable();
         rootBg.setShape(GradientDrawable.RECTANGLE);
-        rootBg.setColor(Color.parseColor("#F01E1E1E")); // High-opacity dark acrylic
+        rootBg.setColor(activeTheme.launcherBackdropColor);
         rootBg.setCornerRadius(18 * menuDensity);
-        rootBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#33FFFFFF"));
+        rootBg.setStroke((int) (1.5f * menuDensity), activeTheme.accentColor);
         root.setBackground(rootBg);
 
-        // Header container with title/subtitle and top-right close button
+        // Header container with title/subtitle
         RelativeLayout headerBar = new RelativeLayout(activity);
         LinearLayout.LayoutParams headerBarParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -85,7 +86,7 @@ public final class HelpDialogHelper {
 
         TextView titleView = new TextView(activity);
         titleView.setText("♟️ Controls & Gestures Guide");
-        titleView.setTextColor(Color.WHITE);
+        titleView.setTextColor(activeTheme.accentColor);
         titleView.setTextSize(15 * 2.0f);
         titleView.setTypeface(Typeface.DEFAULT_BOLD);
         titleView.setGravity(Gravity.CENTER);
@@ -93,7 +94,7 @@ public final class HelpDialogHelper {
 
         TextView subtitleView = new TextView(activity);
         subtitleView.setText("Quick reference for tabletop play on the Board");
-        subtitleView.setTextColor(Color.parseColor("#99FFFFFF"));
+        subtitleView.setTextColor(Color.parseColor("#94A3B8"));
         subtitleView.setTextSize(10.5f * 2.0f);
         subtitleView.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(
@@ -118,92 +119,127 @@ public final class HelpDialogHelper {
         scrollView.addView(content);
 
         // --- SECTION 1: CHESSBOARD GESTURES ---
-        addSectionHeader(content, "♟️ Tabletop Chess Gestures (Chess.com & Lichess)", menuDensity);
+        addSectionHeader(content, "♟️ Tabletop Chess Gestures (Chess.com & Lichess)", activeTheme, menuDensity);
         addItemRow(content,
                 "Double-Tap & Drag",
                 "Double-tap on a starting square and drag across to draw live tactical arrows. Pieces on the origin square will not move.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "Double-Tap in Place",
                 "Double-tap quickly on any square without dragging to toggle its color highlight.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "Additive Markings",
                 "Multiple arrows and square highlights persist together on the board without disappearing as you draw additional lines.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "Clear Markings",
                 "Tap any square once or make a piece move to immediately clear all arrows and square highlights.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "1-Finger Piece Movement",
                 "Touch and drag any piece (> 10px) to move it normally with instant 0ms native responsiveness.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "Desktop Sidebar Menus",
                 "On Chess.com desktop mode, tapping main sidebar categories (Play, Puzzles, Learn, etc.) opens and stabilizes flyout submenus so options can be chosen without navigating away. Tap outside to dismiss.",
-                menuDensity);
+                activeTheme, menuDensity);
 
-        // --- SECTION 2: MENU CONTROLS ROW ---
-        addSectionHeader(content, "🎛️ Bottom Menu Controls Row", menuDensity);
+        // --- SECTION 2: SPLIT SCREEN & DUAL-APP MULTITASKING ---
+        addSectionHeader(content, "◫ Split Screen & Dual-App Multitasking", activeTheme, menuDensity);
+        addItemRow(content,
+                "Split Screen Toggle (◫)",
+                "• Short tap: When in single-app mode, opens Launcher to choose a second app side-by-side. When split screen is active, cycles preset ratios (50/50 → 70/30 → 30/70).\n• Long press: Closes split screen mode and restores the active app to full screen.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Center Divider Dragging",
+                "Touch and drag the center divider thumb to adjust split ratio between 20% and 80%. A high-performance dark themed curtain hides WebViews with live GPU-scaled cards and percentages for 60 FPS stutter-free dragging; snaps cleanly upon release.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Double-Tap Divider",
+                "Double-tap the center divider thumb at any time to instantly reset to a balanced 50/50 split.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Top Split Controls Bar",
+                "Docked top-center and visible exclusively when Browser Controls are open: [ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]. Keeps the tabletop 100% clutter-free during normal play.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Independent Audio Switching",
+                "Single-source audio isolation bridge mutes inactive pane automatically.\n• Short tap [ 🔊 ] / [ 🔇 ]: Instantly switch audio playback between left and right apps.\n• Long press: Mute audio on both panes simultaneously (NONE).",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Swap Panes (⇄)",
+                "Tap [ ⇄ Swap ] in the split control bar to instantly exchange the positions of the left and right applications.",
+                activeTheme, menuDensity);
+
+        // --- SECTION 3: BROWSER CONTROLS RAIL & THEMES ---
+        addSectionHeader(content, "🎛️ Browser Controls Rail & Themes", activeTheme, menuDensity);
+        addItemRow(content,
+                "Tabletop Themes ([ Theme: ... ])",
+                "Tap the theme button in the Launcher header to open the Tabletop Theme Picker modal. Choose between 6 authentic brand themes: University of Michigan (Maize & Blue), Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate. Dynamic live re-theming without reloading web pages, persisted in SharedPreferences.",
+                activeTheme, menuDensity);
         addItemRow(content,
                 "App Launcher & Custom Reordering",
                 "• Tap any app card to launch it.\n• Long press card (500ms): Opens Site Settings to configure User-Agent & Right Margin.\n• [✎ Edit] / [✓ Save] button: Tap to enter edit mode, allowing you to drag cards horizontally to reorder them and use [▲] / [▼] to move that entire category row up/down. Tap [✓ Save] to persist your layout.",
-                menuDensity);
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "✕  Close Menu",
+                "Short tap: Dismiss the Browser Controls rail or Launcher. The Browser Controls rail persists across page play and rotations until explicitly dismissed via ✕.",
+                activeTheme, menuDensity);
         addItemRow(content,
                 "⬅  Back",
                 "Short tap: Navigate backward in browser history or exit fullscreen HTML5 video.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "＋  Zoom In",
                 "Short tap: Step web page zoom up (75% → 100% → 125% → 150% → 200%).",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "－  Zoom Out",
                 "Short tap: Step web page zoom down (200% → 150% → 125% → 100% → 75%).",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "↺  Refresh",
                 "Short tap: Reload the current web page.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "🖥 / 📱  Desktop / Mobile User-Agent",
                 "Short tap: Toggle between Desktop (🖥) and Mobile (📱) mode for the current session.\n3-second hold: Save Desktop or Mobile as the persistent default for just this site.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "◧  Margin & Tabletop Padding",
                 "Short tap: 3-way cycle between Right Margin (106dp gutter), All 4 Sides (106dp inset padding), and No Margin (0dp edge-to-edge).\nLong press: Save current margin mode as the persistent default for active site.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "90°  Screen Rotation",
                 "Short tap: Rotate display clockwise 90° through all 4 tabletop orientations (Landscape → Portrait → Rev. Landscape → Rev. Portrait). The Browser Controls rail remains persistent across rotations.\nLong press: Reset display orientation back to default Landscape.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
-                "✕  Close Menu",
-                "Short tap: Dismiss the Browser Controls overlay or Launcher. The Browser Controls rail persists across page play and rotations until explicitly dismissed via ✕.",
-                menuDensity);
+                "♟  Launcher Shortcut",
+                "Short tap: Switch directly from the Browser Controls rail to the fullscreen Launcher.",
+                activeTheme, menuDensity);
 
-        // --- SECTION 3: SECONDARY TABS & POPUPS ---
-        addSectionHeader(content, "✕ Secondary Tabs & External Links", menuDensity);
+        // --- SECTION 4: SECONDARY TABS & POPUPS ---
+        addSectionHeader(content, "✕ Secondary Tabs & External Links", activeTheme, menuDensity);
         addItemRow(content,
                 "Isolated Secondary Tabs",
                 "External links, new-window requests (target=\"_blank\"), and popups open in an isolated secondary tab layered on top, keeping your active game alive underneath.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "Draggable Floating ✕ Button",
                 "A circular ✕ button appears when a secondary tab is active. Drag it anywhere on the tabletop screen; tap it to close the tab and return to your game. Fades to 35% opacity after 4s idle.",
-                menuDensity);
+                activeTheme, menuDensity);
 
-        // --- SECTION 4: BOARD HARDWARE SYSTEM MENU ---
-        addSectionHeader(content, "🔘 Board OS System Menu", menuDensity);
+        // --- SECTION 5: BOARD HARDWARE SYSTEM MENU ---
+        addSectionHeader(content, "🔘 Board OS System Menu", activeTheme, menuDensity);
         addItemRow(content,
                 "Hardware Menu Button",
                 "Press the physical or floating Board system button to open the Board OS pause overlay.",
-                menuDensity);
+                activeTheme, menuDensity);
         addItemRow(content,
                 "System Overlay Actions",
                 "• Resume — Return to the active web page / game.\n• App Menu — Open the quick site launcher and bottom controls row.\n• Controls Guide — Open this tabletop reference guide.\n• Exit to Library — Safely quit ChessBoard and return to the Board home screen.",
-                menuDensity);
+                activeTheme, menuDensity);
 
         root.addView(scrollView);
 
@@ -211,7 +247,7 @@ public final class HelpDialogHelper {
         Button doneBtn = new Button(activity);
         doneBtn.setText("✕  Close Guide");
         doneBtn.setAllCaps(false);
-        doneBtn.setTextColor(Color.parseColor("#B4C6FF"));
+        doneBtn.setTextColor(activeTheme.accentColor);
         doneBtn.setTextSize(13 * 2.0f);
         doneBtn.setTypeface(Typeface.DEFAULT_BOLD);
 
@@ -220,9 +256,9 @@ public final class HelpDialogHelper {
 
         GradientDrawable doneBg = new GradientDrawable();
         doneBg.setShape(GradientDrawable.RECTANGLE);
-        doneBg.setColor(Color.parseColor("#1E2433"));
+        doneBg.setColor(activeTheme.cardBgColor);
         doneBg.setCornerRadius(20 * menuDensity);
-        doneBg.setStroke((int) (1.2f * menuDensity), Color.parseColor("#5C7CFA"));
+        doneBg.setStroke((int) (1.2f * menuDensity), activeTheme.accentColor);
         doneBtn.setBackground(doneBg);
 
         LinearLayout.LayoutParams doneParams = new LinearLayout.LayoutParams(
@@ -253,26 +289,29 @@ public final class HelpDialogHelper {
         }
     }
 
-    private static void addSectionHeader(LinearLayout parent, String title, float menuDensity) {
+    private static void addSectionHeader(LinearLayout parent, String title,
+                                         ThemeManager.Theme theme, float menuDensity) {
         TextView tv = new TextView(parent.getContext());
         tv.setText(title);
-        tv.setTextColor(Color.parseColor("#91A7FF")); // Soft accent blue
+        tv.setTextColor(theme.accentColor);
         tv.setTextSize(13 * 2.0f);
         tv.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, (int) (10 * menuDensity), 0, (int) (6 * menuDensity));
+        lp.setMargins(0, (int) (12 * menuDensity), 0, (int) (6 * menuDensity));
         tv.setLayoutParams(lp);
         parent.addView(tv);
     }
 
-    private static void addItemRow(LinearLayout parent, String label, String description, float menuDensity) {
+    private static void addItemRow(LinearLayout parent, String label, String description,
+                                   ThemeManager.Theme theme, float menuDensity) {
         LinearLayout row = new LinearLayout(parent.getContext());
         row.setOrientation(LinearLayout.VERTICAL);
 
         GradientDrawable rowBg = new GradientDrawable();
-        rowBg.setColor(Color.parseColor("#262626"));
+        rowBg.setColor(theme.cardBgColor);
         rowBg.setCornerRadius(8 * menuDensity);
+        rowBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
         row.setBackground(rowBg);
 
         int padH = (int) (12 * menuDensity);
@@ -293,8 +332,8 @@ public final class HelpDialogHelper {
 
         TextView descTv = new TextView(parent.getContext());
         descTv.setText(description);
-        descTv.setTextColor(Color.parseColor("#D0D0D0"));
-        descTv.setTextSize(11 * 2.0f);
+        descTv.setTextColor(Color.parseColor("#CBD5E1"));
+        descTv.setTextSize(10.5f * 2.0f);
         descTv.setLineSpacing(2 * menuDensity, 1.15f);
 
         LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(
@@ -306,4 +345,3 @@ public final class HelpDialogHelper {
         parent.addView(row);
     }
 }
-

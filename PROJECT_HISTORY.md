@@ -996,3 +996,28 @@ To avoid information duplication, the live user-facing specifications are mainta
    - Updated `themeBtn` to dynamically display the active theme's branded button label (e.g. `[ 🏀 Theme: Pistons ]`, `[ 🦁 Theme: Lions ]`, `[ 🐅 Theme: Tigers ]`, `[ 🦄 Theme: Unicorns ]`).
 4. **Canonical Documentation Updates:**
    - Updated `PROJECT_HISTORY.md`, `README.md`, and `ARCHITECTURE.md`.
+
+
+---
+
+### Phase 44: Comprehensive Controls Guide Alignment & Themed In-App Documentation
+1. **Controls Guide Modal Modernization (`HelpDialogHelper.java`):**
+   - Added dedicated **`◫ Split Screen & Dual-App Multitasking`** section:
+     - Outlines split screen invocation (`◫` in Browser Controls rail or Launcher selection).
+     - Details center divider touch dragging (`20%` to `80%` ratio), double-tap 50/50 reset, and snap presets (`50/50`, `70/30`, `30/70`).
+     - Details high-performance themed drag curtain completely hiding WebViews with live GPU-scaled cards and percentages for 60 FPS stutter-free resizing.
+     - Details integrated top split controls bar (`[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]`).
+     - Explains single-source audio isolation bridge (tap to switch active audio pane, long press to mute all).
+     - Explains instantaneous pane swapping (`[ ⇄ Swap ]`).
+   - Added **Tabletop Themes Reference**:
+     - Outlines the 6 authentic brand themes (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate) and live switching via Launcher header button `[ Theme: ... ]`.
+   - Upgraded `HelpDialogHelper.java` to dynamically inherit `ThemeManager.getActiveTheme(activity)` styling:
+     - Backdrop, header title, section headers, row backgrounds/borders, and bottom close pill button dynamically adopt the active theme's palette tokens.
+2. **Canonical Architectural Documentation (`ARCHITECTURE.md`):**
+   - Added Section 4.5: Split-Screen Dual-App Multitasking & Audio Isolation Flow (Mermaid sequence diagram).
+   - Added Section 4.6: Dynamic Tabletop Theme Switching Flow (Mermaid sequence diagram).
+   - Added Section 5.6: Deferred WebView Redraw via GPU-Scaled Drag Overlay (architectural decision & rationale).
+   - Added Section 5.7: DOM MutationObserver Audio Isolation Bridge (architectural decision & rationale).
+3. **Canonical Project Overview (`README.md`):**
+   - Added dedicated Split-Screen Dual-App Tabletop Multitasking bullet to Key Features.
+   - Updated Controls Guide table entry and controls reference.

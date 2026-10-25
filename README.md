@@ -44,6 +44,11 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * A draggable floating **`✕`** button with idle auto-fade allows you to close the secondary tab at any time and instantly return to your active game.
 * **Chess.com Desktop Touch Ergonomics:**
   * Injects a client-side bridge into Chess.com to resolve desktop mouse-hover vs. touchscreen tap mismatches. Prevents category taps from immediately hotlinking away from your active board, opening flyout submenus ("Play Online", "Computer", etc.) on first tap, with clean outside-tap dismissal.
+* **Split-Screen Dual-App Tabletop Multitasking:**
+  * Run two concurrent, hardware-accelerated web apps side-by-side on the tabletop (e.g. active Chess match on the left, YouTube or Apple TV video stream on the right).
+  * **Single-Source Audio Isolation:** Seamless audio focus bridge mutes the inactive pane automatically; tap `[ 🔊 ]` / `[ 🔇 ]` to switch audio source or long-press to mute both (`NONE`).
+  * **High-Performance Themed Drag Overlay:** Drag the center divider thumb to resize panes from `20%` to `80%`. A deep obsidian overlay completely covers the WebViews during dragging, rendering GPU-accelerated scaling cards with live percentages for 60 FPS stutter-free resizing; snaps cleanly to `50/50`, `70/30`, or `30/70` presets on finger release. Double-tap the divider resets to 50/50 instantly.
+  * **Integrated Top Split Control Bar:** Docked top-center (`[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]`), visible exclusively when Browser Controls are open to keep the tabletop clean during play.
 * **Configurable Michigan Sports & Regional UI Themes:**
   * Implements 6 tabletop brand themes tailored for high contrast and glare-free tabletop gaming:
     * **University of Michigan:** Michigan Blue (`#00274C`), vibrant Maize (`#FFCB05`), and deep obsidian navy surfaces (`#001226`).
@@ -145,7 +150,7 @@ From the repository root:
 | **Deadspace Tap** *(Launcher)* | Tap any empty area/margin outside apps to close Launcher (or exit Edit Mode if active) | Guarded by near-miss tolerance buffer (36px) to prevent accidental closure |
 | **"CHESSBOARD" Title** *(Launcher Header)* | — | **Long press (500ms):** Open ChessBoard project GitHub repository (`https://github.com/adamlaster/ChessBoard`) |
 | **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 6 themes (University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate) with instant re-theming and persistent saving | — |
-| **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
+| **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, split-screen multitasking, tabletop themes, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
