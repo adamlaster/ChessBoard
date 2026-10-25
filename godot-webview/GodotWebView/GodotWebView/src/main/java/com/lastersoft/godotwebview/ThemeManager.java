@@ -146,6 +146,81 @@ public final class ThemeManager {
             "#ED1C24", // Drag card border (Red)
             "#F0160924"  // Split control bar background
         ),
+        WALNUT(
+            "walnut",
+            "Tournament Walnut",
+            "🪵 Walnut & Cream",
+            "🪵 Theme: Walnut",
+            "🪵 W",
+            "#140D08", // Launcher backdrop (Deepest dark walnut wood)
+            "#3D2314", // Rich burled walnut primary
+            "#E5B869", // Warm brass/gold accent
+            "#1F130B", // Card background
+            "#422B1D", // Card unselected border
+            "#E5B869", // Card active border
+            "#3D2314", // Badge background
+            "#E5B869", // Badge text / border
+            "#F2180F0A", // Controls rail background
+            "#E5B869", // Controls rail border
+            "#26170E", // Controls button background
+            "#E5B869", // Controls active accent
+            "#180F09", // Divider bar background
+            "#E5B869", // Divider handle
+            "#F8140D08", // Drag overlay curtain
+            "#1F130B", // Drag card background
+            "#E5B869", // Drag card border
+            "#F0180F0A"  // Split control bar background
+        ),
+        EMERALD(
+            "emerald",
+            "Club Emerald",
+            "🟢 Tournament Felt & Ivory",
+            "🟢 Theme: Emerald",
+            "🟢 E",
+            "#06140A", // Launcher backdrop (Deepest tournament green)
+            "#144722", // Emerald Green primary
+            "#2ECC71", // Mint / Emerald accent
+            "#0B2111", // Card background
+            "#1E522B", // Card unselected border
+            "#2ECC71", // Card active border
+            "#144722", // Badge background
+            "#E8F5E9", // Badge text / border (Ivory)
+            "#F2091A0E", // Controls rail background
+            "#2ECC71", // Controls rail border
+            "#0F2B17", // Controls button background
+            "#2ECC71", // Controls active accent
+            "#07170C", // Divider bar background
+            "#2ECC71", // Divider handle
+            "#F806140A", // Drag overlay curtain
+            "#0B2111", // Drag card background
+            "#2ECC71", // Drag card border
+            "#F0091A0E"  // Split control bar background
+        ),
+        CARBON(
+            "carbon",
+            "Midnight Carbon",
+            "⚡ Stealth Carbon & Ice",
+            "⚡ Theme: Carbon",
+            "⚡ C",
+            "#090A0D", // Launcher backdrop (Stealth Carbon)
+            "#171A22", // Carbon weave dark grey primary
+            "#38BDF8", // Electric Ice Cyan accent
+            "#101218", // Card background
+            "#242836", // Card unselected border
+            "#38BDF8", // Card active border
+            "#171A22", // Badge background
+            "#E0F2FE", // Badge text / border
+            "#F20B0D12", // Controls rail background
+            "#38BDF8", // Controls rail border
+            "#181C26", // Controls button background
+            "#38BDF8", // Controls active accent
+            "#0C0D12", // Divider bar background
+            "#38BDF8", // Divider handle
+            "#F8090A0D", // Drag overlay curtain
+            "#101218", // Drag card background
+            "#38BDF8", // Drag card border
+            "#F00B0D12"  // Split control bar background
+        ),
         CLASSIC(
             "classic",
             "Classic Slate",

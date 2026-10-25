@@ -1021,3 +1021,34 @@ To avoid information duplication, the live user-facing specifications are mainta
 3. **Canonical Project Overview (`README.md`):**
    - Added dedicated Split-Screen Dual-App Tabletop Multitasking bullet to Key Features.
    - Updated Controls Guide table entry and controls reference.
+
+---
+
+### Phase 45: Tabletop Enhancements — App Duos, 180° Inversion, Hot-Swap & Classic Boardroom Themes
+1. **Classic Tabletop & Boardroom Themes (`ThemeManager.java`):**
+   - Added 3 classic tournament and boardroom themes to `ThemeManager.Theme` (bringing total themes to 9):
+     - **Tournament Walnut (`WALNUT`):** Burled Walnut (`#3D2314`), warm brass/gold accent (`#E5B869`), and dark wood backdrop (`#140D08`).
+     - **Club Emerald (`EMERALD`):** Tournament Felt Green (`#144722`), Mint/Emerald accent (`#2ECC71`), Ivory badge text (`#E8F5E9`), and deep green backdrop (`#06140A`).
+     - **Midnight Carbon (`CARBON`):** Carbon weave slate (`#171A22`), Electric Ice Cyan accent (`#38BDF8`), Ice badge text (`#E0F2FE`), and stealth carbon backdrop (`#090A0D`).
+   - Dynamic touch feedback on launcher cards adheres to active theme borders and background.
+2. **Tabletop App Duos / One-Tap Split Presets (`AppCatalog.java`, `MenuOverlayView.java`, `GodotWebView.java`):**
+   - Extended `SiteEntry` with `secondaryUrl` and `isDuo()` method.
+   - Added `"Tabletop Duos"` row in launcher (`♟️▶️ Chess + YouTube`, `♟️🍎 Chess + Apple TV`, `♞🟣 Lichess + Twitch`, `♟️👽 Chess + Reddit`, `🐑▶️ Colonist + YouTube`).
+   - Tagged with `"DUO"` and highlighted with gold accent badge (`#FFD43B`).
+   - Tapping a Duo card triggers `onDuoSelected(primaryUrl, secondaryUrl)`, loading the primary URL into the main webview and immediately opening the secondary app in split-screen mode.
+3. **Head-to-Head Tabletop Mode (180° Inverted Secondary Pane) (`SplitScreenManager.java`):**
+   - Added `[ 🔄 180° ]` / `[ 🙃 180° ]` toggle button to the top split control bar.
+   - Rotates `secondaryWebView` by 180° for opposite-seat tabletop players.
+   - Android hardware-accelerated touch rotation automatically transforms touch coordinate dispatch with 100% native accuracy.
+4. **Secondary Pane Quick Navigation & Hot-Swap (`SplitScreenManager.java`, `GodotWebView.java`):**
+   - Added secondary navigation buttons to split control bar:
+     - `[ ◂ ]`: Dedicated back button for the secondary webview history.
+     - `[ ↺ ]`: Dedicated reload button for the secondary webview.
+     - `[ 🔀 App ]`: Opens Launcher in split-selection mode (`"SELECT APP FOR SPLIT SCREEN"`), allowing the user to hot-swap the secondary pane without closing split screen.
+5. **Media Play/Pause Quick Control (`SplitScreenManager.java`):**
+   - Added `[ ⏯ ]` button to top split control bar.
+   - Evaluates compact DOM JavaScript snippet across `<video>` and `<audio>` elements in the active audio pane to toggle pause/play without interacting with tiny web player controls.
+6. **Smooth Horizontally Scrollable Split Control Bar (`SplitScreenManager.java`):**
+   - Wrapped `splitControlBar` in `HorizontalScrollView` (`splitControlBarWrapper`) to ensure all 10 controls fit elegantly on any display size or portrait rotation without clipping.
+7. **Controls Guide & Canonical Documentation:**
+   - Updated `HelpDialogHelper.java`, `PROJECT_HISTORY.md`, `README.md`, and `ARCHITECTURE.md`.

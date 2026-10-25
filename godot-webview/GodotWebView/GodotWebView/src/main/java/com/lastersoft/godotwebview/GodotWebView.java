@@ -458,10 +458,26 @@ public class GodotWebView extends GodotPlugin {
                         float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
                         menuOverlayView.setSplitSelectionMode(false, md);
                         hideMenu();
-                        openSplitScreen(siteUrl);
+                        if (splitScreenManager.isSplitActive()) {
+                            splitScreenManager.loadSecondaryUrl(siteUrl);
+                        } else {
+                            openSplitScreen(siteUrl);
+                        }
                         return;
                     }
                     navigateToSite(siteUrl);
+                }
+
+                @Override
+                public void onDuoSelected(String primaryUrl, String secondaryUrl) {
+                    if (isSelectingSplitApp) {
+                        isSelectingSplitApp = false;
+                        Activity act = getActivity();
+                        float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+                        menuOverlayView.setSplitSelectionMode(false, md);
+                    }
+                    hideMenu();
+                    openDuo(primaryUrl, secondaryUrl);
                 }
 
                 @Override
@@ -950,10 +966,24 @@ public class GodotWebView extends GodotPlugin {
                     public void onSplitRatioChanged(float ratio) {
                         updateProgressBarForSplit();
                     }
+
+                    @Override
+                    public void onPickSecondaryApp() {
+                        Activity act = getActivity();
+                        float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+                        isSelectingSplitApp = true;
+                        menuOverlayView.setSplitSelectionMode(true, md);
+                        showLauncher();
+                    }
                 }
         );
 
         menuOverlayView.updateSplitScreenButtonStyle(true, menuDensity);
+    }
+
+    private void openDuo(String primaryUrl, String secondaryUrl) {
+        navigateToSite(primaryUrl);
+        openSplitScreen(secondaryUrl);
     }
 
     private void updateProgressBarForSplit() {

@@ -161,7 +161,19 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Top Split Controls Bar",
-                "Docked top-center and visible exclusively when Browser Controls are open: [ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]. Keeps the tabletop 100% clutter-free during normal play.",
+                "Docked top-center and visible exclusively when Browser Controls are open: [ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ Play/Pause ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ Back ]  [ ↺ Reload ]  [ 🔄 180° ]  [ ✕ Exit ]. Smooth horizontal scrolling on compact screens; keeps the tabletop 100% clutter-free during normal play.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Head-to-Head 180° Inversion (🔄 180°)",
+                "Tap [ 🔄 180° ] to invert the secondary pane 180° for opposite-seat tabletop players. Android hardware-accelerated touch rotation ensures seamless interactive play across the board.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Secondary App Hot-Swap & Controls (🔀 App, ◂, ↺)",
+                "• [ 🔀 App ]: Hot-swap the secondary pane to any other app from the Launcher without leaving split screen.\n• [ ◂ ] / [ ↺ ]: Dedicated history back and page refresh controls for the secondary pane.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Media Play/Pause Quick Control (⏯)",
+                "Tap [ ⏯ ] to toggle play/pause on all HTML5 video/audio streams in the active pane without fumbling with tiny on-screen web player controls.",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Independent Audio Switching",
@@ -176,7 +188,11 @@ public final class HelpDialogHelper {
         addSectionHeader(content, "🎛️ Browser Controls Rail & Themes", activeTheme, menuDensity);
         addItemRow(content,
                 "Tabletop Themes ([ Theme: ... ])",
-                "Tap the theme button in the Launcher header to open the Tabletop Theme Picker modal. Choose between 6 authentic brand themes: University of Michigan (Maize & Blue), Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, and Classic Slate. Dynamic live re-theming without reloading web pages, persisted in SharedPreferences.",
+                "Tap the theme button in the Launcher header to open the Tabletop Theme Picker modal. Choose between 9 authentic themes: University of Michigan (Maize & Blue), Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, Tournament Walnut (Walnut & Cream), Club Emerald (Tournament Green & Ivory), Midnight Carbon (Stealth Carbon & Ice), and Classic Slate. Dynamic live re-theming without reloading web pages, persisted in SharedPreferences.",
+                activeTheme, menuDensity);
+        addItemRow(content,
+                "Tabletop Duos & One-Tap Split Presets",
+                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube).",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "App Launcher & Custom Reordering",

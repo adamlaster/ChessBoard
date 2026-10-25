@@ -54,6 +54,7 @@ public class MenuOverlayView {
 
     public interface MenuActionListener {
         void onSiteSelected(String url);
+        default void onDuoSelected(String primaryUrl, String secondaryUrl) {}
         default void onSiteLongPressed(AppCatalog.SiteEntry site) {}
         void onGoBack();
         void onZoomIn();
@@ -740,7 +741,7 @@ public class MenuOverlayView {
                     tagView.setText(site.tag);
                     tagView.setTextColor(site.tag.equals("DEFAULT")
                             ? Color.parseColor("#38D9A9")
-                            : Color.parseColor("#748FFC"));
+                            : (site.tag.equals("DUO") ? Color.parseColor("#FFD43B") : Color.parseColor("#748FFC")));
                     tagView.setTextSize(7.5f * MENU_SCALE);
                     tagView.setTypeface(Typeface.DEFAULT_BOLD);
                     tagView.setBackground(tagBg);
@@ -1384,8 +1385,9 @@ public class MenuOverlayView {
                         downRawY = event.getRawY();
                         isCardDrag = false;
                         longPressTriggered = false;
-                        cardBg.setStroke((int) (1.5f * menuDensity), Color.parseColor("#5C7CFA"));
-                        cardBg.setColor(Color.parseColor("#22283A"));
+                        ThemeManager.Theme downTheme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+                        cardBg.setStroke((int) (1.5f * menuDensity), downTheme.cardActiveBorderColor);
+                        cardBg.setColor(downTheme.primaryColor);
                         v.invalidate();
                         handler.postDelayed(longPressRunnable, 500);
                         return true;
@@ -1398,8 +1400,9 @@ public class MenuOverlayView {
                             if (!isCardDrag && (dx > touchSlop || dy > touchSlop)) {
                                 isCardDrag = true;
                                 handler.removeCallbacks(longPressRunnable);
-                                cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
-                                cardBg.setColor(Color.parseColor("#161923"));
+                                ThemeManager.Theme moveTheme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+                                cardBg.setStroke((int) (1 * menuDensity), moveTheme.cardBorderColor);
+                                cardBg.setColor(moveTheme.cardBgColor);
                                 v.invalidate();
                             }
                             return false;
@@ -1408,14 +1411,19 @@ public class MenuOverlayView {
 
                     case MotionEvent.ACTION_UP:
                         handler.removeCallbacks(longPressRunnable);
-                        cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
-                        cardBg.setColor(Color.parseColor("#161923"));
+                        ThemeManager.Theme upTheme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+                        cardBg.setStroke((int) (1 * menuDensity), upTheme.cardBorderColor);
+                        cardBg.setColor(upTheme.cardBgColor);
                         v.invalidate();
 
                         if (!longPressTriggered && !isCardDrag) {
                             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                             if (listener != null) {
-                                listener.onSiteSelected(site.url);
+                                if (site.isDuo()) {
+                                    listener.onDuoSelected(site.url, site.secondaryUrl);
+                                } else {
+                                    listener.onSiteSelected(site.url);
+                                }
                             }
                         }
                         return true;
@@ -1423,8 +1431,9 @@ public class MenuOverlayView {
                     case MotionEvent.ACTION_CANCEL:
                         isCardDrag = false;
                         handler.removeCallbacks(longPressRunnable);
-                        cardBg.setStroke((int) (1 * menuDensity), Color.parseColor("#282F42"));
-                        cardBg.setColor(Color.parseColor("#161923"));
+                        ThemeManager.Theme cancelTheme = (activity != null) ? ThemeManager.getActiveTheme(activity) : ThemeManager.Theme.MICHIGAN;
+                        cardBg.setStroke((int) (1 * menuDensity), cancelTheme.cardBorderColor);
+                        cardBg.setColor(cancelTheme.cardBgColor);
                         v.invalidate();
                         return true;
                 }

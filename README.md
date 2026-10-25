@@ -46,16 +46,23 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * Injects a client-side bridge into Chess.com to resolve desktop mouse-hover vs. touchscreen tap mismatches. Prevents category taps from immediately hotlinking away from your active board, opening flyout submenus ("Play Online", "Computer", etc.) on first tap, with clean outside-tap dismissal.
 * **Split-Screen Dual-App Tabletop Multitasking:**
   * Run two concurrent, hardware-accelerated web apps side-by-side on the tabletop (e.g. active Chess match on the left, YouTube or Apple TV video stream on the right).
+  * **Tabletop Duos (One-Tap Split Presets):** Dedicated Launcher row to launch popular dual-app combinations in a single tap (`Chess + YouTube`, `Chess + Apple TV`, `Lichess + Twitch`, `Chess + Reddit`, `Colonist + YouTube`).
   * **Single-Source Audio Isolation:** Seamless audio focus bridge mutes the inactive pane automatically; tap `[ 🔊 ]` / `[ 🔇 ]` to switch audio source or long-press to mute both (`NONE`).
+  * **Media Play/Pause Quick Control:** Tap `[ ⏯ ]` in the top split bar to toggle playback on all HTML5 audio/video in the active pane without touching tiny on-screen web player controls.
+  * **Secondary App Quick Navigation & Hot-Swap:** Dedicated secondary pane navigation controls (`[ ◂ ]` Back, `[ ↺ ]` Reload) and `[ 🔀 App ]` to hot-swap the secondary pane from the Launcher without leaving split-screen mode.
+  * **Head-to-Head 180° Inversion:** Tap `[ 🔄 180° ]` to rotate the secondary pane 180° for opposite-seat tabletop players with 100% native hardware-accelerated touch rotation.
   * **High-Performance Themed Drag Overlay:** Drag the center divider thumb to resize panes from `20%` to `80%`. A deep obsidian overlay completely covers the WebViews during dragging, rendering GPU-accelerated scaling cards with live percentages for 60 FPS stutter-free resizing; snaps cleanly to `50/50`, `70/30`, or `30/70` presets on finger release. Double-tap the divider resets to 50/50 instantly.
-  * **Integrated Top Split Control Bar:** Docked top-center (`[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]`), visible exclusively when Browser Controls are open to keep the tabletop clean during play.
-* **Configurable Michigan Sports & Regional UI Themes:**
-  * Implements 6 tabletop brand themes tailored for high contrast and glare-free tabletop gaming:
+  * **Integrated Top Split Control Bar:** Docked top-center (`[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]`), wrapped in a horizontal scroll container and visible exclusively when Browser Controls are open.
+* **Configurable Regional Sports & Boardroom UI Themes:**
+  * Implements 9 distinctive tabletop themes tailored for high contrast and glare-free tabletop gaming:
     * **University of Michigan:** Michigan Blue (`#00274C`), vibrant Maize (`#FFCB05`), and deep obsidian navy surfaces (`#001226`).
     * **Detroit Pistons:** Royal Blue (`#1D42BA`), vibrant Red (`#ED174C`), and midnight navy surfaces (`#060C1C`).
     * **Detroit Lions:** Honolulu Blue (`#0076B6`), vibrant Honolulu Cyan (`#00A3E0`), silver accents, and dark steel surfaces (`#030E19`).
     * **Detroit Tigers:** Midnight Navy (`#0C2340`), vibrant Tiger Orange (`#FA4616`), and obsidian surfaces (`#020914`).
     * **Utica Unicorns:** USPBL Unicorn Purple (`#5A2D81`), vibrant Red (`#ED1C24`), and plum surfaces (`#12061A`).
+    * **Tournament Walnut:** Burled Walnut (`#3D2314`), warm brass/gold accent (`#E5B869`), and dark wood backdrop (`#140D08`).
+    * **Club Emerald:** Tournament Felt Green (`#144722`), Mint/Emerald accent (`#2ECC71`), Ivory badge text (`#E8F5E9`), and deep green backdrop (`#06140A`).
+    * **Midnight Carbon:** Stealth Carbon (`#171A22`), Electric Ice Cyan accent (`#38BDF8`), Ice badge text (`#E0F2FE`), and carbon backdrop (`#090A0D`).
     * **Classic Slate:** Slate Charcoal (`#121622`), Indigo (`#4C6EF5`), and Cyan (`#22B8CF`).
   * Includes a scrollable Tabletop Theme Picker modal (`ThemePickerDialogHelper`) accessible from the Launcher header allowing instant dynamic re-theming without page reloads, persisted in `SharedPreferences`.
 * **Widevine DRM & HTML5 Fullscreen Video:**
@@ -158,7 +165,7 @@ From the repository root:
 | **`🖥`** / **`📱`** | Toggle Desktop (`🖥`) vs. Mobile (`📱`) User-Agent live | **Long press:** Save as persistent default for active site |
 | **Margin (`◧` / `⧈` / `▢`)** | Cycle tabletop margins: **No margin** (`0dp` edge-to-edge) → **Right margin** (`106dp` Board clearance) → **All 4 sides** (`106dp` inset padding) | **Long press:** Save active margin mode as persistent default for active site |
 | **Split Screen (`◫`)** | Open Split Screen mode (prompts app picker from Launcher, or cycles presets `50/50` → `70/30` → `30/70` when active) | **Long press:** Close Split Screen mode and restore full screen |
-| **Split Controls Bar** *(Top Center)* | `[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ 🔇 RightApp ]  [ ✕ Exit ]` — Visible exclusively when Browser Controls are open. One-tap audio switching between panes, pane swapping, preset cycling, and clean exit. | **Long press on audio:** Mute both panes (`NONE`) |
+| **Split Controls Bar** *(Top Center)* | `[ 🔊 LeftApp ]  [ ⇄ Swap ]  [ ◫ Presets ]  [ ⏯ ]  [ 🔇 RightApp ]  [ 🔀 App ]  [ ◂ ]  [ ↺ ]  [ 🔄 180° ]  [ ✕ Exit ]` — Visible exclusively when Browser Controls are open. One-tap audio switching, media play/pause, pane swapping, preset cycling, secondary app hot-swap, secondary history back/reload, 180° head-to-head inversion, and clean exit. | **Long press on audio:** Mute both panes (`NONE`) |
 | **Divider Dragging** *(Split Mode)* | Drag center divider thumb to adjust split ratio (`20%` to `80%`). Automatically presents high-performance dark themed overlay with live scaling app icons, titles, and live percentages, completely hiding WebViews for 60fps stutter-free dragging. Snaps to presets upon release. | **Double tap:** Instantly reset to balanced 50/50 split |
 | **`90°`** | Rotate screen clockwise (`0°` → `90°` → `180°` → `270°`). The Browser Controls rail remains persistent and docked across rotation without dismissing. | Reset to default Landscape (`0°`) |
 | **`♟`** | Switch directly from Browser Controls to the fullscreen Launcher | — |
@@ -170,7 +177,7 @@ From the repository root:
 
 Pressing the hardware or floating Board system button opens the Board OS pause overlay:
 * **Resume:** Return to the active web page or chess game.
-* **Launcher:** Open the fullscreen 4-row categorized app catalog (Primary Chess, Games, Watch, Web) featuring an upper-right corner cutout around the Board OS button and long-press per-site settings.
+* **Launcher:** Open the fullscreen 5-row categorized app catalog (Primary Chess, Tabletop Duos, Games, Watch, Web) featuring an upper-right corner cutout around the Board OS button and long-press per-site settings.
 * **Browser Controls:** Open the slim vertical toolbar overlay docked directly on top of the live browser (below the Board OS button) for real-time visual feedback of zoom, UA, reload, and rotation.
 * **Exit to Library:** Safely terminate ChessBoard and return to the Board home screen.
 
@@ -199,6 +206,13 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **ChessKids.com** (`https://www.chesskids.com`)
 * **Lichess** (`https://lichess.org/analysis`)
 * **ChessReps** (`https://chessreps.com`)
+
+### ◫ Tabletop Duos (5 Paired Split Presets)
+* **Chess + YouTube** (`Play & Watch`)
+* **Chess + Apple TV** (`Play & Stream`)
+* **Lichess + Twitch** (`Analysis & Stream`)
+* **Chess + Reddit** (`Play & Community`)
+* **Colonist + YouTube** (`Catan & Stream`)
 
 ### 🗂️ Extra Apps (23 Apps Across 3 Categories)
 * **🎲 Games (8):** Colonist.io (Catan), Dots & Boxes, PBS Kids, ABCmouse, AutoDraw (Google), 247 Backgammon, 247 Checkers, 247 Games (All)

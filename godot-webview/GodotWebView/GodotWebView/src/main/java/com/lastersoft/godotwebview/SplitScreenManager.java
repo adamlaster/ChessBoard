@@ -28,6 +28,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -54,6 +55,7 @@ public class SplitScreenManager {
         void onSplitClosed();
         default void onPanesSwapped(boolean isPrimaryOnLeft) {}
         default void onSplitRatioChanged(float ratio) {}
+        default void onPickSecondaryApp() {}
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -96,14 +98,21 @@ public class SplitScreenManager {
     private DragCardHolder rightDragHolder = null;
 
     // Integrated Split Control Bar (docked horizontally at top center, visible only when Browser Controls are open)
+    private HorizontalScrollView splitControlBarWrapper = null;
     private LinearLayout splitControlBar = null;
     private GradientDrawable splitControlBarBg = null;
     private Button leftAudioBtn = null;
     private Button swapBtn = null;
     private Button presetBtn = null;
+    private Button playPauseBtn = null;
     private Button rightAudioBtn = null;
+    private Button changeAppBtn = null;
+    private Button secBackBtn = null;
+    private Button secReloadBtn = null;
+    private Button flipBtn = null;
     private Button exitBtn = null;
     private boolean areControlsVisible = false;
+    private boolean isSecondaryFlipped = false;
 
     private SplitScreenCallback callback = null;
 
@@ -134,13 +143,17 @@ public class SplitScreenManager {
 
     public void setControlsVisible(boolean visible) {
         this.areControlsVisible = visible;
-        if (splitControlBar != null) {
-            splitControlBar.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (splitControlBarWrapper != null) {
+            splitControlBarWrapper.setVisibility(visible ? View.VISIBLE : View.GONE);
             if (visible) {
-                splitControlBar.bringToFront();
+                splitControlBarWrapper.bringToFront();
                 updateControlBarButtons();
             }
         }
+    }
+
+    public boolean isSecondaryFlipped() {
+        return isSecondaryFlipped;
     }
 
     public WebView getSecondaryWebView() {
@@ -342,7 +355,7 @@ public class SplitScreenManager {
         root.addView(secondaryContainer, insertIndex);
         root.addView(dragOverlayView, insertIndex + 1);
         root.addView(dividerView, insertIndex + 2);
-        root.addView(splitControlBar, insertIndex + 3);
+        root.addView(splitControlBarWrapper, insertIndex + 3);
 
         // Set audio focus to secondary by default (secondary unmuted, primary muted)
         setAudioFocus(AudioFocusPane.SECONDARY);
@@ -437,8 +450,8 @@ public class SplitScreenManager {
                                 dragOverlayView.setVisibility(View.VISIBLE);
                                 dragOverlayView.bringToFront();
                                 dividerView.bringToFront();
-                                if (splitControlBar != null && areControlsVisible) {
-                                    splitControlBar.bringToFront();
+                                if (splitControlBarWrapper != null && areControlsVisible) {
+                                    splitControlBarWrapper.bringToFront();
                                 }
                             }
                         }
@@ -544,6 +557,15 @@ public class SplitScreenManager {
 
     private void createSplitControlBar(Activity act, float menuDensity) {
         ThemeManager.Theme theme = (act != null) ? ThemeManager.getActiveTheme(act) : ThemeManager.Theme.MICHIGAN;
+        splitControlBarWrapper = new HorizontalScrollView(act);
+        splitControlBarWrapper.setHorizontalScrollBarEnabled(false);
+        splitControlBarWrapper.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        splitControlBarWrapper.setClipToPadding(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            splitControlBarWrapper.setElevation(18 * menuDensity);
+        }
+        splitControlBarWrapper.setVisibility(View.GONE); // Hidden by default!
+
         splitControlBar = new LinearLayout(act);
         splitControlBar.setOrientation(LinearLayout.HORIZONTAL);
         splitControlBar.setGravity(Gravity.CENTER_VERTICAL);
@@ -555,13 +577,9 @@ public class SplitScreenManager {
         splitControlBarBg.setStroke((int) (1.5f * menuDensity), theme.controlsRailBorderColor);
         splitControlBar.setBackground(splitControlBarBg);
 
-        int padH = (int) (10 * menuDensity);
+        int padH = (int) (8 * menuDensity);
         int padV = (int) (5 * menuDensity);
         splitControlBar.setPadding(padH, padV, padH, padV);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            splitControlBar.setElevation(18 * menuDensity);
-        }
-        splitControlBar.setVisibility(View.GONE); // Hidden by default!
 
         // 1. Left Audio Button
         leftAudioBtn = createBarButton(act, menuDensity);
@@ -589,7 +607,15 @@ public class SplitScreenManager {
         presetBtn.setOnClickListener(v -> cycleSplitPreset());
         splitControlBar.addView(presetBtn);
 
-        // 4. Right Audio Button
+        // 4. Play/Pause Media Button
+        playPauseBtn = createBarButton(act, menuDensity);
+        playPauseBtn.setText("⏯");
+        playPauseBtn.setTextColor(theme.accentColor);
+        playPauseBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        playPauseBtn.setOnClickListener(v -> toggleActiveMediaPlayback());
+        splitControlBar.addView(playPauseBtn);
+
+        // 5. Right Audio Button
         rightAudioBtn = createBarButton(act, menuDensity);
         rightAudioBtn.setOnClickListener(v -> toggleAudio(!isPrimaryOnLeft));
         rightAudioBtn.setOnLongClickListener(v -> {
@@ -599,7 +625,39 @@ public class SplitScreenManager {
         });
         splitControlBar.addView(rightAudioBtn);
 
-        // 5. Exit Split Button
+        // 6. Secondary App Hot-Swap Button
+        changeAppBtn = createBarButton(act, menuDensity);
+        changeAppBtn.setText("🔀 App");
+        changeAppBtn.setTextColor(theme.accentColor);
+        changeAppBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        changeAppBtn.setOnClickListener(v -> pickSecondaryApp());
+        splitControlBar.addView(changeAppBtn);
+
+        // 7. Secondary Back Button
+        secBackBtn = createBarButton(act, menuDensity);
+        secBackBtn.setText("◂");
+        secBackBtn.setTextColor(Color.parseColor("#CBD5E1"));
+        secBackBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        secBackBtn.setOnClickListener(v -> navigateSecondaryBack());
+        splitControlBar.addView(secBackBtn);
+
+        // 8. Secondary Reload Button
+        secReloadBtn = createBarButton(act, menuDensity);
+        secReloadBtn.setText("↺");
+        secReloadBtn.setTextColor(Color.parseColor("#CBD5E1"));
+        secReloadBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        secReloadBtn.setOnClickListener(v -> reloadSecondary());
+        splitControlBar.addView(secReloadBtn);
+
+        // 9. Secondary 180° Inversion Button (Head-to-head mode)
+        flipBtn = createBarButton(act, menuDensity);
+        flipBtn.setText("🔄 180°");
+        flipBtn.setTextColor(Color.parseColor("#CBD5E1"));
+        flipBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        flipBtn.setOnClickListener(v -> toggleSecondaryFlip());
+        splitControlBar.addView(flipBtn);
+
+        // 10. Exit Split Button
         exitBtn = createBarButton(act, menuDensity);
         exitBtn.setText("✕ Exit");
         exitBtn.setTextColor(Color.parseColor("#FFA8A8"));
@@ -612,6 +670,7 @@ public class SplitScreenManager {
         exitBtn.setOnClickListener(v -> closeSplit());
         splitControlBar.addView(exitBtn);
 
+        splitControlBarWrapper.addView(splitControlBar);
         updateControlBarButtons();
     }
 
@@ -621,10 +680,10 @@ public class SplitScreenManager {
         btn.setTextSize(10.0f * MenuOverlayView.MENU_SCALE);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
         int height = (int) (32 * menuDensity);
-        int padH = (int) (10 * menuDensity);
+        int padH = (int) (8 * menuDensity);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, height);
-        lp.setMargins((int) (3 * menuDensity), 0, (int) (3 * menuDensity), 0);
+        lp.setMargins((int) (2.5f * menuDensity), 0, (int) (2.5f * menuDensity), 0);
         btn.setLayoutParams(lp);
         btn.setPadding(padH, 0, padH, 0);
         btn.setIncludeFontPadding(false);
@@ -688,6 +747,33 @@ public class SplitScreenManager {
 
         if (swapBtn != null) {
             swapBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        }
+
+        if (playPauseBtn != null) {
+            playPauseBtn.setTextColor(theme.accentColor);
+            playPauseBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        }
+
+        if (changeAppBtn != null) {
+            changeAppBtn.setTextColor(theme.accentColor);
+            changeAppBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        }
+
+        if (secBackBtn != null) {
+            boolean canBack = (secondaryWebView != null && secondaryWebView.canGoBack());
+            secBackBtn.setTextColor(canBack ? Color.parseColor("#F8FAFC") : Color.parseColor("#64748B"));
+            secBackBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        }
+
+        if (secReloadBtn != null) {
+            secReloadBtn.setTextColor(Color.parseColor("#CBD5E1"));
+            secReloadBtn.setBackground(createButtonPillBackground(menuDensity, false, null));
+        }
+
+        if (flipBtn != null) {
+            flipBtn.setText(isSecondaryFlipped ? "🙃 180°" : "🔄 180°");
+            flipBtn.setTextColor(isSecondaryFlipped ? theme.accentColor : Color.parseColor("#CBD5E1"));
+            flipBtn.setBackground(createButtonPillBackground(menuDensity, isSecondaryFlipped, theme.accentColor));
         }
     }
 
@@ -994,6 +1080,83 @@ public class SplitScreenManager {
         wv.evaluateJavascript(js, null);
     }
 
+    public void toggleSecondaryFlip() {
+        if (secondaryWebView == null) return;
+        isSecondaryFlipped = !isSecondaryFlipped;
+        secondaryWebView.setRotation(isSecondaryFlipped ? 180.0f : 0.0f);
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+        updateControlBarButtons();
+    }
+
+    public void toggleActiveMediaPlayback() {
+        WebView targetView = (activeAudio == AudioFocusPane.PRIMARY) ? primaryWebView : secondaryWebView;
+        if (targetView == null && secondaryWebView != null) {
+            targetView = secondaryWebView;
+        }
+        if (targetView != null) {
+            String js = "(function() {" +
+                    "  var media = document.querySelectorAll('video, audio');" +
+                    "  if (!media || media.length === 0) return;" +
+                    "  var anyPlaying = false;" +
+                    "  for (var i = 0; i < media.length; i++) {" +
+                    "    if (!media[i].paused && !media[i].ended && media[i].readyState > 2) {" +
+                    "      anyPlaying = true; break;" +
+                    "    }" +
+                    "  }" +
+                    "  for (var j = 0; j < media.length; j++) {" +
+                    "    if (anyPlaying) { media[j].pause(); } else { media[j].play(); }" +
+                    "  }" +
+                    "})();";
+            targetView.evaluateJavascript(js, null);
+            if (activity != null) {
+                activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            }
+        }
+    }
+
+    public void navigateSecondaryBack() {
+        if (secondaryWebView != null && secondaryWebView.canGoBack()) {
+            secondaryWebView.goBack();
+            if (activity != null) {
+                activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            }
+            updateControlBarButtons();
+        }
+    }
+
+    public void reloadSecondary() {
+        if (secondaryWebView != null) {
+            secondaryWebView.reload();
+            if (activity != null) {
+                activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            }
+        }
+    }
+
+    public void pickSecondaryApp() {
+        if (activity != null) {
+            activity.getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        }
+        if (callback != null) {
+            callback.onPickSecondaryApp();
+        }
+    }
+
+    public void loadSecondaryUrl(String targetUrl) {
+        if (targetUrl == null || targetUrl.trim().isEmpty() || secondaryWebView == null) return;
+        this.secondarySiteUrl = targetUrl;
+        this.secondarySiteKey = UserAgentManager.getSiteKey(targetUrl);
+        if (uaManager != null && activity != null) {
+            uaManager.applySiteDefault(activity, secondarySiteKey);
+            uaManager.configureWebSettings(secondaryWebView.getSettings(), targetUrl);
+        }
+        String finalUrl = (uaManager != null) ? uaManager.adjustYouTubeTargetUrl(targetUrl) : targetUrl;
+        secondaryWebView.loadUrl(finalUrl);
+        updateControlBarButtons();
+    }
+
     public void closeSplit() {
         if (!isSplitActive) return;
         isSplitActive = false;
@@ -1012,6 +1175,7 @@ public class SplitScreenManager {
         if (secondaryWebView != null) {
             secondaryWebView.stopLoading();
             secondaryWebView.onPause();
+            secondaryWebView.setRotation(0.0f);
             secondaryWebView.loadUrl("about:blank");
             if (secondaryContainer != null) {
                 secondaryContainer.removeView(secondaryWebView);
@@ -1042,13 +1206,20 @@ public class SplitScreenManager {
             rightDragHolder = null;
         }
 
-        if (splitControlBar != null && rootLayout != null) {
-            rootLayout.removeView(splitControlBar);
+        isSecondaryFlipped = false;
+        if (splitControlBarWrapper != null && rootLayout != null) {
+            rootLayout.removeView(splitControlBarWrapper);
+            splitControlBarWrapper = null;
             splitControlBar = null;
             leftAudioBtn = null;
             swapBtn = null;
             presetBtn = null;
+            playPauseBtn = null;
             rightAudioBtn = null;
+            changeAppBtn = null;
+            secBackBtn = null;
+            secReloadBtn = null;
+            flipBtn = null;
             exitBtn = null;
         }
 
@@ -1170,12 +1341,12 @@ public class SplitScreenManager {
         }
 
         // Apply to Integrated Split Control Bar (centered horizontally at top)
-        if (splitControlBar != null) {
+        if (splitControlBarWrapper != null) {
             FrameLayout.LayoutParams scbLp = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                     Gravity.CENTER_HORIZONTAL | Gravity.TOP);
             scbLp.topMargin = (int) (14 * menuDensity);
-            splitControlBar.setLayoutParams(scbLp);
+            splitControlBarWrapper.setLayoutParams(scbLp);
         }
     }
 

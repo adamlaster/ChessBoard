@@ -17,24 +17,34 @@ public final class AppCatalog {
     public static class SiteEntry {
         public final String name;
         public final String url;
+        public final String secondaryUrl;
         public final String icon;
         public final String subtitle;
         public final String tag;
 
         public SiteEntry(String name, String url) {
-            this(name, url, "🌐", "", "");
+            this(name, url, null, "🌐", "", "");
         }
 
         public SiteEntry(String name, String url, String icon, String subtitle) {
-            this(name, url, icon, subtitle, "");
+            this(name, url, null, icon, subtitle, "");
         }
 
         public SiteEntry(String name, String url, String icon, String subtitle, String tag) {
+            this(name, url, null, icon, subtitle, tag);
+        }
+
+        public SiteEntry(String name, String url, String secondaryUrl, String icon, String subtitle, String tag) {
             this.name = name;
             this.url = url;
+            this.secondaryUrl = secondaryUrl;
             this.icon = icon;
             this.subtitle = subtitle;
             this.tag = tag;
+        }
+
+        public boolean isDuo() {
+            return secondaryUrl != null && !secondaryUrl.trim().isEmpty();
         }
     }
 
@@ -63,6 +73,13 @@ public final class AppCatalog {
 
     public static final List<CategoryEntry> ALL_CATEGORIES = Arrays.asList(
         new CategoryEntry("Primary Chess", "♟", MAIN_SITES),
+        new CategoryEntry("Tabletop Duos", "◫", Arrays.asList(
+            new SiteEntry("Chess + YouTube", "https://www.chess.com", "https://www.youtube.com", "♟️▶️", "Play & Watch", "DUO"),
+            new SiteEntry("Chess + Apple TV", "https://www.chess.com", "https://tv.apple.com", "♟️🍎", "Play & Stream", "DUO"),
+            new SiteEntry("Lichess + Twitch", "https://lichess.org/analysis", "https://www.twitch.tv", "♞🟣", "Analysis & Stream", "DUO"),
+            new SiteEntry("Chess + Reddit", "https://www.chess.com", "https://www.reddit.com/r/chess", "♟️👽", "Play & Community", "DUO"),
+            new SiteEntry("Colonist + YouTube", "https://colonist.io", "https://www.youtube.com", "🐑▶️", "Catan & Stream", "DUO")
+        )),
         new CategoryEntry("Games", "🎲", Arrays.asList(
             new SiteEntry("AutoDraw", "https://www.autodraw.com", "🎨", "Google AI Drawing", "AI"),
             new SiteEntry("Colonist.io", "https://colonist.io", "🐑", "Catan Board Game", "CATAN"),
