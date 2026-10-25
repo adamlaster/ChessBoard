@@ -25,6 +25,7 @@ Whenever you add or modify features, web apps/categories, menu controls, or buil
 ## 4. Git Commit & Push Confirmation Rule
 - **Explicit Confirmation Required:** NEVER run `git commit` or `git push` autonomously.
 - Always summarize the modified/staged files, ensure the user has verified and tested the changes on device, and wait for the user's explicit confirmation before committing and pushing.
+- **Secondary Branch Target:** When working on a secondary/experimental branch, all confirmed commits and pushes must remain strictly on that branch (`git push origin <branch-name>`). NEVER push to or merge into `main` unless the user explicitly instructs to merge into `main`.
 
 ## 5. Sandboxed Experiments & Exploratory Prototyping ("Sandbox Rule")
 Whenever trying something new, prototyping exploratory UX/architectural changes, or testing alternative workflows (e.g., migrating UI elements to system menus, restructuring layouts, swapping core systems):
@@ -35,8 +36,6 @@ Whenever trying something new, prototyping exploratory UX/architectural changes,
   2. Delete or archive the experiment branch: `git branch -D experiment/<feature-name>`.
   3. Rebuild and deploy: `./build_and_deploy.sh -d <device_ip>`.
   This guarantees an instant return to the verified baseline in seconds with zero manual code surgery, no residual bugs, and no risk of regressions.
-- **Promote upon Explicit Approval:** Only when the user explicitly approves the prototype and wants to adopt it:
-  1. Merge or fast-forward the sandbox branch into `main`.
-  2. Update canonical documentation (`PROJECT_HISTORY.md`, `README.md`, `ARCHITECTURE.md`).
-  3. Wait for explicit user confirmation before committing and pushing per Rule 4.
+- **Explicit Merge Instruction Required for Promotion:** Do NOT merge or fast-forward sandbox branches into `main` on general approval ("push", "commit", "good work"). Only merge into `main` when the user explicitly commands to merge (e.g., "merge into main", "promote branch to main"). Without that explicit command, commits and pushes must target the secondary experiment branch exclusively.
+
 
