@@ -146,7 +146,7 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Bezel Swipes (Edge Gestures)",
-                "• Top Bezel Swipe (downward): Pull down from the top edge of the bezel to instantly reveal the Fullscreen Launcher. Swipe up to dismiss.\n• Right Bezel Swipe (leftward): Pull in from the right edge of the bezel (below the Board OS button) to instantly reveal the docked Browser Controls rail. Swipe right to dismiss.",
+                "• Top Bezel Swipe (downward): Pull down from the top edge of the bezel to instantly reveal the Fullscreen Launcher.\n• Right Bezel Swipe (leftward): Pull in from the right edge of the bezel (below the Board OS button) to instantly reveal the docked Browser Controls rail.",
                 activeTheme, menuDensity);
 
         // --- SECTION 2: SPLIT SCREEN & DUAL-APP MULTITASKING ---
@@ -196,7 +196,7 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Tabletop Duos & One-Tap Split Presets",
-                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube).",
+                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, ChessKids + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube).",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "App Launcher & Custom Reordering",

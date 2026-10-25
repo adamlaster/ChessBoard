@@ -46,7 +46,7 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * Injects a client-side bridge into Chess.com to resolve desktop mouse-hover vs. touchscreen tap mismatches. Prevents category taps from immediately hotlinking away from your active board, opening flyout submenus ("Play Online", "Computer", etc.) on first tap, with clean outside-tap dismissal.
 * **Split-Screen Dual-App Tabletop Multitasking:**
   * Run two concurrent, hardware-accelerated web apps side-by-side on the tabletop (e.g. active Chess match on the left, YouTube or Apple TV video stream on the right).
-  * **Tabletop Duos (One-Tap Split Presets):** Dedicated Launcher row to launch popular dual-app combinations in a single tap (`Chess + YouTube`, `Chess + Apple TV`, `Lichess + Twitch`, `Chess + Reddit`, `Colonist + YouTube`).
+  * **Tabletop Duos (One-Tap Split Presets):** Dedicated Launcher row to launch popular dual-app combinations in a single tap (`Chess + YouTube`, `ChessKids + YouTube`, `Chess + Apple TV`, `Lichess + Twitch`, `Chess + Reddit`, `Colonist + YouTube`).
   * **Single-Source Audio Isolation:** Seamless audio focus bridge mutes the inactive pane automatically; tap `[ 🔊 ]` / `[ 🔇 ]` to switch audio source or long-press to mute both (`NONE`).
   * **Media Play/Pause Quick Control:** Tap `[ ⏯ ]` in the top split bar to toggle playback on all HTML5 audio/video in the active pane without touching tiny on-screen web player controls.
   * **Secondary App Quick Navigation & Hot-Swap:** Dedicated secondary pane navigation controls (`[ ◂ ]` Back, `[ ↺ ]` Reload) and `[ 🔀 App ]` to hot-swap the secondary pane from the Launcher without leaving split-screen mode.
@@ -65,10 +65,10 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
     * **Midnight Carbon:** Stealth Carbon (`#171A22`), Electric Ice Cyan accent (`#38BDF8`), Ice badge text (`#E0F2FE`), and carbon backdrop (`#090A0D`).
     * **Classic Slate:** Slate Charcoal (`#121622`), Indigo (`#4C6EF5`), and Cyan (`#22B8CF`).
   * Includes a scrollable Tabletop Theme Picker modal (`ThemePickerDialogHelper`) accessible from the Launcher header allowing instant dynamic re-theming without page reloads, persisted in `SharedPreferences`.
-* **Bezel Edge Swipes & Bidirectional Dismiss (Top & Right Gestures):**
-  * **Top Bezel Swipe (downward):** Swiping down from the top edge (`y <= 64dp`) by `36dp` (or fast fling) into the screen reveals the Fullscreen Launcher. Swiping up on the open Launcher dismisses it.
-  * **Right Bezel Swipe (leftward):** Swiping left from the right edge (`x >= width - 64dp`) by `36dp` (or fast fling) below the Board OS cutout (`y > 106dp`) reveals the docked Browser Controls rail. Swiping right on the open Browser Controls rail dismisses it.
-  * **Touch Safety & Corner Clearance:** Generous 64dp edge landing zone with `VelocityTracker` support, resilient directional filtering (eliminating micro-movement aborts), multi-touch pinch safety (`ACTION_POINTER_DOWN` abort), and complete clearance of the Board OS hardware button corner cutout (`106dp`), ensuring zero interference with chess pieces, tactical arrows, or system controls.
+* **Bezel Edge Swipes (Top & Right Gestures):**
+  * **Top Bezel Swipe (downward):** Swiping down from the top edge (`y <= 64dp`) by `36dp` (or fast fling) into the screen reveals the Fullscreen Launcher.
+  * **Right Bezel Swipe (leftward):** Swiping left from the right edge (`x >= width - 64dp`) by `36dp` (or fast fling) below the Board OS cutout (`y > 106dp`) reveals the docked Browser Controls rail.
+  * **Touch Safety & Corner Clearance:** Generous 64dp edge landing zone with `VelocityTracker` support, resilient directional filtering (zero micro-movement aborts), multi-touch pinch safety (`ACTION_POINTER_DOWN` abort), and complete clearance of the Board OS hardware button corner cutout (`106dp`), ensuring zero interference with chess pieces, tactical arrows, launcher cards, or system controls.
 * **Widevine DRM & HTML5 Fullscreen Video:**
   * Automatically grants `RESOURCE_PROTECTED_MEDIA_ID` permissions for protected streaming playback and supports native HTML5 fullscreen video surfaces.
 
@@ -163,8 +163,8 @@ From the repository root:
 | **"CHESSBOARD" Title** *(Launcher Header)* | — | **Long press (500ms):** Open ChessBoard project GitHub repository (`https://github.com/adamlaster/ChessBoard`) |
 | **`[ Theme: ... ]` Button** *(Launcher Header)* | Open the Tabletop Theme Picker modal to switch live between 9 authentic team, classic, and boardroom themes with instant re-theming and persistent saving | — |
 | **`[ 📖 Controls Guide ]`** *(Launcher Header)* | Open the 2x tabletop-scaled interactive modal detailing all chess gestures, split-screen multitasking, tabletop themes, browser navigation, desktop persistence, margin toggles, screen rotation, and secondary tabs | — |
-| **Top Bezel Swipe** *(Downward)* | Pull down from top edge bezel (`y <= 64dp`, travel 36dp or fast fling) into the screen to instantly reveal the Fullscreen Launcher. Swipe up while Launcher is open to dismiss | — |
-| **Right Bezel Swipe** *(Leftward)* | Pull in from right edge bezel (`x >= width - 64dp`, travel 36dp or fast fling, below cutout) to instantly reveal the docked Browser Controls rail. Swipe right while rail is open to dismiss | — |
+| **Top Bezel Swipe** *(Downward)* | Pull down from top edge bezel (`y <= 64dp`, travel 36dp or fast fling) into the screen to instantly reveal the Fullscreen Launcher | — |
+| **Right Bezel Swipe** *(Leftward)* | Pull in from right edge bezel (`x >= width - 64dp`, travel 36dp or fast fling, below cutout) to instantly reveal the docked Browser Controls rail | — |
 | **`✕`** | Close the Browser Controls overlay or Launcher (positioned in identical spot below Board button). The Browser Controls rail remains active during live page interaction and dismisses exclusively on `✕` tap. | — |
 | **`⬅`** | Navigate back in `WebView` history (or exit fullscreen video) | — |
 | **`＋`** / **`－`** | Step page zoom (`75%`, `100%`, `125%`, `150%`, `200%`) live | — |
@@ -214,8 +214,9 @@ On desktop browsers, tactical arrows and square highlights require mouse right-c
 * **Lichess** (`https://lichess.org/analysis`)
 * **ChessReps** (`https://chessreps.com`)
 
-### ◫ Tabletop Duos (5 Paired Split Presets)
+### ◫ Tabletop Duos (6 Paired Split Presets)
 * **Chess + YouTube** (`Play & Watch`)
+* **ChessKids + YouTube** (`Lessons & Watch`)
 * **Chess + Apple TV** (`Play & Stream`)
 * **Lichess + Twitch** (`Analysis & Stream`)
 * **Chess + Reddit** (`Play & Community`)

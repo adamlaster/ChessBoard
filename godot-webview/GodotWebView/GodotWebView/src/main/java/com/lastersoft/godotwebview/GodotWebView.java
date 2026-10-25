@@ -180,24 +180,6 @@ public class GodotWebView extends GodotPlugin {
                     }
 
                     @Override
-                    public void onSwipeUpToCloseLauncher() {
-                        activity.runOnUiThread(() -> {
-                            if (menuOverlayView != null) {
-                                menuOverlayView.hideLauncher();
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onSwipeRightToCloseControls() {
-                        activity.runOnUiThread(() -> {
-                            if (menuOverlayView != null) {
-                                menuOverlayView.hideBrowserControls();
-                            }
-                        });
-                    }
-
-                    @Override
                     public boolean isLauncherOpen() {
                         return menuOverlayView != null && menuOverlayView.isLauncherOpen();
                     }

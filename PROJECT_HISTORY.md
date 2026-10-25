@@ -1073,3 +1073,16 @@ To avoid information duplication, the live user-facing specifications are mainta
    - Updated `README.md` and `ARCHITECTURE.md` with `BezelGestureFrameLayout` subsystem details and gesture references.
 4. **Workspace Rules Alignment (`AGENTS.md`):**
    - Added Rule 4 documentation prerequisite: part of merging and pushing is ensuring all canonical root documentation files are fully up to date before staging, committing, or pushing.
+
+---
+
+### Phase 47: Bezel Gesture Touch Passthrough Fix & ChessKids Duo
+1. **Bezel Gesture Touch Isolation (`BezelGestureFrameLayout.java`):**
+   - Diagnosed root cause of frequent Launcher dismissal when swiped to launch: capacitive touch lift release (`ACTION_UP`) caused fast upward micro-movements (`vy < -450dp/s`, `dy < -20dp`), triggering experimental swipe-up dismiss logic on normal card taps.
+   - Removed swipe-to-dismiss tracking (`trackingLauncherClose` / `trackingControlsClose`).
+   - When Launcher is open (`isLauncherOpen()`), `BezelGestureFrameLayout` immediately returns `false` on `ACTION_DOWN` without registering any edge tracking, guaranteeing 100% clean touch delivery to cards, horizontal row scrolling, edit mode, and deadspace tap dismissal.
+2. **Tabletop App Duos Expansion (`AppCatalog.java`):**
+   - Added **`ChessKids + YouTube`** (`https://www.chesskids.com` + `https://www.youtube.com`, `🧒▶️`, tag `"DUO"`, `"Kids & Watch"`) bringing Tabletop Duos to 6 paired presets.
+3. **Controls Guide & Canonical Documentation:**
+   - Updated `HelpDialogHelper.java` Controls Guide with the updated 6 Duos list and bezel swipe behavior.
+   - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.

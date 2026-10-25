@@ -13,12 +13,13 @@ import android.widget.FrameLayout;
  * Custom root container for ChessBoard that detects bezel edge swipe gestures:
  * 1. Top Bezel Swipe (downward): Opens the Fullscreen Launcher.
  * 2. Right Bezel Swipe (leftward): Opens the Browser Controls rail.
- * 3. Swipe Up (when Launcher is open): Dismisses the Launcher.
- * 4. Swipe Right (when Browser Controls rail is open): Dismisses Browser Controls.
  *
  * Implements generous edge-zone thresholding (64dp), velocity/fling detection,
  * multi-touch pinch safety, and Board OS top-right cutout protection to ensure
  * zero interference with normal chessboard play, piece dragging, or Board hardware buttons.
+ *
+ * When an overlay (Launcher or Controls) is already open, bezel swipe tracking is completely
+ * bypassed so all touches reach cards, buttons, and scroll views with zero interference.
  */
 public class BezelGestureFrameLayout extends FrameLayout {
 
@@ -27,8 +28,6 @@ public class BezelGestureFrameLayout extends FrameLayout {
     public interface BezelSwipeListener {
         void onTopBezelSwipe();
         void onRightBezelSwipe();
-        void onSwipeUpToCloseLauncher();
-        void onSwipeRightToCloseControls();
         boolean isLauncherOpen();
         boolean isControlsOpen();
     }
@@ -47,8 +46,6 @@ public class BezelGestureFrameLayout extends FrameLayout {
     private float downY;
     private boolean trackingTopBezel = false;
     private boolean trackingRightBezel = false;
-    private boolean trackingLauncherClose = false;
-    private boolean trackingControlsClose = false;
     private boolean gestureIntercepted = false;
 
     public BezelGestureFrameLayout(Context context) {
@@ -77,9 +74,9 @@ public class BezelGestureFrameLayout extends FrameLayout {
 
     @Override
     public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
-        // If an edge or close gesture is actively being tracked, do not allow child views
-        // (e.g. WebView scroll / card row scroll) to disallow interception.
-        if (trackingTopBezel || trackingRightBezel || trackingLauncherClose || trackingControlsClose) {
+        // If an edge gesture is actively being tracked, do not allow child views
+        // (e.g. WebView scroll) to disallow interception.
+        if (trackingTopBezel || trackingRightBezel) {
             return;
         }
         super.requestDisallowInterceptTouchEvent(disallowIntercept);
@@ -112,19 +109,21 @@ public class BezelGestureFrameLayout extends FrameLayout {
                 boolean launcherOpen = (listener != null && listener.isLauncherOpen());
                 boolean controlsOpen = (listener != null && listener.isControlsOpen());
 
+                // When Launcher is open, completely bypass all bezel interception
+                // so that app cards, scrolls, and deadspace dismissal get 100% clean touches.
+                if (launcherOpen) {
+                    trackingTopBezel = false;
+                    trackingRightBezel = false;
+                    return false;
+                }
+
                 // 1. Check Top Bezel: touch starts near top edge, excluding the Board OS cutout at top-right
                 boolean inTopZone = (y <= bezelZonePx) && (x < width - cutoutPx);
                 // 2. Check Right Bezel: touch starts near right edge, excluding the Board OS cutout at top-right
                 boolean inRightZone = (x >= width - bezelZonePx) && (y > cutoutPx);
 
-                trackingTopBezel = inTopZone && !launcherOpen;
+                trackingTopBezel = inTopZone;
                 trackingRightBezel = inRightZone && !controlsOpen;
-
-                // Also detect closing swipes when overlays are already open:
-                // - In Launcher: swipe UP from anywhere below top header to dismiss
-                trackingLauncherClose = launcherOpen && (y > 60.0f * density);
-                // - In Browser Controls: swipe RIGHT from right rail zone (within 220dp of right edge) to dismiss
-                trackingControlsClose = controlsOpen && (x >= width - 220.0f * density);
 
                 if (trackingTopBezel) {
                     Log.d(TAG, "ACTION_DOWN in Top Bezel zone: (" + x + ", " + y + ")");
@@ -137,8 +136,6 @@ public class BezelGestureFrameLayout extends FrameLayout {
                 // Abort tracking on multi-touch gestures (e.g. pinch-to-zoom)
                 trackingTopBezel = false;
                 trackingRightBezel = false;
-                trackingLauncherClose = false;
-                trackingControlsClose = false;
                 return false;
 
             case MotionEvent.ACTION_MOVE:
@@ -203,60 +200,12 @@ public class BezelGestureFrameLayout extends FrameLayout {
                     }
                 }
 
-                // --- 3. SWIPE UP TO CLOSE LAUNCHER ---
-                else if (trackingLauncherClose) {
-                    // Abort if user moves horizontally to scroll cards
-                    if (Math.abs(dx) > 24.0f * density) {
-                        trackingLauncherClose = false;
-                        return false;
-                    }
-
-                    boolean distanceMet = (dy <= -swipeThresholdPx * 1.2f && Math.abs(dy) >= Math.abs(dx));
-                    boolean flingMet = (vy <= -flingVelocityPx && dy <= -20.0f * density && Math.abs(vy) >= Math.abs(vx));
-
-                    if (distanceMet || flingMet) {
-                        Log.d(TAG, "Swipe Up to Close Launcher Triggered! dy=" + dy + ", vy=" + vy);
-                        gestureIntercepted = true;
-                        trackingLauncherClose = false;
-                        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                        if (listener != null) {
-                            listener.onSwipeUpToCloseLauncher();
-                        }
-                        return true;
-                    }
-                }
-
-                // --- 4. SWIPE RIGHT TO CLOSE BROWSER CONTROLS ---
-                else if (trackingControlsClose) {
-                    // Abort if user moves vertically on the controls rail
-                    if (Math.abs(dy) > 28.0f * density && dx < 12.0f * density) {
-                        trackingControlsClose = false;
-                        return false;
-                    }
-
-                    boolean distanceMet = (dx >= swipeThresholdPx && dx >= Math.abs(dy));
-                    boolean flingMet = (vx >= flingVelocityPx && dx >= 16.0f * density && vx >= Math.abs(vy));
-
-                    if (distanceMet || flingMet) {
-                        Log.d(TAG, "Swipe Right to Close Controls Triggered! dx=" + dx + ", vx=" + vx);
-                        gestureIntercepted = true;
-                        trackingControlsClose = false;
-                        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                        if (listener != null) {
-                            listener.onSwipeRightToCloseControls();
-                        }
-                        return true;
-                    }
-                }
-
                 return false;
 
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 trackingTopBezel = false;
                 trackingRightBezel = false;
-                trackingLauncherClose = false;
-                trackingControlsClose = false;
                 gestureIntercepted = false;
                 if (velocityTracker != null) {
                     velocityTracker.recycle();
