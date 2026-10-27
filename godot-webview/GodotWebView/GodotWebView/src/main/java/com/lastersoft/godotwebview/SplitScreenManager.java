@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -317,6 +318,13 @@ public class SplitScreenManager {
                 ChessTouchHelper.injectTouchEnhancements(view, url);
                 applyAudioMuteState(secondaryWebView, isSecondaryMuted);
                 updateControlBarButtons();
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                Log.e(TAG, "SplitScreen secondary WebView render process gone! detail=" + detail);
+                act.runOnUiThread(SplitScreenManager.this::closeSplit);
+                return true;
             }
         });
 
@@ -1294,14 +1302,17 @@ public class SplitScreenManager {
         }
 
         if (secondaryWebView != null) {
-            secondaryWebView.stopLoading();
-            secondaryWebView.onPause();
+            try {
+                secondaryWebView.stopLoading();
+                secondaryWebView.onPause();
+            } catch (Exception ignored) {}
             secondaryWebView.setRotation(0.0f);
-            secondaryWebView.loadUrl("about:blank");
             if (secondaryContainer != null) {
                 secondaryContainer.removeView(secondaryWebView);
             }
-            secondaryWebView.destroy();
+            try {
+                secondaryWebView.destroy();
+            } catch (Exception ignored) {}
             secondaryWebView = null;
         }
 

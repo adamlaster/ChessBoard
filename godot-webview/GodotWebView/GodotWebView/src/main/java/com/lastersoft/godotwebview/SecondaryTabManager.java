@@ -11,6 +11,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -131,13 +132,16 @@ public class SecondaryTabManager {
                                SecondaryTabCallback callback) {
         exitPopupCustomFullscreen();
         if (popupWebView != null) {
-            popupWebView.stopLoading();
-            popupWebView.onPause();
-            popupWebView.loadUrl("about:blank");
+            try {
+                popupWebView.stopLoading();
+                popupWebView.onPause();
+            } catch (Exception ignored) {}
             if (popupContainer != null) {
                 popupContainer.removeView(popupWebView);
             }
-            popupWebView.destroy();
+            try {
+                popupWebView.destroy();
+            } catch (Exception ignored) {}
             popupWebView = null;
         }
         if (popupProgressBar != null && popupContainer != null) {
@@ -295,6 +299,13 @@ public class SecondaryTabManager {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     CookieManager.getInstance().flush();
                 }
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                Log.e(TAG, "SecondaryTab WebView render process gone! detail=" + detail);
+                closeSecondTab(rootLayout, floatingDismissButton, callback);
+                return true;
             }
         });
 

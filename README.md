@@ -9,13 +9,13 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
 ## ✨ Key Features
 
 * **Tactical Arrow Drawing & Square Highlighting (Double-Tap Gestures):**
-  * Solves the lack of right-click hardware on touchscreens by translating single-finger double-taps on the chessboard into desktop right-mouse events on Chess.com and Lichess.
+  * Solves the lack of right-click hardware on touchscreens by translating single-finger double-taps on the chessboard into desktop right-mouse events across Chess.com, Lichess, ChessKid, and ChessReps.
   * **Double-tap & drag:** Draws live tactical arrows from origin to target square without accidentally moving pieces.
   * **Double-tap in place:** Toggles square color highlights (green).
   * **Additive markings:** Multiple arrows and highlights persist together on the board; clearing is done with a single tap or piece move.
   * **Zero piece movement latency:** Drag-and-drop moves (`> 10px`) bypass the gesture engine with 0ms latency.
-* **Chess.com Bot Engine WebAssembly Memory Patching:**
-  * Intercepts `explanation-engine.wasm` at the network level and dynamically patches Section 5 (Memory Section) from 386 MB down to 32 MB initial memory with local disk caching. Eliminates V8 virtual memory out-of-memory (`RangeError`) crashes on Android WebView, allowing all Chess.com bots (Vinh, Count Morphy, etc.) and Coach review to run flawlessly.
+* **Chess.com Game Analysis & Bot Engine WebAssembly Memory Patching:**
+  * Bypasses the oversized Chess.com Explanation Engine (27.7 MB) to prevent sandboxed renderer cgroup memory exhaustion (`code 5`), cleanly falling back to Stockfish 19 Lite. For Stockfish and analysis binaries, streams downloads directly to disk with zero heap pressure, patches Section 5 linear memory declarations down to 64 MB max (and 32 MB initial) via 3-byte padded LEB128, caps worker thread concurrency, and provides ArrayBuffer instantiation fallbacks. Eliminates V8 virtual memory and Android Low Memory Killer crashes during Game Review, Analysis, and Bot matches.
 * **Board OS System Menu Integration:**
   * Pressing the Board hardware/system menu button opens the native Board OS overlay with four actions:
     * **Resume** — Return to the active web app.

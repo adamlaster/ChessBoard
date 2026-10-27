@@ -1151,3 +1151,34 @@ To avoid information duplication, the live user-facing specifications are mainta
 2. **Catalog & Documentation Synchronization:**
    - Updated `AppCatalog.java` Games category with both new entries and verified automatic append ordering for existing users.
    - Updated `README.md` and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 51: Chess.com Game Analysis Crash Fix & Universal Tactical Arrow Gesture Support
+1. **Fatal Renderer Crash & Process Termination Safeguards (`onRenderProcessGone`):**
+   - **Root Cause Analysis:** Opening Chess.com Game Analysis / Game Review triggered an unhandled renderer process exit. In Android WebView, if any associated WebView fails to implement `WebViewClient.onRenderProcessGone()` returning `true`, Crashpad executes `LOG(FATAL)` and terminates the host application with fatal `SIGTRAP` (signal 5).
+   - **Implementation:** Added `onRenderProcessGone` returning `true` across `GodotWebView.java`, `SecondaryTabManager.java`, and `SplitScreenManager.java`. Safe try-catch teardown wrappers were added around `destroy()`, `stopLoading()`, and `onPause()`. In `GodotWebView`, automatic crash recovery cleanly recreates the primary WebView with `open(lastLoadedUrl)` and throttles rapid consecutive crashes (< 15s) with a fallback to the safe home page.
+2. **Cgroup Memory Pressure & Explanation Engine Bypass (`WasmPatchHelper.java`):**
+   - **Root Cause Analysis:** In Chess.com Game Review / Analysis, Chess.com concurrently loads two engines: Stockfish 19 Lite (1.8 MB binary) and Chess.com Explanation Engine (CEE, 27.7 MB binary). Compiling a 27.7 MB binary in V8 on an embedded ARM64 device with a Mali-G57 GPU allocated ~200 MB for compiler AST and V8 memory structures. Combined with Stockfish, WebGL contexts (Rive animations), and AAudio streams, the sandboxed renderer exceeded the Android kernel cgroup memory limit, causing the Linux kernel to terminate the renderer with `SIGKILL` (signal 9 / `code 5`).
+   - **Explanation Engine Bypass:** Intercepts `explanation-engine` requests (`.wasm` and script) and returns an HTTP 404 `WebResourceResponse`. Chess.com gracefully catches this and falls back directly to Stockfish 19 Lite, completely eliminating the 200 MB compiler memory spike while preserving full game analysis, blunder/mistake classifications, and ECO opening evaluations.
+3. **Zero-Heap WebAssembly Streaming & 3-Byte Padded LEB128 Section 5 Memory Capping (`WasmPatchHelper.java`):**
+   - **Zero-Heap Disk Streaming:** Refactored `WasmPatchHelper.java` to stream downloads directly from `HttpURLConnection` to temporary disk files in 64 KB chunks, keeping peak Java heap usage under 64 KB during multi-megabyte downloads.
+   - **In-Place RandomAccessFile Patching:** Inspects Section 5 (Memory Section) in-place on disk:
+     - Capped `initial` memory from 128 MB / 386 MB down to 32 MB (`512` pages: `0x80, 0x04`).
+     - Capped `maximum` memory from 2 GB (`32768` pages) down to 64 MB (`1024` pages: `0x80, 0x88, 0x00`).
+     - Used 3-byte padded LEB128 encoding to preserve the exact 7-byte section length so subsequent binary offsets remain 100% valid and pass `WebAssembly.validate()`.
+4. **Engine Worker Script Concurrency, MIME-Bypass & Header Hygiene (`WasmPatchHelper.java`):**
+   - **Worker Thread Cap:** Replaced `navigator.hardwareConcurrency` with `(2)` in engine worker scripts, preventing Stockfish from spawning excessive threads on the Board's multi-core ARM64 CPU.
+   - **ArrayBuffer Instantiation Fallback:** Stockfish 19 Lite failed on Android WebView because `WebAssembly.instantiateStreaming` strictly requires exact MIME type matching and threw `TypeError: Incorrect response MIME type`. Patched `WebAssembly.instantiateStreaming` calls in Stockfish scripts to fallback to `e.arrayBuffer().then(b => WebAssembly.instantiate(b, ...))`, bypassing MIME constraints and enabling instant, reliable engine instantiation.
+   - **Header Hygiene:** Removed redundant `Content-Type` from the `headers` map in `buildJsResponse` to prevent Chromium from serializing duplicate comma-joined header values (`text/javascript, text/javascript`).
+   - **Scoped Path Matching:** Strictly scoped interception to `stockfish`, `assets-chess-engine`, and `explanation-engine`, preventing false positives on analytics or ad servlets.
+   - **Cache Purge & Key Upgrade:** Incremented cache version prefixes to `wasm_v6_` and `sf_v4_`, and implemented `purgeObsoleteCache` to automatically delete stale cache files on startup.
+5. **Universal Tactical Arrow Gesture Support (`ChessTouchHelper.java`):**
+   - Expanded single-finger double-tap & drag tactical arrows and square highlights across all supported chess platforms: `Chess.com` (`<wc-chess-board>`), `Lichess.org` (`<cg-board>`), `ChessKid.com` (`.board-pieces-wrapper`), and `ChessReps.com` (`cm-chessboard`).
+   - **Synthetic Left-Click Suppression (Capture Phase):** Solved arrows instantly disappearing upon finger lift on Lichess and ChessReps. When a touch gesture ends, Android Chromium synthesizes a native left-click event sequence (`touchend` -> `mousedown` -> `mouseup` -> `click` with `button: 0`). In Lichess (`Chessground`), left-click triggers `drag.start()` which invokes `drawClear()`; in ChessReps (`cm-chessboard`), `pointerdown` triggers `Y.clear()`. Added universal event capture listeners for all mouse, pointer, and touch events to suppress trailing board events for 450ms post-gesture, completely insulating drawn arrows and highlights.
+   - **SVG DOM & Coordinate Resolution:** Added `.closest('[data-square], [cg-key], square, .square')` to ensure target resolution succeeds even when `document.elementFromPoint()` returns child `<use>` or `<rect>` elements inside SVG `<g>` containers. Handled SVG `className` (`SVGAnimatedString`) via `.baseVal` and dynamic board orientation detection.
+   - **Position Synchronization:** Dispatched micro `pointermove` events immediately after `pointerdown` and before `pointerup`, ensuring `Chessground` and `cm-chessboard` commit `mouseSq` and `currentSquare` before release without requiring animation frame delays.
+   - Added a fallback `MutationObserver` on `document.body` so the arrow touch bridge binds reliably even if boards are mounted asynchronously in SPAs after initial page load.
+6. **Documentation & Help Guide Synchronization:**
+   - Updated `HelpDialogHelper.java` Controls & Gestures Guide to reflect arrow drawing support across all four chess platforms.
+   - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.

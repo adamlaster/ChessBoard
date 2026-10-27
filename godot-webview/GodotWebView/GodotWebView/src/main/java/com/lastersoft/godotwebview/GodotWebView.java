@@ -15,6 +15,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -64,6 +65,9 @@ public class GodotWebView extends GodotPlugin {
     private int currentMarginState = SiteSettingsDialogHelper.MARGIN_MODE_NONE;
     private boolean isExplicitNavigation = false;
     private boolean isSelectingSplitApp = false;
+    private String lastLoadedUrl = "https://www.chess.com";
+    private long lastCrashRecoveryTime = 0;
+    private int consecutiveCrashCount = 0;
 
     private String getActiveSiteKey() {
         String currentUrl = null;
@@ -155,7 +159,11 @@ public class GodotWebView extends GodotPlugin {
     @SuppressLint({"SetJavaScriptEnabled", "ClickableViewAccessibility"})
     @UsedByGodot
     public void open(@NonNull String url) {
+        lastLoadedUrl = url;
         prepareBoardTouchPassthrough();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         runOnUiThread(() -> {
             Activity activity = getActivity();
             if (activity == null) return;
@@ -304,6 +312,10 @@ public class GodotWebView extends GodotPlugin {
                 @Override
                 public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                     super.onPageStarted(view, url, favicon);
+                    if (url != null && !url.equals("about:blank")) {
+                        lastLoadedUrl = url;
+                    }
+                    ChessTouchHelper.injectEarlySafeguards(view, url);
                     if (UserAgentManager.isAuthUrl(url)) {
                         uaManager.applyAuthUserAgent(view.getSettings());
                     } else {
@@ -339,6 +351,48 @@ public class GodotWebView extends GodotPlugin {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                         CookieManager.getInstance().flush();
                     }
+                }
+
+                @Override
+                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                    boolean didCrash = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) && detail.didCrash();
+                    int priority = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ? detail.rendererPriorityAtExit() : -1;
+                    Log.e(TAG, "Primary WebView render process gone! didCrash=" + didCrash + ", priority=" + priority);
+
+                    if (view != null) {
+                        if (layout != null) {
+                            layout.removeView(view);
+                        }
+                        try {
+                            view.destroy();
+                        } catch (Exception ignored) {}
+                    }
+                    webView = null;
+
+                    Activity act = getActivity();
+                    if (act != null && !act.isFinishing()) {
+                        act.runOnUiThread(() -> {
+                            long now = System.currentTimeMillis();
+                            if (now - lastCrashRecoveryTime < 15000) {
+                                consecutiveCrashCount++;
+                            } else {
+                                consecutiveCrashCount = 1;
+                            }
+                            lastCrashRecoveryTime = now;
+
+                            String targetUrl = (lastLoadedUrl != null && !lastLoadedUrl.isEmpty()) ? lastLoadedUrl : "https://www.chess.com";
+                            if (consecutiveCrashCount >= 3) {
+                                Log.w(TAG, "Repeated render process crashes (" + consecutiveCrashCount + ")! Falling back to safe home URL.");
+                                targetUrl = "https://www.chess.com";
+                                consecutiveCrashCount = 0;
+                            }
+
+                            Log.i(TAG, "Recovering primary WebView after render process exit: " + targetUrl);
+                            open(targetUrl);
+                        });
+                    }
+
+                    return true;
                 }
             });
 

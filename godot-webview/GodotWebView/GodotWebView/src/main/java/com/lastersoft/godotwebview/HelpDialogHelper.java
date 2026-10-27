@@ -119,7 +119,7 @@ public final class HelpDialogHelper {
         scrollView.addView(content);
 
         // --- SECTION 1: CHESSBOARD GESTURES ---
-        addSectionHeader(content, "♟️ Tabletop Chess Gestures (Chess.com & Lichess)", activeTheme, menuDensity);
+        addSectionHeader(content, "♟️ Tabletop Chess Gestures (Chess.com, Lichess, ChessKid & ChessReps)", activeTheme, menuDensity);
         addItemRow(content,
                 "Double-Tap & Drag",
                 "Double-tap on a starting square and drag across to draw live tactical arrows. Pieces on the origin square will not move.",
