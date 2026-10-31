@@ -200,7 +200,7 @@ public final class HelpDialogHelper {
                 activeTheme, menuDensity);
         addItemRow(content,
                 "Tabletop Duos & One-Tap Split Presets",
-                "Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, ChessKids + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube). ChessKids + YouTube automatically opens in an optimized 70/30 split so ChessKids renders in full desktop layout without cutoffs.",
+                "• Instant Split Presets: Launch popular paired app combinations in a single tap from the 'Tabletop Duos' row in Launcher (Chess + YouTube, ChessKids + YouTube, Chess + Apple TV, Lichess + Twitch, Chess + Reddit, Colonist + YouTube). ChessKids + YouTube automatically opens in an optimized 70/30 split.\n• Custom Duos & Management: Tap [ ✎ Edit ] on the Tabletop Duos row to reveal red ✕ buttons on cards for one-tap deletion. Scroll to the end of the row and tap [ ➕ Add Duo ] to pair any two web apps (choose from quick presets or enter custom URLs, customize name and emoji icon). Tap [ ↺ Reset Defaults ] inside the dialog to restore factory presets at any time. All custom pairings persist across restarts in SharedPreferences.",
                 activeTheme, menuDensity);
         addItemRow(content,
                 "App Launcher & Custom Reordering",

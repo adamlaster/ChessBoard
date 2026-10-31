@@ -128,10 +128,13 @@ public class MenuOverlayView {
         final Button upBtn;
         final Button downBtn;
         final TextView statusHint;
+        final TextView countBadge;
+        final AppCatalog.CategoryEntry category;
 
         RowEditHolder(String categoryTitle, LinearLayout rowLayout, LinearLayout cardsRow,
                       HorizontalScrollView hScrollView, Button editBtn, Button upBtn,
-                      Button downBtn, TextView statusHint) {
+                      Button downBtn, TextView statusHint, TextView countBadge,
+                      AppCatalog.CategoryEntry category) {
             this.categoryTitle = categoryTitle;
             this.rowLayout = rowLayout;
             this.cardsRow = cardsRow;
@@ -140,6 +143,8 @@ public class MenuOverlayView {
             this.upBtn = upBtn;
             this.downBtn = downBtn;
             this.statusHint = statusHint;
+            this.countBadge = countBadge;
+            this.category = category;
         }
     }
 
@@ -674,7 +679,7 @@ public class MenuOverlayView {
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
             RowEditHolder holder = new RowEditHolder(
-                    category.title, rowLayout, cardsRow, hScrollView, editBtn, upBtn, downBtn, statusHint);
+                    category.title, rowLayout, cardsRow, hScrollView, editBtn, upBtn, downBtn, statusHint, countBadge, category);
             rowLayout.setTag(holder);
 
             editBtn.setOnClickListener(v -> toggleRowEditMode(holder));
@@ -683,105 +688,14 @@ public class MenuOverlayView {
 
             List<AppCatalog.SiteEntry> orderedSites = AppCatalog.getOrderedSitesForCategory(activity, category);
             for (AppCatalog.SiteEntry site : orderedSites) {
-                GradientDrawable cardBg = new GradientDrawable();
-                cardBg.setShape(GradientDrawable.RECTANGLE);
-                cardBg.setColor(theme.cardBgColor);
-                cardBg.setCornerRadius(9 * menuDensity);
-                cardBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
-                cardBgs.add(cardBg);
-
-                LinearLayout card = new LinearLayout(activity);
-                card.setTag(site);
-                card.setOrientation(LinearLayout.VERTICAL);
-                card.setBackground(cardBg);
-                int cardPad = (int) (7 * menuDensity);
-                card.setPadding(cardPad, cardPad, cardPad, cardPad);
-
-                LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                        cardWidth, ViewGroup.LayoutParams.MATCH_PARENT);
-                cardParams.setMargins(0, (int) (1.5f * menuDensity), cardSpacing, (int) (1.5f * menuDensity));
-                card.setLayoutParams(cardParams);
-
-                // Top row inside card: Icon + Tag
-                LinearLayout cardTopRow = new LinearLayout(activity);
-                cardTopRow.setOrientation(LinearLayout.HORIZONTAL);
-                cardTopRow.setGravity(Gravity.CENTER_VERTICAL);
-                cardTopRow.setLayoutParams(new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-                // Icon Box
-                GradientDrawable iconBoxBg = new GradientDrawable();
-                iconBoxBg.setShape(GradientDrawable.RECTANGLE);
-                iconBoxBg.setColor(theme.primaryColor);
-                iconBoxBg.setCornerRadius(5 * menuDensity);
-                iconBoxBgs.add(iconBoxBg);
-
-                TextView iconView = new TextView(activity);
-                iconView.setText(site.icon);
-                iconView.setTextSize(10.5f * MENU_SCALE);
-                iconView.setGravity(Gravity.CENTER);
-                iconView.setBackground(iconBoxBg);
-                int iconBoxSize = (int) (18 * menuDensity);
-                iconView.setLayoutParams(new LinearLayout.LayoutParams(iconBoxSize, iconBoxSize));
-                cardTopRow.addView(iconView);
-
-                // Spacer
-                View cardTopSpacer = new View(activity);
-                cardTopSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
-                cardTopRow.addView(cardTopSpacer);
-
-                // Optional Tag Badge
-                if (!TextUtils.isEmpty(site.tag)) {
-                    GradientDrawable tagBg = new GradientDrawable();
-                    tagBg.setShape(GradientDrawable.RECTANGLE);
-                    tagBg.setColor(Color.parseColor("#182336"));
-                    tagBg.setCornerRadius(4 * menuDensity);
-
-                    TextView tagView = new TextView(activity);
-                    tagView.setText(site.tag);
-                    tagView.setTextColor(site.tag.equals("DEFAULT")
-                            ? Color.parseColor("#38D9A9")
-                            : (site.tag.equals("DUO") ? Color.parseColor("#FFD43B") : Color.parseColor("#748FFC")));
-                    tagView.setTextSize(7.5f * MENU_SCALE);
-                    tagView.setTypeface(Typeface.DEFAULT_BOLD);
-                    tagView.setBackground(tagBg);
-                    tagView.setPadding((int) (4 * menuDensity), (int) (1 * menuDensity),
-                            (int) (4 * menuDensity), (int) (1 * menuDensity));
-                    cardTopRow.addView(tagView);
-                }
-
-                card.addView(cardTopRow);
-
-                // Vertical Space between top and bottom
-                View cardMiddleSpacer = new View(activity);
-                cardMiddleSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
-                card.addView(cardMiddleSpacer);
-
-                // Bottom Titles: Name + Subtitle
-                TextView nameView = new TextView(activity);
-                nameView.setText(site.name);
-                nameView.setTextColor(Color.WHITE);
-                nameView.setTextSize(10 * MENU_SCALE);
-                nameView.setTypeface(Typeface.DEFAULT_BOLD);
-                nameView.setSingleLine(true);
-                nameView.setEllipsize(TextUtils.TruncateAt.END);
-                card.addView(nameView);
-
-                if (!TextUtils.isEmpty(site.subtitle)) {
-                    TextView subtitleView = new TextView(activity);
-                    subtitleView.setText(site.subtitle);
-                    subtitleView.setTextColor(Color.parseColor("#94A3B8"));
-                    subtitleView.setTextSize(7.5f * MENU_SCALE);
-                    subtitleView.setSingleLine(true);
-                    subtitleView.setEllipsize(TextUtils.TruncateAt.END);
-                    card.addView(subtitleView);
-                }
-
-                // Interactive touch handling on card
-                setupCardTouchBehavior(card, cardBg, site, holder, menuDensity, touchSlop, listener);
-
+                View card = buildCardView(site, holder, theme, menuDensity, cardWidth, cardSpacing, touchSlop, listener);
                 cardsRow.addView(card);
                 allCardViews.add(card);
+            }
+
+            if (category.title.equalsIgnoreCase("Tabletop Duos")) {
+                View addDuoCard = buildAddDuoCard(holder, theme, menuDensity, cardWidth, cardSpacing);
+                cardsRow.addView(addDuoCard);
             }
 
             hScrollView.addView(cardsRow);
@@ -1218,6 +1132,252 @@ public class MenuOverlayView {
         };
     }
 
+    private View buildCardView(AppCatalog.SiteEntry site, RowEditHolder holder,
+                               ThemeManager.Theme theme, float menuDensity, int cardWidth,
+                               int cardSpacing, int touchSlop, MenuActionListener listener) {
+        GradientDrawable cardBg = new GradientDrawable();
+        cardBg.setShape(GradientDrawable.RECTANGLE);
+        cardBg.setColor(theme.cardBgColor);
+        cardBg.setCornerRadius(9 * menuDensity);
+        cardBg.setStroke((int) (1 * menuDensity), theme.cardBorderColor);
+        cardBgs.add(cardBg);
+
+        LinearLayout card = new LinearLayout(activity);
+        card.setTag(site);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(cardBg);
+        int cardPad = (int) (7 * menuDensity);
+        card.setPadding(cardPad, cardPad, cardPad, cardPad);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                cardWidth, ViewGroup.LayoutParams.MATCH_PARENT);
+        cardParams.setMargins(0, (int) (1.5f * menuDensity), cardSpacing, (int) (1.5f * menuDensity));
+        card.setLayoutParams(cardParams);
+
+        // Top row inside card: Icon + Tag + Optional Duo Delete Button
+        LinearLayout cardTopRow = new LinearLayout(activity);
+        cardTopRow.setOrientation(LinearLayout.HORIZONTAL);
+        cardTopRow.setGravity(Gravity.CENTER_VERTICAL);
+        cardTopRow.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Icon Box
+        GradientDrawable iconBoxBg = new GradientDrawable();
+        iconBoxBg.setShape(GradientDrawable.RECTANGLE);
+        iconBoxBg.setColor(theme.primaryColor);
+        iconBoxBg.setCornerRadius(5 * menuDensity);
+        iconBoxBgs.add(iconBoxBg);
+
+        TextView iconView = new TextView(activity);
+        iconView.setText(site.icon);
+        iconView.setTextSize(10.5f * MENU_SCALE);
+        iconView.setGravity(Gravity.CENTER);
+        iconView.setBackground(iconBoxBg);
+        int iconBoxSize = (int) (18 * menuDensity);
+        iconView.setLayoutParams(new LinearLayout.LayoutParams(iconBoxSize, iconBoxSize));
+        cardTopRow.addView(iconView);
+
+        // Spacer
+        View cardTopSpacer = new View(activity);
+        cardTopSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
+        cardTopRow.addView(cardTopSpacer);
+
+        // Optional Tag Badge
+        if (!TextUtils.isEmpty(site.tag)) {
+            GradientDrawable tagBg = new GradientDrawable();
+            tagBg.setShape(GradientDrawable.RECTANGLE);
+            tagBg.setColor(Color.parseColor("#182336"));
+            tagBg.setCornerRadius(4 * menuDensity);
+
+            TextView tagView = new TextView(activity);
+            tagView.setText(site.tag);
+            tagView.setTextColor(site.tag.equals("DEFAULT")
+                    ? Color.parseColor("#38D9A9")
+                    : (site.tag.equals("DUO") ? Color.parseColor("#FFD43B") : Color.parseColor("#748FFC")));
+            tagView.setTextSize(7.5f * MENU_SCALE);
+            tagView.setTypeface(Typeface.DEFAULT_BOLD);
+            tagView.setBackground(tagBg);
+            tagView.setPadding((int) (4 * menuDensity), (int) (1 * menuDensity),
+                    (int) (4 * menuDensity), (int) (1 * menuDensity));
+            cardTopRow.addView(tagView);
+        }
+
+        // Duo Delete Button (Visible during Edit Mode)
+        if (site.isDuo()) {
+            TextView duoDeleteBtn = new TextView(activity);
+            duoDeleteBtn.setText("✕");
+            duoDeleteBtn.setTextColor(Color.parseColor("#FFA8A8"));
+            duoDeleteBtn.setTextSize(8.5f * MENU_SCALE);
+            duoDeleteBtn.setTypeface(Typeface.DEFAULT_BOLD);
+            duoDeleteBtn.setGravity(Gravity.CENTER);
+
+            GradientDrawable delBg = new GradientDrawable();
+            delBg.setShape(GradientDrawable.OVAL);
+            delBg.setColor(Color.parseColor("#4C1D24"));
+            delBg.setStroke((int) (1 * menuDensity), Color.parseColor("#E03131"));
+            duoDeleteBtn.setBackground(delBg);
+
+            int delSize = (int) (18 * menuDensity);
+            LinearLayout.LayoutParams delParams = new LinearLayout.LayoutParams(delSize, delSize);
+            delParams.setMargins((int) (4 * menuDensity), 0, 0, 0);
+            duoDeleteBtn.setLayoutParams(delParams);
+            duoDeleteBtn.setTag("DUO_DELETE_BTN");
+            duoDeleteBtn.setVisibility((currentEditingHolder == holder) ? View.VISIBLE : View.GONE);
+
+            duoDeleteBtn.setOnClickListener(v -> {
+                v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                holder.cardsRow.removeView(card);
+                allCardViews.remove(card);
+                AppCatalog.removeDuo(activity, site.name);
+                if (holder.countBadge != null) {
+                    holder.countBadge.setText(AppCatalog.getDuos(activity).size() + " apps");
+                }
+                List<String> remaining = new ArrayList<>();
+                for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+                    View c = holder.cardsRow.getChildAt(i);
+                    if (c.getTag() instanceof AppCatalog.SiteEntry) {
+                        remaining.add(((AppCatalog.SiteEntry) c.getTag()).name);
+                    }
+                }
+                AppCatalog.saveSitesOrderForCategory(activity, holder.categoryTitle, remaining);
+            });
+
+            cardTopRow.addView(duoDeleteBtn);
+        }
+
+        card.addView(cardTopRow);
+
+        // Vertical Space between top and bottom
+        View cardMiddleSpacer = new View(activity);
+        cardMiddleSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
+        card.addView(cardMiddleSpacer);
+
+        // Bottom Titles: Name + Subtitle
+        TextView nameView = new TextView(activity);
+        nameView.setText(site.name);
+        nameView.setTextColor(Color.WHITE);
+        nameView.setTextSize(10 * MENU_SCALE);
+        nameView.setTypeface(Typeface.DEFAULT_BOLD);
+        nameView.setSingleLine(true);
+        nameView.setEllipsize(TextUtils.TruncateAt.END);
+        card.addView(nameView);
+
+        if (!TextUtils.isEmpty(site.subtitle)) {
+            TextView subtitleView = new TextView(activity);
+            subtitleView.setText(site.subtitle);
+            subtitleView.setTextColor(Color.parseColor("#94A3B8"));
+            subtitleView.setTextSize(7.5f * MENU_SCALE);
+            subtitleView.setSingleLine(true);
+            subtitleView.setEllipsize(TextUtils.TruncateAt.END);
+            card.addView(subtitleView);
+        }
+
+        // Interactive touch handling on card
+        setupCardTouchBehavior(card, cardBg, site, holder, menuDensity, touchSlop, listener);
+
+        return card;
+    }
+
+    private View buildAddDuoCard(RowEditHolder holder, ThemeManager.Theme theme, float menuDensity, int cardWidth, int cardSpacing) {
+        GradientDrawable addCardBg = new GradientDrawable();
+        addCardBg.setShape(GradientDrawable.RECTANGLE);
+        addCardBg.setColor(Color.parseColor("#141824"));
+        addCardBg.setCornerRadius(9 * menuDensity);
+        addCardBg.setStroke((int) (1.2f * menuDensity), theme.accentColor);
+
+        LinearLayout card = new LinearLayout(activity);
+        card.setTag("ADD_DUO_CARD");
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackground(addCardBg);
+        int cardPad = (int) (7 * menuDensity);
+        card.setPadding(cardPad, cardPad, cardPad, cardPad);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                cardWidth, ViewGroup.LayoutParams.MATCH_PARENT);
+        cardParams.setMargins(0, (int) (1.5f * menuDensity), cardSpacing, (int) (1.5f * menuDensity));
+        card.setLayoutParams(cardParams);
+
+        GradientDrawable iconBoxBg = new GradientDrawable();
+        iconBoxBg.setShape(GradientDrawable.RECTANGLE);
+        iconBoxBg.setColor(theme.primaryColor);
+        iconBoxBg.setCornerRadius(5 * menuDensity);
+
+        TextView iconView = new TextView(activity);
+        iconView.setText("➕");
+        iconView.setTextSize(10.5f * MENU_SCALE);
+        iconView.setGravity(Gravity.CENTER);
+        iconView.setBackground(iconBoxBg);
+        int iconBoxSize = (int) (18 * menuDensity);
+        iconView.setLayoutParams(new LinearLayout.LayoutParams(iconBoxSize, iconBoxSize));
+        card.addView(iconView);
+
+        View cardMiddleSpacer = new View(activity);
+        cardMiddleSpacer.setLayoutParams(new LinearLayout.LayoutParams(0, 0, 1.0f));
+        card.addView(cardMiddleSpacer);
+
+        TextView nameView = new TextView(activity);
+        nameView.setText("Add Duo");
+        nameView.setTextColor(theme.accentColor);
+        nameView.setTextSize(10 * MENU_SCALE);
+        nameView.setTypeface(Typeface.DEFAULT_BOLD);
+        card.addView(nameView);
+
+        TextView subtitleView = new TextView(activity);
+        subtitleView.setText("Custom Preset");
+        subtitleView.setTextColor(Color.parseColor("#94A3B8"));
+        subtitleView.setTextSize(7.5f * MENU_SCALE);
+        card.addView(subtitleView);
+
+        card.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            DuoEditorDialogHelper.show(activity, theme, menuDensity, newDuo -> {
+                refreshDuosRow();
+            });
+        });
+
+        allCardViews.add(card);
+        return card;
+    }
+
+    public void refreshDuosRow() {
+        if (activity == null || rowsContainer == null) return;
+        RowEditHolder duosHolder = null;
+        for (int i = 0; i < rowsContainer.getChildCount(); i++) {
+            View child = rowsContainer.getChildAt(i);
+            Object tag = child.getTag();
+            if (tag instanceof RowEditHolder) {
+                RowEditHolder h = (RowEditHolder) tag;
+                if (h.categoryTitle.equalsIgnoreCase("Tabletop Duos")) {
+                    duosHolder = h;
+                    break;
+                }
+            }
+        }
+        if (duosHolder == null) return;
+
+        ThemeManager.Theme theme = ThemeManager.getActiveTheme(activity);
+        float menuDensity = density * MENU_SCALE;
+        int cardWidth = (int) (115 * menuDensity);
+        int cardSpacing = (int) (7 * menuDensity);
+        int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
+
+        duosHolder.cardsRow.removeAllViews();
+
+        List<AppCatalog.SiteEntry> orderedSites = AppCatalog.getOrderedSitesForCategory(activity, duosHolder.category);
+        for (AppCatalog.SiteEntry site : orderedSites) {
+            View card = buildCardView(site, duosHolder, theme, menuDensity, cardWidth, cardSpacing, touchSlop, listener);
+            duosHolder.cardsRow.addView(card);
+            allCardViews.add(card);
+        }
+
+        View addDuoCard = buildAddDuoCard(duosHolder, theme, menuDensity, cardWidth, cardSpacing);
+        duosHolder.cardsRow.addView(addDuoCard);
+
+        if (duosHolder.countBadge != null) {
+            duosHolder.countBadge.setText(AppCatalog.getDuos(activity).size() + " apps");
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private void setupCardTouchBehavior(View card, GradientDrawable cardBg, AppCatalog.SiteEntry site,
                                        RowEditHolder holder, float menuDensity, int touchSlop, MenuActionListener listener) {
@@ -1481,6 +1641,16 @@ public class MenuOverlayView {
         holder.upBtn.setVisibility(View.VISIBLE);
         holder.downBtn.setVisibility(View.VISIBLE);
         holder.statusHint.setVisibility(View.VISIBLE);
+        if (holder.categoryTitle.equalsIgnoreCase("Tabletop Duos")) {
+            holder.statusHint.setText("⠿ Drag to reorder  •  Tap ✕ to remove");
+            for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+                View child = holder.cardsRow.getChildAt(i);
+                View del = child.findViewWithTag("DUO_DELETE_BTN");
+                if (del != null) del.setVisibility(View.VISIBLE);
+            }
+        } else {
+            holder.statusHint.setText("⠿ Drag cards to reorder");
+        }
         updateRowNavButtons(holder);
 
         // Highlight active row layout
@@ -1532,6 +1702,14 @@ public class MenuOverlayView {
         holder.upBtn.setVisibility(View.GONE);
         holder.downBtn.setVisibility(View.GONE);
         holder.statusHint.setVisibility(View.GONE);
+
+        if (holder.categoryTitle.equalsIgnoreCase("Tabletop Duos")) {
+            for (int i = 0; i < holder.cardsRow.getChildCount(); i++) {
+                View child = holder.cardsRow.getChildAt(i);
+                View del = child.findViewWithTag("DUO_DELETE_BTN");
+                if (del != null) del.setVisibility(View.GONE);
+            }
+        }
 
         // Reset row layout background
         holder.rowLayout.setBackground(null);
@@ -1849,6 +2027,12 @@ public class MenuOverlayView {
             return theme.buttonLabel;
         }
         return "🎨 Theme";
+    }
+
+    public void openThemePicker() {
+        if (activity != null && !activity.isFinishing()) {
+            ThemePickerDialogHelper.show(activity, menuDensity, this::applyTheme);
+        }
     }
 
     public void applyTheme(ThemeManager.Theme theme) {

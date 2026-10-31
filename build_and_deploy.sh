@@ -189,6 +189,7 @@ run_doctor() {
 # ------------------------------------------------------------------------------
 BUILD_AAR=true
 DEPLOY=true
+ENABLE_REMOTE_NAV=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -198,6 +199,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-deploy|--skip-deploy|-b)
             DEPLOY=false
+            shift
+            ;;
+        --enable-remote-nav|--prototype)
+            ENABLE_REMOTE_NAV=true
             shift
             ;;
         --doctor|--check)
@@ -219,6 +224,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --skip-aar            Skip compiling GodotWebView Android library (AAR)"
             echo "  --no-deploy, -b       Build APK without deploying to Board device"
+            echo "  --enable-remote-nav   Enable RemoteNavigationServer daemon for prototype creation"
             echo "  -d, --device <name>   Target a specific Board device/IP for deployment"
             echo "  --doctor, --check     Verify local environment tools, SDKs, and paths"
             echo "  -h, --help            Show this help message"
@@ -281,7 +287,21 @@ fi
 echo -e "${BOLD}${GREEN}[Step 3/4] Exporting ChessBoard.apk with Godot...${NC}"
 mkdir -p "$OUTPUT_DIR"
 cd "$CHESS_DIR"
+
+if [[ "$ENABLE_REMOTE_NAV" = true ]]; then
+    echo -e "${YELLOW}Prototype Mode Active: bundling enable_remote_nav trigger asset...${NC}"
+    touch "$CHESS_DIR/enable_remote_nav"
+    mkdir -p "$CHESS_DIR/android/build/src/main/assets"
+    touch "$CHESS_DIR/android/build/src/main/assets/enable_remote_nav"
+else
+    rm -f "$CHESS_DIR/enable_remote_nav"
+    rm -f "$CHESS_DIR/android/build/src/main/assets/enable_remote_nav"
+fi
+
 "$GODOT_BIN" --headless --path "$CHESS_DIR" --export-debug "Android" "$APK_PATH"
+rm -f "$CHESS_DIR/enable_remote_nav"
+rm -f "$CHESS_DIR/android/build/src/main/assets/enable_remote_nav"
+
 echo -e "${GREEN}✓ APK exported: $APK_PATH ($(du -h "$APK_PATH" | cut -f1))${NC}\n"
 
 # ------------------------------------------------------------------------------
@@ -294,6 +314,14 @@ if [[ "$DEPLOY" = true ]]; then
         echo -e "${YELLOW}Install board-connect or run with '--no-deploy' to export APK only.${NC}"
         exit 1
     fi
+
+    # Sync device-level prototype flag
+    if [[ "$ENABLE_REMOTE_NAV" = true ]]; then
+        adb shell touch /data/local/tmp/enable_chess_remote_nav 2>/dev/null || true
+    else
+        adb shell rm -f /data/local/tmp/enable_chess_remote_nav 2>/dev/null || true
+    fi
+
     cd "$OUTPUT_DIR"
     if [[ -n "$BOARD_CONNECT_ARGS" ]]; then
         "$BOARD_CONNECT_BIN" $BOARD_CONNECT_ARGS install "$APK_PATH" --launch

@@ -43,7 +43,7 @@ import java.util.Set;
  * Coordinates web browsing, Board OS hardware integration, multi-window secondary tab popups,
  * floating dismiss button, and 2x scaled tabletop menu overlay.
  */
-public class GodotWebView extends GodotPlugin {
+public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.RemoteNavigationDelegate {
 
     private static final String TAG = "GodotWebView";
 
@@ -164,6 +164,7 @@ public class GodotWebView extends GodotPlugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
+        RemoteNavigationServer.start(getActivity(), RemoteNavigationServer.DEFAULT_PORT, this, mainHandler);
         runOnUiThread(() -> {
             Activity activity = getActivity();
             if (activity == null) return;
@@ -1146,6 +1147,7 @@ public class GodotWebView extends GodotPlugin {
     }
 
     private void terminateBoardAndActivity() {
+        RemoteNavigationServer.stop();
         closeSecondTab();
         BoardBridge.terminateBoardAndActivity(
                 getActivity(),
@@ -1154,8 +1156,15 @@ public class GodotWebView extends GodotPlugin {
         );
     }
 
+    @Override
+    public void onMainDestroy() {
+        RemoteNavigationServer.stop();
+        super.onMainDestroy();
+    }
+
     @UsedByGodot
     public void close() {
+        RemoteNavigationServer.stop();
         runOnUiThread(() -> {
             splitScreenManager.destroy(layout);
             closeSecondTab();
@@ -1173,5 +1182,189 @@ public class GodotWebView extends GodotPlugin {
                 progressBar = null;
             }
         });
+    }
+
+    // --- RemoteNavigationDelegate Implementation ---
+
+    @Override
+    public void onRemoteOpenUrl(String url) {
+        navigateToSite(url);
+    }
+
+    @Override
+    public void onRemoteOpenDuo(String primaryUrl, String secondaryUrl) {
+        openDuo(primaryUrl, secondaryUrl);
+    }
+
+    private void dismissModals() {
+        ThemePickerDialogHelper.dismiss();
+        HelpDialogHelper.dismiss();
+        SiteSettingsDialogHelper.dismiss();
+        DuoEditorDialogHelper.dismiss();
+    }
+
+    @Override
+    public void onRemoteAddDuo(String name, String primaryUrl, String secondaryUrl, String icon, String subtitle) {
+        Activity act = getActivity();
+        if (act == null) return;
+        AppCatalog.SiteEntry entry = new AppCatalog.SiteEntry(name, primaryUrl, secondaryUrl, icon, subtitle, "DUO");
+        AppCatalog.addDuo(act, entry);
+        if (menuOverlayView != null) {
+            menuOverlayView.refreshDuosRow();
+        }
+    }
+
+    @Override
+    public void onRemoteRemoveDuo(String name) {
+        Activity act = getActivity();
+        if (act == null) return;
+        AppCatalog.removeDuo(act, name);
+        if (menuOverlayView != null) {
+            menuOverlayView.refreshDuosRow();
+        }
+    }
+
+    @Override
+    public void onRemoteResetDuos() {
+        Activity act = getActivity();
+        if (act == null) return;
+        AppCatalog.resetDuos(act);
+        if (menuOverlayView != null) {
+            menuOverlayView.refreshDuosRow();
+        }
+    }
+
+    @Override
+    public void onRemoteShowLauncher() {
+        dismissModals();
+        showLauncher();
+    }
+
+    @Override
+    public void onRemoteShowBrowserControls() {
+        dismissModals();
+        showBrowserControls();
+    }
+
+    @Override
+    public void onRemoteShowHelp() {
+        dismissModals();
+        showHelp();
+    }
+
+    @Override
+    public void onRemoteHideMenu() {
+        dismissModals();
+        hideMenu();
+    }
+
+    @Override
+    public void onRemoteShowThemePicker() {
+        if (menuOverlayView != null) {
+            menuOverlayView.openThemePicker();
+        }
+    }
+
+    @Override
+    public void onRemoteSetTheme(String themeId) {
+        ThemeManager.Theme targetTheme = null;
+        for (ThemeManager.Theme t : ThemeManager.Theme.values()) {
+            if (t.id.equalsIgnoreCase(themeId)) {
+                targetTheme = t;
+                break;
+            }
+        }
+        if (targetTheme != null) {
+            Activity act = getActivity();
+            ThemeManager.setActiveTheme(act, targetTheme);
+            if (menuOverlayView != null) menuOverlayView.applyTheme(targetTheme);
+            if (splitScreenManager != null) splitScreenManager.applyTheme(targetTheme);
+        }
+    }
+
+    @Override
+    public void onRemoteSplitPreset() {
+        if (splitScreenManager != null && splitScreenManager.isSplitActive()) {
+            splitScreenManager.cycleSplitPreset();
+            updateProgressBarForSplit();
+        }
+    }
+
+    @Override
+    public void onRemoteSplitSwap() {
+        if (splitScreenManager != null && splitScreenManager.isSplitActive()) {
+            splitScreenManager.swapPanes();
+        }
+    }
+
+    @Override
+    public void onRemoteSplitClose() {
+        if (splitScreenManager != null && splitScreenManager.isSplitActive()) {
+            splitScreenManager.closeSplit();
+            Activity act = getActivity();
+            float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+            if (menuOverlayView != null) menuOverlayView.updateSplitScreenButtonStyle(false, md);
+            applyMarginState(currentMarginState, currentSiteMarginDp);
+        }
+    }
+
+    @Override
+    public void onRemoteRotateScreen(boolean resetToLandscape) {
+        if (displayController == null) return;
+        Activity act = getActivity();
+        if (act == null) return;
+        Runnable postRotate = () -> {
+            displayController.schedulePostRotateRefresh(
+                    webView,
+                    floatingDismissButton.getButton(),
+                    layout,
+                    floatingDismissButton.getButtonSize(),
+                    floatingDismissButton.getMargin()
+            );
+        };
+        if (resetToLandscape) {
+            displayController.resetOrientationToLandscape(act, postRotate);
+        } else {
+            displayController.cycleOrientation(act, postRotate);
+        }
+    }
+
+    @Override
+    public void onRemoteToggleMargin() {
+        if (splitScreenManager != null && splitScreenManager.isSplitActive()) {
+            splitScreenManager.cycleActivePaneMargin();
+            Activity act = getActivity();
+            float md = (act != null) ? act.getResources().getDisplayMetrics().density * MenuOverlayView.MENU_SCALE : 2.0f;
+            int activeMode = splitScreenManager.getActivePaneMarginMode();
+            if (menuOverlayView != null) menuOverlayView.updateRightMarginButtonStyle(activeMode, md);
+            return;
+        }
+        int nextState = (currentMarginState + 1) % 3;
+        int targetDp = (currentSiteMarginDp > 0) ? currentSiteMarginDp : SiteSettingsDialogHelper.DEFAULT_GUTTER_DP;
+        applyMarginState(nextState, targetDp);
+    }
+
+    @Override
+    public void onRemoteEvalJs(String script) {
+        if (webView != null && script != null) {
+            webView.evaluateJavascript(script, null);
+        }
+    }
+
+    @Override
+    public String onRemoteGetStatusJson() {
+        String curUrl = (webView != null) ? webView.getUrl() : lastLoadedUrl;
+        boolean splitActive = (splitScreenManager != null && splitScreenManager.isSplitActive());
+        ThemeManager.Theme th = ThemeManager.getActiveTheme(getActivity());
+        boolean launcherOpen = (menuOverlayView != null && menuOverlayView.isLauncherOpen());
+        boolean controlsOpen = (menuOverlayView != null && menuOverlayView.isControlsOpen());
+        return String.format(
+            "{\"ok\":true,\"url\":\"%s\",\"splitActive\":%b,\"theme\":\"%s\",\"launcherOpen\":%b,\"controlsOpen\":%b}",
+            (curUrl != null ? curUrl : ""),
+            splitActive,
+            (th != null ? th.id : "michigan"),
+            launcherOpen,
+            controlsOpen
+        );
     }
 }

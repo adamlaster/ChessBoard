@@ -3,6 +3,9 @@ package com.lastersoft.godotwebview;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -71,16 +74,18 @@ public final class AppCatalog {
         new SiteEntry("ChessReps", "https://chessreps.com", "🎯", "Repertoire Training", "TRAINER")
     );
 
+    public static final List<SiteEntry> DEFAULT_DUOS = Arrays.asList(
+        new SiteEntry("Chess + YouTube", "https://www.chess.com", "https://www.youtube.com", "♟️▶️", "Play & Watch", "DUO"),
+        new SiteEntry("ChessKids + YouTube", "https://www.chesskid.com", "https://www.youtube.com", "🧒▶️", "Kids & Watch", "DUO"),
+        new SiteEntry("Chess + Apple TV", "https://www.chess.com", "https://tv.apple.com", "♟️🍎", "Play & Stream", "DUO"),
+        new SiteEntry("Lichess + Twitch", "https://lichess.org/analysis", "https://www.twitch.tv", "♞🟣", "Analysis & Stream", "DUO"),
+        new SiteEntry("Chess + Reddit", "https://www.chess.com", "https://www.reddit.com/r/chess", "♟️👽", "Play & Community", "DUO"),
+        new SiteEntry("Colonist + YouTube", "https://colonist.io", "https://www.youtube.com", "🐑▶️", "Catan & Stream", "DUO")
+    );
+
     public static final List<CategoryEntry> ALL_CATEGORIES = Arrays.asList(
         new CategoryEntry("Primary Chess", "♟", MAIN_SITES),
-        new CategoryEntry("Tabletop Duos", "◫", Arrays.asList(
-            new SiteEntry("Chess + YouTube", "https://www.chess.com", "https://www.youtube.com", "♟️▶️", "Play & Watch", "DUO"),
-            new SiteEntry("ChessKids + YouTube", "https://www.chesskid.com", "https://www.youtube.com", "🧒▶️", "Kids & Watch", "DUO"),
-            new SiteEntry("Chess + Apple TV", "https://www.chess.com", "https://tv.apple.com", "♟️🍎", "Play & Stream", "DUO"),
-            new SiteEntry("Lichess + Twitch", "https://lichess.org/analysis", "https://www.twitch.tv", "♞🟣", "Analysis & Stream", "DUO"),
-            new SiteEntry("Chess + Reddit", "https://www.chess.com", "https://www.reddit.com/r/chess", "♟️👽", "Play & Community", "DUO"),
-            new SiteEntry("Colonist + YouTube", "https://colonist.io", "https://www.youtube.com", "🐑▶️", "Catan & Stream", "DUO")
-        )),
+        new CategoryEntry("Tabletop Duos", "◫", DEFAULT_DUOS),
         new CategoryEntry("Games", "🎲", Arrays.asList(
             new SiteEntry("AutoDraw", "https://www.autodraw.com", "🎨", "Google AI Drawing", "AI"),
             new SiteEntry("DJ Turntables", "https://buttonbass.com/DJ.html", "🎧", "Mix & Scratch Decks", "DJ"),
@@ -116,6 +121,114 @@ public final class AppCatalog {
 
     public static final List<CategoryEntry> EXTRA_CATEGORIES = ALL_CATEGORIES.subList(1, ALL_CATEGORIES.size());
 
+    public static final String PREF_CUSTOM_DUOS = "custom_tabletop_duos";
+
+    /**
+     * Retrieves the active list of Tabletop Duos from SharedPreferences, falling back to DEFAULT_DUOS.
+     */
+    public static List<SiteEntry> getDuos(Context context) {
+        if (context == null) return new ArrayList<>(DEFAULT_DUOS);
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(PREF_CUSTOM_DUOS, null);
+        if (raw == null || raw.trim().isEmpty()) {
+            SharedPreferences legacyPrefs = context.getSharedPreferences(UserAgentManager.LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+            raw = legacyPrefs.getString(PREF_CUSTOM_DUOS, null);
+        }
+        if (raw == null || raw.trim().isEmpty()) {
+            return new ArrayList<>(DEFAULT_DUOS);
+        }
+
+        try {
+            JSONArray array = new JSONArray(raw);
+            List<SiteEntry> list = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject obj = array.getJSONObject(i);
+                String name = obj.getString("name");
+                String primaryUrl = obj.getString("primaryUrl");
+                String secondaryUrl = obj.getString("secondaryUrl");
+                String icon = obj.optString("icon", "◫");
+                String subtitle = obj.optString("subtitle", "Custom Duo");
+                list.add(new SiteEntry(name, primaryUrl, secondaryUrl, icon, subtitle, "DUO"));
+            }
+            return list.isEmpty() ? new ArrayList<>(DEFAULT_DUOS) : list;
+        } catch (Exception e) {
+            return new ArrayList<>(DEFAULT_DUOS);
+        }
+    }
+
+    /**
+     * Persists the list of Tabletop Duos into SharedPreferences.
+     */
+    public static void saveDuos(Context context, List<SiteEntry> duos) {
+        if (context == null || duos == null) return;
+        try {
+            JSONArray array = new JSONArray();
+            for (SiteEntry site : duos) {
+                JSONObject obj = new JSONObject();
+                obj.put("name", site.name);
+                obj.put("primaryUrl", site.url);
+                obj.put("secondaryUrl", site.secondaryUrl);
+                obj.put("icon", site.icon != null ? site.icon : "◫");
+                obj.put("subtitle", site.subtitle != null ? site.subtitle : "Custom Duo");
+                array.put(obj);
+            }
+            SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+            prefs.edit().putString(PREF_CUSTOM_DUOS, array.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Adds a new Duo or updates an existing Duo with the same name.
+     */
+    public static boolean addDuo(Context context, SiteEntry duo) {
+        if (context == null || duo == null) return false;
+        List<SiteEntry> current = getDuos(context);
+        boolean updated = false;
+        for (int i = 0; i < current.size(); i++) {
+            if (current.get(i).name.equalsIgnoreCase(duo.name)) {
+                current.set(i, duo);
+                updated = true;
+                break;
+            }
+        }
+        if (!updated) {
+            current.add(duo);
+        }
+        saveDuos(context, current);
+        return true;
+    }
+
+    /**
+     * Removes a Duo by name from persistent storage.
+     */
+    public static boolean removeDuo(Context context, String duoName) {
+        if (context == null || duoName == null || duoName.trim().isEmpty()) return false;
+        List<SiteEntry> current = getDuos(context);
+        boolean removed = false;
+        for (int i = current.size() - 1; i >= 0; i--) {
+            if (current.get(i).name.equalsIgnoreCase(duoName.trim())) {
+                current.remove(i);
+                removed = true;
+            }
+        }
+        if (removed) {
+            saveDuos(context, current);
+        }
+        return removed;
+    }
+
+    /**
+     * Resets Tabletop Duos back to the default factory presets.
+     */
+    public static void resetDuos(Context context) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit()
+                .remove(PREF_CUSTOM_DUOS)
+                .remove(PREF_CAT_SITES_PREFIX + "Tabletop Duos")
+                .apply();
+    }
+
     public static int getTotalExtraAppsCount() {
         int total = 0;
         for (CategoryEntry category : EXTRA_CATEGORIES) {
@@ -128,18 +241,30 @@ public final class AppCatalog {
 
     /**
      * Returns the categories in user-customized order, falling back to default ALL_CATEGORIES.
+     * Dynamically loads custom Duos for the Tabletop Duos row.
      * Automatically appends any newly added categories that were not present in saved order.
      */
     public static List<CategoryEntry> getOrderedCategories(Context context) {
         if (context == null) return ALL_CATEGORIES;
+        List<SiteEntry> activeDuos = getDuos(context);
+
         SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
         String rawOrder = prefs.getString(PREF_ROW_ORDER, null);
         if (rawOrder == null || rawOrder.trim().isEmpty()) {
             SharedPreferences legacyPrefs = context.getSharedPreferences(UserAgentManager.LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
             rawOrder = legacyPrefs.getString(PREF_ROW_ORDER, null);
         }
+
         if (rawOrder == null || rawOrder.trim().isEmpty()) {
-            return ALL_CATEGORIES;
+            List<CategoryEntry> defaults = new ArrayList<>();
+            for (CategoryEntry cat : ALL_CATEGORIES) {
+                if (cat.title.equalsIgnoreCase("Tabletop Duos")) {
+                    defaults.add(new CategoryEntry(cat.title, cat.icon, activeDuos));
+                } else {
+                    defaults.add(cat);
+                }
+            }
+            return defaults;
         }
 
         String[] titles = rawOrder.split(",");
@@ -150,7 +275,11 @@ public final class AppCatalog {
             String clean = title.trim();
             for (CategoryEntry cat : ALL_CATEGORIES) {
                 if (cat.title.equalsIgnoreCase(clean) && !added.contains(cat.title)) {
-                    result.add(cat);
+                    if (cat.title.equalsIgnoreCase("Tabletop Duos")) {
+                        result.add(new CategoryEntry(cat.title, cat.icon, activeDuos));
+                    } else {
+                        result.add(cat);
+                    }
                     added.add(cat.title);
                     break;
                 }
@@ -160,7 +289,11 @@ public final class AppCatalog {
         // Add any categories that were not in the saved list (forward compatibility)
         for (CategoryEntry cat : ALL_CATEGORIES) {
             if (!added.contains(cat.title)) {
-                result.add(cat);
+                if (cat.title.equalsIgnoreCase("Tabletop Duos")) {
+                    result.add(new CategoryEntry(cat.title, cat.icon, activeDuos));
+                } else {
+                    result.add(cat);
+                }
                 added.add(cat.title);
             }
         }
@@ -189,9 +322,13 @@ public final class AppCatalog {
      * Automatically appends any newly added sites that were not present in saved order.
      */
     public static List<SiteEntry> getOrderedSitesForCategory(Context context, CategoryEntry category) {
-        if (context == null || category == null || category.sites == null) {
-            return category != null ? category.sites : new ArrayList<>();
+        if (context == null || category == null) {
+            return category != null && category.sites != null ? category.sites : new ArrayList<>();
         }
+        List<SiteEntry> baseSites = category.title.equalsIgnoreCase("Tabletop Duos")
+                ? getDuos(context)
+                : (category.sites != null ? category.sites : new ArrayList<>());
+
         SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
         String prefKey = PREF_CAT_SITES_PREFIX + category.title;
         String rawOrder = prefs.getString(prefKey, null);
@@ -200,7 +337,7 @@ public final class AppCatalog {
             rawOrder = legacyPrefs.getString(prefKey, null);
         }
         if (rawOrder == null || rawOrder.trim().isEmpty()) {
-            return category.sites;
+            return baseSites;
         }
 
         String[] names = rawOrder.split(",");
@@ -209,7 +346,7 @@ public final class AppCatalog {
 
         for (String name : names) {
             String clean = name.trim();
-            for (SiteEntry site : category.sites) {
+            for (SiteEntry site : baseSites) {
                 if (site.name.equalsIgnoreCase(clean) && !added.contains(site.name)) {
                     result.add(site);
                     added.add(site.name);
@@ -218,8 +355,8 @@ public final class AppCatalog {
             }
         }
 
-        // Add any sites that were not in the saved list (e.g. newly added sites)
-        for (SiteEntry site : category.sites) {
+        // Add any sites that were not in the saved list (e.g. newly added sites/duos)
+        for (SiteEntry site : baseSites) {
             if (!added.contains(site.name)) {
                 result.add(site);
                 added.add(site.name);

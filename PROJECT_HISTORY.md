@@ -1182,3 +1182,71 @@ To avoid information duplication, the live user-facing specifications are mainta
 6. **Documentation & Help Guide Synchronization:**
    - Updated `HelpDialogHelper.java` Controls & Gestures Guide to reflect arrow drawing support across all four chess platforms.
    - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 52: Embedded Remote Navigation Daemon, 1080p Tabletop Hardware Screenshots & Interactive Web Prototype
+1. **Embedded Remote Navigation & Test Daemon (`RemoteNavigationServer.java`):**
+   - **LAN Automated Control Bridge:** Built an asynchronous lightweight HTTP server listening on port `8990` directly inside the native Android plugin to allow programmatic control, remote testing, and hardware screenshot capture without physical touch interaction.
+   - **Thread-Safe Status Query (`GET /status`):** Resolves Android Chromium single-thread access requirements (`WebViewMethodCalledOnWrongThreadViolation`) by dispatching property queries to `mainHandler` with a `CountDownLatch` (2-second timeout). Returns live JSON data: URL, page title, active theme, zoom level, split screen state, and visibility flags.
+   - **Action Endpoints (`GET /nav?action=...`):** Supports remote actions: `launcher`, `controls`, `help`, `close`, `theme_picker`, `theme&id=<themeId>`, `open&url=<url>`, `duo&primary=<url>&secondary=<url>`, `split_preset`, `split_swap`, `split_close`, `rotate`, `rotate_reset`, `margin`, and `eval&js=<script>`.
+   - **Modal Synchronization & Teardown:** Added `dismissModals()` across `ThemePickerDialogHelper`, `HelpDialogHelper`, and `SiteSettingsDialogHelper` to eliminate orphaned dialog scrims during remote transitions.
+   - **Lifecycle Management:** Started automatically on `GodotWebView.onMainCreate()` and cleanly terminated on `onMainDestroy()`.
+2. **High-Resolution 1080p Tabletop Hardware Screenshot Extraction (`docs/screenshots/`):**
+   - Extracted 15 authentic 1920x1080 hardware PNG screenshots directly from the physical Board digital tabletop device (`10.0.0.65`) using `board-connect screenshot` synchronized with automated remote navigation commands:
+     - `launcher_michigan.png` (Maize & Blue theme launcher)
+     - `launcher_lions.png` (Honolulu Blue & Silver theme launcher)
+     - `theme_picker.png` (Tabletop Theme Picker modal)
+     - `controls_guide.png` (Controls & Gestures Guide modal)
+     - `browser_controls_rail.png` (Right-side docked controls rail overlay)
+     - `split_duo_controls.png` (Split-Screen Duo with top controls bar active)
+     - `split_duo_70_30.png` (70/30 split ratio with desktop chess layout)
+     - `split_duo_chess_youtube.png` (50/50 split ratio)
+     - `chess_fullscreen.png` (Full-screen single-app Chess.com)
+     - `chesscom_analysis.png` (Chess.com Analysis board)
+     - `lichess_analysis.png` (Lichess Analysis board)
+     - `chesskid_home.png` (ChessKid desktop layout)
+     - `dj_turntables.png` (ButtonBass dual vinyl turntable decks)
+3. **Interactive Tabletop Web Prototype (`docs/` for GitHub Pages):**
+   - Engineered a fully interactive, zero-dependency browser simulation in `docs/` (`index.html`, `style.css`, `app.js`) designed for deployment via GitHub Pages (`https://adamlaster.github.io/ChessBoard/`).
+   - **Hardware Bezel & System UI:** Recreates the physical Board hardware bezel, hardware menu button notch, and Board OS pause overlay.
+   - **Interactive Fullscreen Launcher:** Categorized rows (Primary Chess, Tabletop Duos, Games, Watch, and Web) with responsive horizontal scrolling, cards, and launch actions for single apps and split duos.
+   - **Interactive Top Split Controls Bar:** Audio focus switcher, independent Left/Right padding toggles, pane swap, 50/50 and 70/30 ratio presets, 180° rotation, and split close.
+   - **Interactive Center Divider:** Draggable ratio slider with real-time percentage readout and spring snapping (50/50, 70/30, 30/70).
+   - **Interactive Docked Browser Controls Rail:** Back, zoom stepping, desktop/mobile UA indicator, margin gutter toggle, 90° orientation rotation, and launcher toggle.
+   - **Real-Time Theme Engine:** Live switching between all 9 authentic themes (Michigan Maize & Blue, Detroit Lions Honolulu Blue, Detroit Tigers Navy & Orange, Classic Wood, Emerald Green, Slate Monochrome, Royal Purple, Crimson Velvet, and Cyberpunk Neon) dynamically applying CSS custom properties.
+   - **Standalone Interactive Tactical Arrow Drawing Engine:** Single-finger double-tap & drag draws SVG arrows with arrowhead markers, double-tap in place toggles green circular square highlights, and single tap clears annotations.
+4. **Canonical Documentation Updates:**
+   - Updated `README.md` with interactive prototype links, Tabletop Hardware Showcase visual grid, and Remote Navigation Daemon documentation.
+   - Updated `ARCHITECTURE.md` with `RemoteNavigationServer.java` component specifications and sequence integration.
+   - Updated `PROJECT_HISTORY.md` with full Phase 52 lifecycle log.
+
+---
+
+### Phase 53: Dynamic Tabletop Duos Management, Prototype Tooling Resource Hygiene & Prototype Parity
+1. **Dynamic Tabletop Duos Data Architecture & Persistence (`AppCatalog.java`):**
+   - Decoupled factory default duos (`DEFAULT_DUOS`) from active user presets.
+   - Implemented `getDuos(Context)` which loads a JSON array from `SharedPreferences` (`custom_tabletop_duos`) or falls back to factory presets.
+   - Implemented `saveDuos(Context, List<SiteEntry>)`, `addDuo(Context, SiteEntry)`, `removeDuo(Context, String duoId)`, and `resetDuos(Context)` for full CRUD management with persistent storage.
+   - Updated `getOrderedCategories(Context)` and `getOrderedSitesForCategory(Context, CategoryEntry)` to dynamically return custom user duos in the Tabletop Duos row.
+2. **Tabletop Duo Creator Dialog (`DuoEditorDialogHelper.java`):**
+   - Engineered a custom Android dialog matching the active tabletop theme palette.
+   - Quick-select pill carousels for Left Screen (Chess.com, Lichess, ChessKids, ChessReps, Colonist) and Right Screen (YouTube, Apple TV, Twitch, Reddit, Peacock, DJ Turntables).
+   - Editable custom URL text inputs for both panes with auto-updating suggested Duo title and emoji icon.
+   - Dialog actions: [ ↺ Reset Defaults ] (danger-styled text button), [ Cancel ], and [ ➕ Add Duo ] (accent-themed confirm button).
+3. **In-App Launcher UI Overhaul (`MenuOverlayView.java`):**
+   - Replaced static card generation with `buildCardView(...)` supporting red circular `✕` delete buttons (`DUO_DELETE_BTN`) positioned on the top-right corner of cards, visible exclusively in Edit Mode.
+   - Appended a dedicated `[ ➕ Add Duo ]` card at the tail of the Tabletop Duos track with subtle dashed border and theme hover effects.
+   - Implemented `refreshDuosRow()` for instant, seamless DOM updates when duos are added, deleted, or reset without closing or flickering the launcher.
+   - Updated `enterEditMode()` and `exitEditMode()` to toggle delete button visibility and update header status badges.
+4. **Prototype Tooling Resource Hygiene & Conditional Activation:**
+   - **Board Hardware Protection:** Embedded daemons like `RemoteNavigationServer` listening continuously on port 8990 consume a worker thread, socket descriptors, and memory. Added `isEnabled(Context context)` check in `RemoteNavigationServer.java` verifying `enable_remote_nav` in assets.
+   - If disabled (the default), `start()` immediately logs and aborts without opening sockets or spawning background threads.
+   - Updated `build_and_deploy.sh` with `--enable-remote-nav` / `--prototype` flag. Standard builds (`./build_and_deploy.sh`) have remote navigation completely disabled, imposing zero extra resource overhead on the Board hardware.
+5. **Interactive Web Prototype Parity (`docs/`):**
+   - Added `[ ✎ Edit ]` button on the Tabletop Duos row, red circular `✕` delete badges, `[ ➕ Add Duo ]` card, and `#addDuoModal` dialog with responsive pill carousels in `docs/index.html` and `docs/style.css`.
+   - Implemented `renderDuos()`, edit mode toggling, deletion, custom addition with URL/name mapping, factory defaults reset, and `localStorage` persistence in `docs/app.js`.
+6. **Workspace Rules & In-App Guide Synchronization:**
+   - Updated `AGENTS.md` Rules 2, 3, and 4 mandating interactive web prototype synchronization before commits/merges and enforcing prototype tooling resource hygiene.
+   - Updated `HelpDialogHelper.java` Controls & Gestures Guide with instructions for adding, removing, and resetting custom Tabletop Duos.
+   - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.

@@ -35,6 +35,11 @@ A unified build script handles the entire 4-step sequence automatically:
   ```bash
   ./build_and_deploy.sh --no-deploy
   ```
+* **Enable remote navigation daemon for prototype tooling & screenshot automation:**
+  ```bash
+  ./build_and_deploy.sh --enable-remote-nav
+  ```
+  *(Strictly disabled by default during normal builds and runtime to ensure zero CPU/memory/thread overhead on Board hardware).*
 
 ---
 

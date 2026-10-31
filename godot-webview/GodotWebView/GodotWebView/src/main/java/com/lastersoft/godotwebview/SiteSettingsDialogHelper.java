@@ -35,6 +35,19 @@ public class SiteSettingsDialogHelper {
         void onSaved(String siteKey, boolean isDesktop, int marginDp, int marginMode);
     }
 
+    private static AlertDialog currentDialog = null;
+
+    public static void dismiss() {
+        if (currentDialog != null) {
+            try {
+                if (currentDialog.isShowing()) {
+                    currentDialog.dismiss();
+                }
+            } catch (Exception ignored) {}
+            currentDialog = null;
+        }
+    }
+
     public static int getSiteDefaultMarginMode(Context context, String siteKey) {
         if (context != null && siteKey != null && !siteKey.isEmpty()) {
             SharedPreferences prefs = context.getSharedPreferences(UserAgentManager.PREFS_NAME, Context.MODE_PRIVATE);
@@ -418,10 +431,12 @@ public class SiteSettingsDialogHelper {
         root.addView(actionRow);
 
         // Build AlertDialog
+        dismiss();
         AlertDialog dialog = new AlertDialog.Builder(activity)
                 .setView(root)
                 .setCancelable(true)
                 .create();
+        currentDialog = dialog;
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 

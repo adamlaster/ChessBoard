@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChessBoard — Digital Tabletop Interactive Prototype</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="theme-michigan">
+
+    <!-- Prototype Header Bar (Outer host UI) -->
+    <header class="prototype-bar">
+        <div class="prototype-brand">
+            <span class="brand-icon">♟️</span>
+            <div class="brand-info">
+                <h1>ChessBoard</h1>
+                <span class="brand-subtitle">Tabletop Web Gaming &amp; Multitasking Hub</span>
+            </div>
+            <span class="badge-tag">Interactive Hardware Prototype</span>
+        </div>
+
+        <div class="prototype-controls">
+            <div class="pill-group">
+                <button class="proto-btn active" id="btnModeTabletop" title="Simulate 24-inch digital tabletop hardware bezel">🖥️ Tabletop Frame</button>
+                <button class="proto-btn" id="btnModeFullscreen" title="Edge-to-edge frameless view">⛶ Fullscreen</button>
+            </div>
+            <button class="proto-btn" id="btnRotateBoard" title="Rotate hardware display 90° clockwise">🔄 Rotate 90°</button>
+            <button class="proto-btn accent" id="btnOpenGuide" title="Open Tabletop Controls Guide">📖 Guide</button>
+            <a href="https://github.com/adamlaster/ChessBoard" target="_blank" rel="noopener" class="proto-btn github-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                GitHub Repo
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Container simulating the Physical Tabletop Screen -->
+    <main class="tabletop-stage">
+        <div class="hardware-bezel" id="hardwareBezel">
+            <!-- Simulated Hardware Corner Menu Button Cutout (Board OS) -->
+            <button class="board-hardware-btn" id="boardHardwareBtn" title="Board OS Hardware Menu Button">
+                <span class="hw-icon">⚙️</span>
+            </button>
+
+            <!-- Display Screen (1920x1080 Viewport) -->
+            <div class="display-viewport" id="displayViewport">
+
+                <!-- 1. Active App View Container (Single or Split) -->
+                <div class="app-stage" id="appStage">
+
+                    <!-- Primary App Pane (Left in Split, Fullscreen in Single) -->
+                    <div class="app-pane primary-pane" id="primaryPane">
+                        <!-- Simulated Interactive Chessboard with Live Tactical Arrows -->
+                        <div class="board-view" id="chessBoardView">
+                            <div class="board-top-status">
+                                <div class="player-tag"><span class="avatar-dot"></span> Black (Opponent)</div>
+                                <div class="game-clock">10:00</div>
+                            </div>
+
+                            <!-- Interactive SVG Chessboard with Tactical Arrow Overlay -->
+                            <div class="interactive-chessboard" id="interactiveBoard">
+                                <div class="chess-grid" id="chessGrid"></div>
+                                <svg class="arrow-overlay" id="arrowOverlay" viewBox="0 0 800 800">
+                                    <defs>
+                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="7" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#22C55E" />
+                                        </marker>
+                                        <marker id="arrowhead-gold" markerWidth="10" markerHeight="7" refX="7" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#EAB308" />
+                                        </marker>
+                                    </defs>
+                                    <g id="arrowGroup"></g>
+                                </svg>
+                            </div>
+
+                            <div class="board-bottom-status">
+                                <div class="player-tag"><span class="avatar-dot my-dot"></span> You (White)</div>
+                                <div class="game-clock">09:48</div>
+                                <div class="gesture-hint">Double-tap &amp; drag to draw arrows • Double-tap square to highlight</div>
+                            </div>
+                        </div>
+
+                        <!-- Static App Backdrop (When viewing other apps) -->
+                        <div class="static-app-backdrop" id="primaryStaticBackdrop">
+                            <img src="screenshots/chesscom_analysis.png" alt="Primary App" id="primaryStaticImg">
+                        </div>
+                    </div>
+
+                    <!-- Draggable Divider (Visible in Split-Screen) -->
+                    <div class="split-divider" id="splitDivider">
+                        <div class="divider-thumb">
+                            <div class="thumb-grip"></div>
+                        </div>
+                        <div class="divider-curtain" id="dividerCurtain">
+                            <span class="curtain-label" id="curtainRatioLabel">50 / 50</span>
+                        </div>
+                    </div>
+
+                    <!-- Secondary App Pane (Right in Split) -->
+                    <div class="app-pane secondary-pane" id="secondaryPane">
+                        <div class="static-app-backdrop" id="secondaryStaticBackdrop">
+                            <img src="screenshots/split_duo_controls.png" alt="Secondary App" id="secondaryStaticImg">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Top Split Control Bar (Docked top-center when split is active) -->
+                <div class="top-split-bar" id="topSplitBar">
+                    <button class="split-pill active-audio" id="btnAudioLeft" title="Left App Audio">🔊 Left: Chess</button>
+                    <button class="split-pill" id="btnPadLeft" title="Left Padding Mode">◧ L-Pad: Off</button>
+                    <button class="split-pill" id="btnSwapPanes" title="Swap Left and Right Panes">⇄ Swap</button>
+                    <button class="split-pill" id="btnSplitPreset" title="Cycle Preset Ratios (50/50, 70/30, 30/70)">◫ 50/50</button>
+                    <button class="split-pill" id="btnMediaPlay" title="Toggle Play/Pause on Video">⏯</button>
+                    <button class="split-pill" id="btnPadRight" title="Right Padding Mode">◨ R-Pad: Right</button>
+                    <button class="split-pill" id="btnAudioRight" title="Right App Audio">🔇 Right: YouTube</button>
+                    <button class="split-pill" id="btnHotSwapApp" title="Hot-swap secondary pane">🔀 App</button>
+                    <button class="split-pill" id="btnInvert180" title="Rotate Secondary App 180° for opposite player">🔄 180°</button>
+                    <button class="split-pill close-split" id="btnCloseSplit" title="Close Split Screen">✕ Exit</button>
+                </div>
+
+                <!-- 3. Docked Browser Controls Rail (Right edge slide-out) -->
+                <aside class="browser-controls-rail" id="browserControlsRail">
+                    <button class="rail-btn close" id="railCloseBtn" title="Close Menu">✕</button>
+                    <button class="rail-btn" id="railBackBtn" title="Back">⬅</button>
+                    <button class="rail-btn" id="railZoomInBtn" title="Zoom In">＋</button>
+                    <button class="rail-btn" id="railZoomOutBtn" title="Zoom Out">－</button>
+                    <button class="rail-btn" id="railRefreshBtn" title="Refresh">↺</button>
+                    <button class="rail-btn" id="railUaBtn" title="Toggle Desktop/Mobile mode">🖥</button>
+                    <button class="rail-btn" id="railMarginBtn" title="Toggle Tabletop Padding Gutter">◧</button>
+                    <button class="rail-btn" id="railRotateBtn" title="Rotate Screen 90°">90°</button>
+                    <button class="rail-btn" id="railSplitBtn" title="Split Screen Mode">◫</button>
+                    <button class="rail-btn launcher-btn" id="railLauncherBtn" title="Open Fullscreen Launcher">♟</button>
+                </aside>
+
+                <!-- Edge Swipe Trigger Hotzone (Pull in to reveal controls rail) -->
+                <div class="edge-hotzone right-edge" id="rightEdgeTrigger" title="Pull in from right bezel to open Browser Controls rail">
+                    <span class="edge-indicator">‹</span>
+                </div>
+                <div class="edge-hotzone top-edge" id="topEdgeTrigger" title="Swipe down from top bezel to open Launcher">
+                    <span class="edge-indicator top-indicator">⌄</span>
+                </div>
+
+                <!-- 4. Fullscreen Tabletop Launcher Modal -->
+                <div class="launcher-overlay" id="launcherOverlay">
+                    <div class="launcher-backdrop" id="launcherBackdrop"></div>
+                    <div class="launcher-card" id="launcherCard">
+                        <!-- Header -->
+                        <div class="launcher-header">
+                            <div class="launcher-title-group">
+                                <h2 class="launcher-brand">CHESSBOARD</h2>
+                                <span class="launcher-badge">LAUNCHER</span>
+                                <button class="launcher-action-btn" id="hdrControlsBtn">🎛️ Browser Controls</button>
+                                <button class="launcher-action-btn" id="hdrGuideBtn">📖 Controls Guide</button>
+                                <button class="launcher-action-btn theme-btn" id="hdrThemeBtn">〽️ Theme: Maize &amp; Blue</button>
+                            </div>
+                            <div class="launcher-header-right">
+                                <span class="clock-display" id="clockDisplay">12:00 PM</span>
+                                <button class="launcher-close-icon" id="launcherCloseBtn" title="Close Launcher">✕</button>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Categories Grid -->
+                        <div class="launcher-content" id="launcherContent">
+
+                            <!-- Category: Tabletop Duos (Split Screen Presets) -->
+                            <div class="catalog-row" data-category="duos">
+                                <div class="row-header">
+                                    <div class="row-title">
+                                        <span class="row-icon">◫</span>
+                                        <h3>Tabletop Duos</h3>
+                                        <span class="item-count" id="duosCountBadge">6 duos</span>
+                                        <button class="row-edit-btn" id="duosEditBtn" title="Customize Tabletop Duos">✎ Edit</button>
+                                    </div>
+                                </div>
+                                <div class="card-track" id="duosCardTrack">
+                                    <!-- Dynamic Duos Cards & Add Duo Card rendered by app.js -->
+                                </div>
+                            </div>
+
+                            <!-- Category: Primary Chess Sites -->
+                            <div class="catalog-row" data-category="chess">
+                                <div class="row-header">
+                                    <div class="row-title">
+                                        <span class="row-icon">♟️</span>
+                                        <h3>Primary Chess</h3>
+                                        <span class="item-count">4 apps</span>
+                                    </div>
+                                </div>
+                                <div class="card-track">
+                                    <div class="app-card active" data-app="chesscom">
+                                        <div class="app-icon">♟️</div>
+                                        <span class="card-badge default-badge">DEFAULT</span>
+                                        <h4>Chess.com</h4>
+                                        <p>Play, Bots &amp; Review</p>
+                                    </div>
+                                    <div class="app-card" data-app="lichess">
+                                        <div class="app-icon">♞</div>
+                                        <span class="card-badge">OPEN SOURCE</span>
+                                        <h4>Lichess</h4>
+                                        <p>Unlimited Free Analysis</p>
+                                    </div>
+                                    <div class="app-card" data-app="chesskids">
+                                        <div class="app-icon">👑</div>
+                                        <span class="card-badge">KIDS</span>
+                                        <h4>ChessKids</h4>
+                                        <p>Lessons, Puzzles &amp; Fun</p>
+                                    </div>
+                                    <div class="app-card" data-app="chessreps">
+                                        <div class="app-icon">🎯</div>
+                                        <span class="card-badge">TRAINER</span>
+                                        <h4>ChessReps</h4>
+                                        <p>Opening Repertoire Drills</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Category: Tabletop Games & Music -->
+                            <div class="catalog-row" data-category="games">
+                                <div class="row-header">
+                                    <div class="row-title">
+                                        <span class="row-icon">🎲</span>
+                                        <h3>Games &amp; Audio</h3>
+                                        <span class="item-count">6 apps</span>
+                                    </div>
+                                </div>
+                                <div class="card-track">
+                                    <div class="app-card" data-app="dj">
+                                        <div class="app-icon">🎧</div>
+                                        <span class="card-badge">AUDIO</span>
+                                        <h4>DJ Turntables</h4>
+                                        <p>Dual Spinning Platters</p>
+                                    </div>
+                                    <div class="app-card" data-app="patatap">
+                                        <div class="app-icon">🎹</div>
+                                        <span class="card-badge">SYNTH</span>
+                                        <h4>Patatap</h4>
+                                        <p>Audiovisual Soundboard</p>
+                                    </div>
+                                    <div class="app-card" data-app="colonist">
+                                        <div class="app-icon">🐑</div>
+                                        <span class="card-badge">CATAN</span>
+                                        <h4>Colonist.io</h4>
+                                        <p>Settlers Board Game</p>
+                                    </div>
+                                    <div class="app-card" data-app="checkers">
+                                        <div class="app-icon">🔴</div>
+                                        <span class="card-badge">CLASSIC</span>
+                                        <h4>247 Checkers</h4>
+                                        <p>Touchscreen Draughts</p>
+                                    </div>
+                                    <div class="app-card" data-app="backgammon">
+                                        <div class="app-icon">🎲</div>
+                                        <span class="card-badge">CLASSIC</span>
+                                        <h4>247 Backgammon</h4>
+                                        <p>Tabletop Dice Game</p>
+                                    </div>
+                                    <div class="app-card" data-app="bga">
+                                        <div class="app-icon">🌐</div>
+                                        <span class="card-badge">ARENA</span>
+                                        <h4>BoardGameArena</h4>
+                                        <p>Hundreds of Board Games</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Category: Video & Streaming -->
+                            <div class="catalog-row" data-category="watch">
+                                <div class="row-header">
+                                    <div class="row-title">
+                                        <span class="row-icon">📺</span>
+                                        <h3>Watch &amp; Stream</h3>
+                                        <span class="item-count">5 apps</span>
+                                    </div>
+                                </div>
+                                <div class="card-track">
+                                    <div class="app-card" data-app="youtube">
+                                        <div class="app-icon">▶️</div>
+                                        <span class="card-badge">MEDIA</span>
+                                        <h4>YouTube</h4>
+                                        <p>Streams, Music &amp; Guides</p>
+                                    </div>
+                                    <div class="app-card" data-app="twitch">
+                                        <div class="app-icon">🟣</div>
+                                        <span class="card-badge">LIVE</span>
+                                        <h4>Twitch</h4>
+                                        <p>Live Chess &amp; Gaming</p>
+                                    </div>
+                                    <div class="app-card" data-app="appletv">
+                                        <div class="app-icon">📺</div>
+                                        <span class="card-badge">STREAM</span>
+                                        <h4>Apple TV+</h4>
+                                        <p>Movies &amp; Originals</p>
+                                    </div>
+                                    <div class="app-card" data-app="netflix">
+                                        <div class="app-icon">🍿</div>
+                                        <span class="card-badge">STREAM</span>
+                                        <h4>Netflix</h4>
+                                        <p>Shows &amp; Features</p>
+                                    </div>
+                                    <div class="app-card" data-app="disney">
+                                        <div class="app-icon">🏰</div>
+                                        <span class="card-badge">MOVIES</span>
+                                        <h4>Disney+</h4>
+                                        <p>Family Entertainment</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Tabletop Theme Picker Modal -->
+                <div class="modal-overlay" id="themeModalOverlay">
+                    <div class="modal-card theme-dialog">
+                        <div class="modal-header">
+                            <h3>🎨 Tabletop Theme</h3>
+                            <p>Select your preferred color scheme for ChessBoard</p>
+                        </div>
+                        <div class="theme-list" id="themeList">
+                            <div class="theme-option active" data-theme="michigan">
+                                <div class="theme-swatch swatch-michigan">〽️ M</div>
+                                <div class="theme-details">
+                                    <h4>University of Michigan</h4>
+                                    <span>〽️ Maize &amp; Blue</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="pistons">
+                                <div class="theme-swatch swatch-pistons">🏀 P</div>
+                                <div class="theme-details">
+                                    <h4>Detroit Pistons</h4>
+                                    <span>🏀 Royal Blue &amp; Red</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="lions">
+                                <div class="theme-swatch swatch-lions">🦁 L</div>
+                                <div class="theme-details">
+                                    <h4>Detroit Lions</h4>
+                                    <span>🦁 Honolulu Blue &amp; Silver</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="tigers">
+                                <div class="theme-swatch swatch-tigers">🐅 D</div>
+                                <div class="theme-details">
+                                    <h4>Detroit Tigers</h4>
+                                    <span>🐅 Midnight Navy &amp; Orange</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="unicorns">
+                                <div class="theme-swatch swatch-unicorns">🦄 U</div>
+                                <div class="theme-details">
+                                    <h4>Utica Unicorns</h4>
+                                    <span>🦄 Purple &amp; Red</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="walnut">
+                                <div class="theme-swatch swatch-walnut">🪵 W</div>
+                                <div class="theme-details">
+                                    <h4>Tournament Walnut</h4>
+                                    <span>🪵 Walnut &amp; Cream</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="emerald">
+                                <div class="theme-swatch swatch-emerald">🟢 E</div>
+                                <div class="theme-details">
+                                    <h4>Club Emerald</h4>
+                                    <span>🟢 Tournament Felt &amp; Ivory</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="carbon">
+                                <div class="theme-swatch swatch-carbon">⚡ C</div>
+                                <div class="theme-details">
+                                    <h4>Midnight Carbon</h4>
+                                    <span>⚡ Stealth Carbon &amp; Ice</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                            <div class="theme-option" data-theme="classic">
+                                <div class="theme-swatch swatch-classic">♟️ S</div>
+                                <div class="theme-details">
+                                    <h4>Classic Slate</h4>
+                                    <span>♟️ Slate Charcoal &amp; Indigo</span>
+                                </div>
+                                <span class="theme-active-tag">✓ ACTIVE</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="modal-btn confirm-btn" id="btnCloseTheme">DONE</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Controls & Gestures Guide Modal -->
+                <div class="modal-overlay" id="guideModalOverlay">
+                    <div class="modal-card guide-dialog">
+                        <div class="modal-header">
+                            <h3>♟️ Controls &amp; Gestures Guide</h3>
+                            <p>Quick reference for tabletop play on the Board</p>
+                        </div>
+                        <div class="guide-scrollable">
+                            <div class="guide-section">
+                                <h4 class="guide-section-title">♟️ Tabletop Chess Gestures (Chess.com, Lichess, ChessKid &amp; ChessReps)</h4>
+                                <div class="guide-item">
+                                    <strong>Double-Tap &amp; Drag</strong>
+                                    <p>Double-tap on a starting square and drag across to draw live tactical arrows. Pieces on the origin square will not move.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Double-Tap in Place</strong>
+                                    <p>Double-tap quickly on any square without dragging to toggle its color highlight.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Additive Markings</strong>
+                                    <p>Multiple arrows and square highlights persist together on the board without disappearing as you draw additional lines.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Clear Markings</strong>
+                                    <p>Tap any square once or make a piece move to immediately clear all arrows and square highlights.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>1-Finger Piece Movement</strong>
+                                    <p>Touch and drag any piece (&gt; 10px) to move it normally with instant 0ms native responsiveness.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-section">
+                                <h4 class="guide-section-title">◫ Split Screen &amp; Dual-App Multitasking</h4>
+                                <div class="guide-item">
+                                    <strong>Tabletop Duos</strong>
+                                    <p>Launch paired combinations from Launcher in 1 tap (Chess + YouTube, ChessKids + YouTube 70/30, Chess + Apple TV).</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Center Divider Dragging</strong>
+                                    <p>Drag the center divider thumb to resize panes from 20% to 80% with live snapping to 50/50, 70/30, and 30/70. Double-tap to reset to 50/50.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Independent Tabletop Padding ([ ◧ L-Pad ] / [ ◨ R-Pad ])</strong>
+                                    <p>3-way cycle padding for each pane (Off → Outer Edge Inset → All 4 Sides Inset) to prevent bezel clipping on both apps.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Head-to-Head 180° Inversion (🔄 180°)</strong>
+                                    <p>Invert the secondary pane 180° for opposite-seat tabletop players with hardware touch rotation.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-section">
+                                <h4 class="guide-section-title">🎛️ Browser Controls Rail &amp; Themes</h4>
+                                <div class="guide-item">
+                                    <strong>9 Tabletop UI Themes</strong>
+                                    <p>Live dynamic re-theming across University of Michigan, Detroit Pistons, Detroit Lions, Detroit Tigers, Utica Unicorns, Tournament Walnut, Club Emerald, Midnight Carbon, and Classic Slate.</p>
+                                </div>
+                                <div class="guide-item">
+                                    <strong>Bezel Edge Swipes</strong>
+                                    <p>Top swipe reveals Launcher; Right swipe reveals Browser Controls rail.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="modal-btn confirm-btn" id="btnCloseGuide">✕ Close Guide</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Add Tabletop Duo Modal -->
+                <div class="modal-overlay" id="addDuoModal">
+                    <div class="modal-card duo-dialog-card">
+                        <div class="modal-header">
+                            <h3>➕ Create Tabletop Duo</h3>
+                            <p>Pair any two web applications for simultaneous side-by-side tabletop play.</p>
+                        </div>
+                        <div class="duo-dialog-body">
+                            <div class="dialog-field-group">
+                                <label class="dialog-field-label">LEFT SCREEN (PRIMARY APP)</label>
+                                <div class="pill-track" id="leftPillTrack">
+                                    <button class="duo-app-pill active" data-name="Chess" data-icon="♟" data-url="https://www.chess.com">♟ Chess.com</button>
+                                    <button class="duo-app-pill" data-name="Lichess" data-icon="♞" data-url="https://lichess.org/analysis">♞ Lichess</button>
+                                    <button class="duo-app-pill" data-name="ChessKids" data-icon="👑" data-url="https://www.chesskid.com">👑 ChessKids</button>
+                                    <button class="duo-app-pill" data-name="ChessReps" data-icon="🎯" data-url="https://chessreps.com">🎯 ChessReps</button>
+                                    <button class="duo-app-pill" data-name="Colonist" data-icon="🐑" data-url="https://colonist.io">🐑 Colonist</button>
+                                </div>
+                                <input type="text" id="leftUrlInput" class="duo-text-input" value="https://www.chess.com" placeholder="https://...">
+                            </div>
+
+                            <div class="dialog-field-group">
+                                <label class="dialog-field-label">RIGHT SCREEN (SECONDARY APP)</label>
+                                <div class="pill-track" id="rightPillTrack">
+                                    <button class="duo-app-pill active" data-name="YouTube" data-icon="▶️" data-url="https://www.youtube.com">▶️ YouTube</button>
+                                    <button class="duo-app-pill" data-name="Apple TV" data-icon="🍎" data-url="https://tv.apple.com">🍎 Apple TV</button>
+                                    <button class="duo-app-pill" data-name="Twitch" data-icon="🟣" data-url="https://www.twitch.tv">🟣 Twitch</button>
+                                    <button class="duo-app-pill" data-name="Reddit" data-icon="👽" data-url="https://www.reddit.com/r/chess">👽 Reddit</button>
+                                    <button class="duo-app-pill" data-name="Peacock" data-icon="🦚" data-url="https://www.peacocktv.com">🦚 Peacock</button>
+                                    <button class="duo-app-pill" data-name="DJ Decks" data-icon="🎧" data-url="https://buttonbass.com/DJ.html">🎧 DJ Turntables</button>
+                                </div>
+                                <input type="text" id="rightUrlInput" class="duo-text-input" value="https://www.youtube.com" placeholder="https://...">
+                            </div>
+
+                            <div class="duo-field-split">
+                                <div class="dialog-field-group flex-3">
+                                    <label class="dialog-field-label">DUO PRESET NAME</label>
+                                    <input type="text" id="duoNameInput" class="duo-text-input" value="Chess + YouTube" placeholder="e.g. Chess + YouTube">
+                                </div>
+                                <div class="dialog-field-group flex-1">
+                                    <label class="dialog-field-label">ICON / EMOJI</label>
+                                    <input type="text" id="duoIconInput" class="duo-text-input" value="♟️▶️" placeholder="♟️▶️">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer duo-modal-footer">
+                            <button class="dialog-btn btn-danger-text" id="btnResetDuos">↺ Reset Defaults</button>
+                            <div class="footer-spacer"></div>
+                            <button class="dialog-btn secondary" id="btnCancelAddDuo">Cancel</button>
+                            <button class="dialog-btn confirm-btn" id="btnConfirmAddDuo">➕ Add Tabletop Duo</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. Board OS Hardware System Menu Overlay -->
+                <div class="modal-overlay" id="boardOsOverlay">
+                    <div class="board-os-menu">
+                        <div class="board-os-header">
+                            <span class="board-os-logo">BOARD OS</span>
+                            <span class="board-os-status">Pause Menu</span>
+                        </div>
+                        <div class="board-os-actions">
+                            <button class="board-os-btn" id="btnOsResume">▶ Resume Game</button>
+                            <button class="board-os-btn" id="btnOsLauncher">♟ App Menu (Launcher)</button>
+                            <button class="board-os-btn" id="btnOsGuide">📖 Controls Guide</button>
+                            <button class="board-os-btn danger" id="btnOsExit">⏻ Exit to Board Library</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /display-viewport -->
+        </div><!-- /hardware-bezel -->
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

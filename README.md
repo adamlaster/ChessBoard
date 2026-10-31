@@ -4,6 +4,21 @@
 
 Because the Board OS validates all installed APKs against its native SDK (`libboard.so` / `libnativeBoardSDK.so`), **ChessBoard** pairs a lightweight **Godot 4.7** host application (`chessboard`) with a custom native Android plugin (`com.lastersoft.godotwebview.GodotWebView`) that renders a hardware-accelerated Chromium `WebView` with full multi-touch passthrough. For deep architectural details and component diagrams, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+> 🎮 **Live Interactive Web Prototype:** Experience the full tabletop launcher, dual-app multitasking, 9 color themes, draggable divider, and gesture engine directly in your browser:  
+> 👉 **[Launch ChessBoard Tabletop Simulator](https://adamlaster.github.io/ChessBoard/)**
+
+---
+
+## 📸 Tabletop Hardware Showcase
+
+| Fullscreen Tabletop Launcher (Maize & Blue) | Split-Screen Tabletop Duo (Chess + YouTube) |
+| :---: | :---: |
+| ![Launcher](docs/screenshots/launcher_michigan.png) | ![Split Screen](docs/screenshots/split_duo_controls.png) |
+
+| Tabletop Theme Picker (9 Authentic Themes) | Interactive Controls & Gestures Guide |
+| :---: | :---: |
+| ![Theme Picker](docs/screenshots/theme_picker.png) | ![Controls Guide](docs/screenshots/controls_guide.png) |
+
 ---
 
 ## ✨ Key Features
@@ -46,7 +61,8 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * Injects a client-side bridge into Chess.com to resolve desktop mouse-hover vs. touchscreen tap mismatches. Prevents category taps from immediately hotlinking away from your active board, opening flyout submenus ("Play Online", "Computer", etc.) on first tap, with clean outside-tap dismissal.
 * **Split-Screen Dual-App Tabletop Multitasking:**
   * Run two concurrent, hardware-accelerated web apps side-by-side on the tabletop (e.g. active Chess match on the left, YouTube or Apple TV video stream on the right).
-  * **Tabletop Duos (One-Tap Split Presets):** Dedicated Launcher row to launch popular dual-app combinations in a single tap (`Chess + YouTube`, `ChessKids + YouTube`, `Chess + Apple TV`, `Lichess + Twitch`, `Chess + Reddit`, `Colonist + YouTube`).
+  * **Tabletop Duos (One-Tap Split Presets & Custom Management):** Dedicated Launcher row to launch popular dual-app combinations in a single tap (`Chess + YouTube`, `ChessKids + YouTube`, `Chess + Apple TV`, `Lichess + Twitch`, `Chess + Reddit`, `Colonist + YouTube`).
+    * **Add & Remove Custom Duos:** Tap `[ ✎ Edit ]` on the Tabletop Duos row to toggle edit mode and reveal red `✕` delete buttons on each duo card for one-tap removal. Scroll to the end of the row and tap `[ ➕ Add Duo ]` to open the custom duo creator dialog: pick Left and Right apps from quick pills or input custom URLs, and customize title and emoji. Tap `[ ↺ Reset Defaults ]` in the dialog to restore factory presets at any time. All custom configurations persist across restarts in `SharedPreferences` (and in browser `localStorage` in the web prototype).
   * **Single-Source Audio Isolation:** Seamless audio focus bridge mutes the inactive pane automatically; tap `[ 🔊 ]` / `[ 🔇 ]` to switch audio source or long-press to mute both (`NONE`).
   * **Media Play/Pause Quick Control:** Tap `[ ⏯ ]` in the top split bar to toggle playback on all HTML5 audio/video in the active pane without touching tiny on-screen web player controls.
   * **Secondary App Quick Navigation & Hot-Swap:** Dedicated secondary pane navigation controls (`[ ◂ ]` Back, `[ ↺ ]` Reload) and `[ 🔀 App ]` to hot-swap the secondary pane from the Launcher without leaving split-screen mode.
@@ -71,6 +87,11 @@ Because the Board OS validates all installed APKs against its native SDK (`libbo
   * **Touch Safety & Corner Clearance:** Generous 64dp edge landing zone with `VelocityTracker` support, resilient directional filtering (zero micro-movement aborts), multi-touch pinch safety (`ACTION_POINTER_DOWN` abort), and complete clearance of the Board OS hardware button corner cutout (`106dp`), ensuring zero interference with chess pieces, tactical arrows, launcher cards, or system controls.
 * **Widevine DRM & HTML5 Fullscreen Video:**
   * Automatically grants `RESOURCE_PROTECTED_MEDIA_ID` permissions for protected streaming playback and supports native HTML5 fullscreen video surfaces.
+* **Autonomous Remote Navigation Daemon & Screenshot Extraction (`:8990`):**
+  * Embedded, zero-dependency lightweight HTTP server (`RemoteNavigationServer.java`) listening on port `8990`. Enables programmatic navigation, automated hardware screenshot tours, and live status inspection over LAN (`GET /status`, `GET /nav?action=launcher`, `controls`, `help`, `theme`, `open`, `duo`, `split_preset`, `split_swap`, `rotate`, `close`).
+  * **Zero Board Resource Overhead:** Disabled by default during normal builds and runtime to protect Board hardware CPU/memory/thread resources. Gated via build-time asset flag (`./build_and_deploy.sh --enable-remote-nav`) and enabled only when running automated prototype captures or integration testing.
+* **Live Interactive Web Prototype (`docs/` for GitHub Pages):**
+  * Fully standalone client-side simulator enabling prospective players and developers to explore the tabletop launcher, live dynamic theming across all 9 color palettes, split-screen dual app multitasking with draggable divider, custom duo creation/deletion, docked browser controls rail, and tactical arrow gestures in any desktop or mobile web browser.
 
 ---
 
@@ -85,6 +106,11 @@ ChessBoard/
 ├── BUILD_SEQUENCE.md         # Detailed 4-step build & deployment guide
 ├── PROJECT_HISTORY.md        # Chronological engineering log & roadmap
 ├── build_and_deploy.sh       # One-step CLI build, export & deploy script
+├── docs/                     # Interactive Tabletop Web Prototype (GitHub Pages)
+│   ├── index.html            # Simulator HTML (Launcher, Viewport, Split-Screen, Modals)
+│   ├── style.css             # Authentic tabletop styling, theme engine & responsive bezel
+│   ├── app.js                # State machine, draggable divider & tactical arrow engine
+│   └── screenshots/          # Real 1080p hardware screenshots from the physical Board
 ├── chessboard/               # Godot 4.7 host project & Board SDK integration
 │   ├── project.godot         # Godot configuration & 3s splash setup
 │   ├── chess.tscn            # Root scene (splash screen & WebView host)
