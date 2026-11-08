@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         backgammon: { title: '247 Backgammon', icon: '🎲', img: 'screenshots/chess_fullscreen.png', isInteractive: false },
         bga: { title: 'BoardGameArena', icon: '🌐', img: 'screenshots/chess_fullscreen.png', isInteractive: false },
         youtube: { title: 'YouTube', icon: '▶️', img: 'screenshots/split_duo_controls.png', isInteractive: false },
+        cbssports: { title: 'CBS Sports', icon: '🏈', img: 'screenshots/split_duo_controls.png', isInteractive: false },
         twitch: { title: 'Twitch', icon: '🟣', img: 'screenshots/split_duo_controls.png', isInteractive: false },
         appletv: { title: 'Apple TV+', icon: '📺', img: 'screenshots/split_duo_controls.png', isInteractive: false },
         netflix: { title: 'Netflix', icon: '🍿', img: 'screenshots/split_duo_controls.png', isInteractive: false },
@@ -112,12 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Rail Buttons
     const railCloseBtn = document.getElementById('railCloseBtn');
+    const railBackBtn = document.getElementById('railBackBtn');
     const railLauncherBtn = document.getElementById('railLauncherBtn');
     const railSplitBtn = document.getElementById('railSplitBtn');
     const railRotateBtn = document.getElementById('railRotateBtn');
     const railMarginBtn = document.getElementById('railMarginBtn');
     const rightEdgeTrigger = document.getElementById('rightEdgeTrigger');
     const topEdgeTrigger = document.getElementById('topEdgeTrigger');
+    const btnTogglePaneFs = document.getElementById('btnTogglePaneFs');
+    const btnExitPaneFs = document.getElementById('btnExitPaneFs');
 
     // Launcher Header Buttons
     const hdrControlsBtn = document.getElementById('hdrControlsBtn');
@@ -283,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeSplitScreen() {
+        exitPaneFullscreen();
         state.isSplit = false;
         appStage.classList.remove('split-active');
         primaryPane.style.flex = '1 1 100%';
@@ -618,6 +623,55 @@ document.addEventListener('DOMContentLoaded', () => {
             launchDuo('chesscom', 'youtube', 0.5);
         }
     });
+
+    // --- Duo Fullscreen Video Isolation Simulation ---
+    let isPaneFullscreen = false;
+    let paneFsIdleTimer = null;
+
+    function enterPaneFullscreen() {
+        if (!state.isSplit) return;
+        isPaneFullscreen = true;
+        secondaryPane.classList.add('pane-fullscreen-active');
+        if (btnExitPaneFs) btnExitPaneFs.style.opacity = '1';
+        clearTimeout(paneFsIdleTimer);
+        paneFsIdleTimer = setTimeout(() => {
+            if (isPaneFullscreen && btnExitPaneFs) {
+                btnExitPaneFs.style.opacity = '0.35';
+            }
+        }, 4000);
+    }
+
+    function exitPaneFullscreen() {
+        isPaneFullscreen = false;
+        clearTimeout(paneFsIdleTimer);
+        secondaryPane.classList.remove('pane-fullscreen-active');
+    }
+
+    if (btnTogglePaneFs) {
+        btnTogglePaneFs.addEventListener('click', enterPaneFullscreen);
+    }
+    if (btnExitPaneFs) {
+        btnExitPaneFs.addEventListener('click', exitPaneFullscreen);
+        btnExitPaneFs.addEventListener('mouseenter', () => {
+            btnExitPaneFs.style.opacity = '1';
+        });
+        btnExitPaneFs.addEventListener('mouseleave', () => {
+            if (isPaneFullscreen) {
+                clearTimeout(paneFsIdleTimer);
+                paneFsIdleTimer = setTimeout(() => {
+                    if (isPaneFullscreen && btnExitPaneFs) btnExitPaneFs.style.opacity = '0.35';
+                }, 4000);
+            }
+        });
+    }
+
+    if (railBackBtn) {
+        railBackBtn.addEventListener('click', () => {
+            if (isPaneFullscreen) {
+                exitPaneFullscreen();
+            }
+        });
+    }
 
     // --- Draggable Center Divider ---
     let isDraggingDivider = false;

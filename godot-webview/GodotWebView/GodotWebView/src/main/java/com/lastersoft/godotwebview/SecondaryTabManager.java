@@ -264,6 +264,10 @@ public class SecondaryTabManager {
                         }
                         return true;
                     }
+                    if (UserAgentManager.isCbsSportsWatchLoop(fullUri)) {
+                        view.loadUrl(UserAgentManager.fixCbsSportsWatchUrl(fullUri));
+                        return true;
+                    }
                     String scheme = request.getUrl().getScheme();
                     if (scheme != null && !scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https")) {
                         if (fullUri.startsWith("intent://")) {
@@ -400,7 +404,8 @@ public class SecondaryTabManager {
             transport.setWebView(popupWebView);
         }
         if (initialUrl != null) {
-            popupWebView.loadUrl(initialUrl);
+            String target = (uaManager != null) ? uaManager.normalizeTargetUrl(initialUrl) : initialUrl;
+            popupWebView.loadUrl(target);
         }
 
         if (callback != null) {

@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -56,6 +57,8 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
     private final SplitScreenManager splitScreenManager = new SplitScreenManager();
 
     private FrameLayout layout = null;
+    private FrameLayout primaryContainer = null;
+    private FloatingDismissButton primaryFullscreenDismissButton = null;
     private WebView webView = null;
     private ProgressBar progressBar = null;
     private View customView = null;
@@ -295,6 +298,12 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
                             return false;
                         }
 
+                        // Loop mitigation for CBS Sports edge redirect conflict (/watch <-> /watch/)
+                        if (UserAgentManager.isCbsSportsWatchLoop(fullTargetUrl)) {
+                            view.loadUrl(UserAgentManager.fixCbsSportsWatchUrl(fullTargetUrl));
+                            return true;
+                        }
+
                         // Protect active chess game: route external site links in chess.com to second tab
                         if (request.isForMainFrame()) {
                             String host = targetUri.getHost();
@@ -355,13 +364,29 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
                 }
 
                 @Override
+                public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                    super.onReceivedError(view, request, error);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request != null && request.isForMainFrame() && error != null) {
+                        if (error.getErrorCode() == WebViewClient.ERROR_REDIRECT_LOOP) {
+                            String failedUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                            if (UserAgentManager.isCbsSportsWatchLoop(failedUrl) || failedUrl.contains("cbssports.com/watch")) {
+                                Log.w(TAG, "Mitigating ERR_TOO_MANY_REDIRECTS on CBS Sports by loading /watch/live directly");
+                                view.post(() -> view.loadUrl("https://www.cbssports.com/watch/live"));
+                            }
+                        }
+                    }
+                }
+
+                @Override
                 public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                     boolean didCrash = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) && detail.didCrash();
                     int priority = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ? detail.rendererPriorityAtExit() : -1;
                     Log.e(TAG, "Primary WebView render process gone! didCrash=" + didCrash + ", priority=" + priority);
 
                     if (view != null) {
-                        if (layout != null) {
+                        if (primaryContainer != null) {
+                            primaryContainer.removeView(view);
+                        } else if (layout != null) {
                             layout.removeView(view);
                         }
                         try {
@@ -410,9 +435,6 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
             FrameLayout.LayoutParams progressParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, progressHeight);
             progressParams.gravity = Gravity.TOP;
-            progressParams.leftMargin = leftPx;
-            progressParams.topMargin = topPx;
-            progressParams.rightMargin = rightPx;
             progressBar.setLayoutParams(progressParams);
             progressBar.setMax(100);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -483,22 +505,52 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
                     }
                     customView = view;
                     customView.setBackgroundColor(Color.BLACK);
+                    customView.setFocusable(true);
+                    customView.setFocusableInTouchMode(true);
+                    customView.setClickable(true);
+                    customView.requestFocus();
                     customViewCallback = callback;
-                    if (webView != null) {
-                        webView.setVisibility(View.GONE);
-                    }
-                    if (layout != null) {
-                        layout.addView(customView, new FrameLayout.LayoutParams(
+
+                    ViewGroup targetParent = (primaryContainer != null) ? primaryContainer : layout;
+                    if (targetParent != null) {
+                        targetParent.addView(customView, new FrameLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                                 ViewGroup.LayoutParams.MATCH_PARENT));
+
+                        if (primaryFullscreenDismissButton == null) {
+                            primaryFullscreenDismissButton = new FloatingDismissButton();
+                            View exitBtn = primaryFullscreenDismissButton.createButton(activity, targetParent, GodotWebView.this::exitCustomFullscreen);
+                            targetParent.addView(exitBtn);
+                        }
+                        primaryFullscreenDismissButton.showFullscreenExitStyle();
+                        int parentW = targetParent.getWidth();
+                        if (parentW > 0) {
+                            primaryFullscreenDismissButton.pinToTopRight(parentW);
+                        }
+                        primaryFullscreenDismissButton.bringToFront();
                         menuOverlayView.bringToFront();
                         floatingDismissButton.bringToFront();
                     }
+                    menuOverlayView.updateBackButtonState(canGoBack());
                 }
 
                 @Override
                 public void onHideCustomView() {
                     exitCustomFullscreen();
+                }
+            });
+
+            primaryContainer = new FrameLayout(activity);
+            primaryContainer.setBackgroundColor(Color.BLACK);
+            primaryContainer.addView(webView, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            primaryContainer.addView(progressBar);
+
+            primaryContainer.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                int w = right - left;
+                if (w > 0 && primaryFullscreenDismissButton != null && customView != null) {
+                    primaryFullscreenDismissButton.pinToTopRight(w);
                 }
             });
 
@@ -510,8 +562,7 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
             webParams.topMargin = topPx;
             webParams.rightMargin = rightPx;
             webParams.bottomMargin = bottomPx;
-            layout.addView(webView, webParams);
-            layout.addView(progressBar);
+            layout.addView(primaryContainer, webParams);
             secondaryTabManager.applyMargins(leftPx, topPx, rightPx, bottomPx);
 
             ViewGroup parentView = layout;
@@ -767,7 +818,8 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
                 }
             });
 
-            webView.loadUrl(url);
+            String targetUrl = (uaManager != null) ? uaManager.normalizeTargetUrl(url) : url;
+            webView.loadUrl(targetUrl);
         });
     }
 
@@ -826,10 +878,18 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
         if (secondaryTabManager.isOpen()) {
             return secondaryTabManager.canGoBack();
         }
-        if (splitScreenManager.isSplitActive() && splitScreenManager.getSecondaryWebView() != null && splitScreenManager.getSecondaryWebView().canGoBack()) {
+        if (customView != null) {
             return true;
         }
-        return (customView != null) || (webView != null && webView.canGoBack());
+        if (splitScreenManager.isSplitActive()) {
+            if (splitScreenManager.isSecondaryCustomViewActive()) {
+                return true;
+            }
+            if (splitScreenManager.getSecondaryWebView() != null && splitScreenManager.getSecondaryWebView().canGoBack()) {
+                return true;
+            }
+        }
+        return (webView != null && webView.canGoBack());
     }
 
     private void handleBackNavigation() {
@@ -837,6 +897,9 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
             secondaryTabManager.goBack();
         } else if (customView != null) {
             exitCustomFullscreen();
+            hideMenu();
+        } else if (splitScreenManager.isSplitActive() && splitScreenManager.isSecondaryCustomViewActive()) {
+            splitScreenManager.exitSecondaryCustomFullscreen();
             hideMenu();
         } else if (splitScreenManager.isSplitActive() && splitScreenManager.getSecondaryWebView() != null && splitScreenManager.getSecondaryWebView().canGoBack()) {
             splitScreenManager.getSecondaryWebView().goBack();
@@ -939,19 +1002,20 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
             bottomMargin = px;
         }
 
-        if (webView != null) {
-            ViewGroup.LayoutParams lp = webView.getLayoutParams();
+        View targetView = (primaryContainer != null) ? primaryContainer : webView;
+        if (targetView != null) {
+            ViewGroup.LayoutParams lp = targetView.getLayoutParams();
             if (lp instanceof FrameLayout.LayoutParams) {
                 FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
                 flp.leftMargin = leftMargin;
                 flp.topMargin = topMargin;
                 flp.rightMargin = rightMargin;
                 flp.bottomMargin = bottomMargin;
-                webView.setLayoutParams(flp);
+                targetView.setLayoutParams(flp);
             }
         }
 
-        if (progressBar != null) {
+        if (primaryContainer == null && progressBar != null) {
             ViewGroup.LayoutParams lp = progressBar.getLayoutParams();
             if (lp instanceof FrameLayout.LayoutParams) {
                 FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) lp;
@@ -1020,7 +1084,7 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
 
         if (webView != null) {
             isExplicitNavigation = true;
-            String targetUrl = uaManager.adjustYouTubeTargetUrl(siteUrl);
+            String targetUrl = (uaManager != null) ? uaManager.normalizeTargetUrl(siteUrl) : siteUrl;
             webView.loadUrl(targetUrl);
         }
         hideMenu();
@@ -1045,7 +1109,7 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
         int secMarginMode = SiteSettingsDialogHelper.getSiteDefaultMarginMode(activity, secKey);
 
         splitScreenManager.openSplit(
-                activity, layout, webView, progressBar, siteUrl, uaManager, density,
+                activity, layout, primaryContainer, webView, progressBar, siteUrl, uaManager, density,
                 primMarginMode, primMarginDp, secMarginMode, secMarginDp,
                 new SplitScreenManager.SplitScreenCallback() {
                     @Override
@@ -1132,18 +1196,24 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
 
     private void exitCustomFullscreen() {
         if (customView != null) {
-            if (layout != null) {
-                layout.removeView(customView);
+            ViewGroup targetParent = (primaryContainer != null) ? primaryContainer : layout;
+            if (targetParent != null) {
+                targetParent.removeView(customView);
             }
             customView = null;
         }
+        if (primaryFullscreenDismissButton != null) {
+            primaryFullscreenDismissButton.hide();
+        }
         if (webView != null) {
             webView.setVisibility(View.VISIBLE);
+            webView.requestFocus();
         }
         if (customViewCallback != null) {
             customViewCallback.onCustomViewHidden();
             customViewCallback = null;
         }
+        menuOverlayView.updateBackButtonState(canGoBack());
     }
 
     private void terminateBoardAndActivity() {
@@ -1170,6 +1240,10 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
             closeSecondTab();
             floatingDismissButton.destroy();
             exitCustomFullscreen();
+            if (primaryFullscreenDismissButton != null) {
+                primaryFullscreenDismissButton.destroy();
+                primaryFullscreenDismissButton = null;
+            }
             if (layout != null) {
                 menuOverlayView.destroy(layout);
                 layout.removeAllViews();
@@ -1178,6 +1252,7 @@ public class GodotWebView extends GodotPlugin implements RemoteNavigationServer.
                     parent.removeView(layout);
                 }
                 layout = null;
+                primaryContainer = null;
                 webView = null;
                 progressBar = null;
             }

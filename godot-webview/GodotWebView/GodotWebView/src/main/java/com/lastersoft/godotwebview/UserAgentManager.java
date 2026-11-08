@@ -57,6 +57,27 @@ public class UserAgentManager {
         return raw.replaceAll(";\\s*wv", "").replaceAll("Version/\\d+\\.\\d+\\s*", "");
     }
 
+    /**
+     * Detects CBS Sports /watch edge redirect loop where the server ping-pongs between
+     * /watch (301) and /watch/ (308).
+     */
+    public static boolean isCbsSportsWatchLoop(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+        if (!lower.contains("cbssports.com/watch")) return false;
+        return lower.matches("https?://(www\\.)?cbssports\\.com/watch(/)?(\\?.*|#.*)?");
+    }
+
+    /**
+     * Resolves CBS Sports /watch redirect loop directly to the working live streaming hub (/watch/live).
+     */
+    public static String fixCbsSportsWatchUrl(String url) {
+        if (isCbsSportsWatchLoop(url)) {
+            return url.replaceFirst("cbssports\\.com/watch(/)?", "cbssports.com/watch/live");
+        }
+        return url;
+    }
+
     private String defaultUserAgent = null;
     private boolean defaultDesktopMode = true;
     private boolean isDesktopMode = true;
@@ -235,15 +256,26 @@ public class UserAgentManager {
         }
     }
 
-    public String adjustYouTubeTargetUrl(String url) {
-        if (url == null || !url.contains("youtube.com") || isAuthUrl(url)) return url;
-        String targetUrl = url;
-        if (isDesktopMode && !targetUrl.contains("app=desktop")) {
-            targetUrl += (targetUrl.contains("?") ? "&" : "?") + "app=desktop";
-        } else if (!isDesktopMode && !targetUrl.contains("app=mobile")) {
-            targetUrl += (targetUrl.contains("?") ? "&" : "?") + "app=mobile";
+    /**
+     * Normalizes target URLs to resolve known edge server issues, redirect loops,
+     * and platform-specific query parameters (e.g. YouTube app mode, CBS Sports watch redirect loop).
+     */
+    public String normalizeTargetUrl(String url) {
+        if (url == null) return null;
+        String targetUrl = fixCbsSportsWatchUrl(url);
+
+        if (targetUrl.contains("youtube.com") && !isAuthUrl(targetUrl)) {
+            if (isDesktopMode && !targetUrl.contains("app=desktop")) {
+                targetUrl += (targetUrl.contains("?") ? "&" : "?") + "app=desktop";
+            } else if (!isDesktopMode && !targetUrl.contains("app=mobile")) {
+                targetUrl += (targetUrl.contains("?") ? "&" : "?") + "app=mobile";
+            }
         }
         return targetUrl;
+    }
+
+    public String adjustYouTubeTargetUrl(String url) {
+        return normalizeTargetUrl(url);
     }
 
     public void updateDesktopButtonStyle(Button button, GradientDrawable circle, float density) {

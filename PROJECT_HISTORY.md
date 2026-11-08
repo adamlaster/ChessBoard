@@ -1250,3 +1250,42 @@ To avoid information duplication, the live user-facing specifications are mainta
    - Updated `AGENTS.md` Rules 2, 3, and 4 mandating interactive web prototype synchronization before commits/merges and enforcing prototype tooling resource hygiene.
    - Updated `HelpDialogHelper.java` Controls & Gestures Guide with instructions for adding, removing, and resetting custom Tabletop Duos.
    - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 54: Duo Split-Screen Fullscreen Video Isolation, Touch Input Preservation & Tabletop Exit Button
+1. **Duo Split-Screen Fullscreen Video Isolation:**
+   - **Root Cause Analysis:** In Phase 3, `WebChromeClient.onShowCustomView` attached `customView` directly to the root `BezelGestureFrameLayout` with `MATCH_PARENT, MATCH_PARENT`. In single-app mode, this correctly filled the screen; however, in split-screen / Duo mode, entering fullscreen on an embedded web player (e.g., YouTube on the left pane) exploded across the entire 1920x1080 display, obscuring the right companion app and destroying the split screen layout.
+   - **Symmetrical Container Architecture (`primaryContainer` + `secondaryContainer`):** Wrapped the primary `webView` and `progressBar` inside `primaryContainer = new FrameLayout(activity)`. Both panes in split-screen mode are now symmetrical `FrameLayout` containers whose geometry, insets, and tabletop margins are managed independently by `SplitScreenManager`.
+   - **Strict Pane Isolation:** Updated `GodotWebView.onShowCustomView` and `SplitScreenManager.onShowCustomView` to attach `customView` exclusively to `primaryContainer` or `secondaryContainer`. Video fullscreen is now strictly isolated to that specific half (or custom ratio) of the display, leaving the companion app, center divider, and top split control bar visible, active, and interactive.
+2. **Touch Input Preservation & Focus Restoration:**
+   - **Root Cause Analysis:** Legacy code called `webView.setVisibility(View.GONE)` during `onShowCustomView`. In Android Chromium, setting a WebView to `GONE` pauses the WebContents compositor, detaches DOM touch event routing, and causes the host activity to lose focus to the underlying Godot OpenGL surface, freezing video controls.
+   - **Preserve Underlying WebView:** Kept WebViews `View.VISIBLE` underneath the opaque black `customView` (`Color.BLACK`).
+   - **Explicit Focus & Clickability:** Explicitly configured `customView.setFocusable(true)`, `setFocusableInTouchMode(true)`, `setClickable(true)`, and `customView.requestFocus()` so native web video player controls (scrubber bar, play/pause, volume, seek, and native exit-fullscreen buttons) respond instantly to tabletop touch.
+3. **Tabletop Floating Exit Button (`FloatingDismissButton.showFullscreenExitStyle()`):**
+   - Embedded web players on Android often have tiny or hidden exit-fullscreen controls that are difficult to tap on a tabletop display.
+   - Pinned an obsidian circular `✕` exit button (`#E60F172A` acrylic with `#38BDF8` cyan border) to the top-right corner of the active video pane (`pinToTopRight()`).
+   - Integrated a 4-second auto-fade (`alpha: 0.35f`) with instant re-illumination on touch and boundary clamping, ensuring tabletop players never get trapped in video mode.
+   - Added container layout change listeners to dynamically re-pin the exit button when resizing panes via divider dragging or screen rotation.
+   - Wired into `canGoBack()` and `handleBackNavigation()` so pressing the docked Browser Controls Back button (⬅) cleanly exits fullscreen.
+4. **Documentation & Prototype Synchronization (Rules 2, 4):**
+   - Updated `HelpDialogHelper.java` Section 2 ("Duo Fullscreen Video Isolation & Exit (✕)").
+   - Updated `docs/index.html`, `docs/style.css`, and `docs/app.js` with simulated pane fullscreen video controls and Controls Guide entries.
+   - Updated `README.md`, `ARCHITECTURE.md`, and `PROJECT_HISTORY.md`.
+
+---
+
+### Phase 55: CBS Sports Live Hub Direct Routing & Edge Redirect Loop Mitigation
+1. **Root Cause Analysis (CBS Sports `ERR_TOO_MANY_REDIRECTS`):**
+   - When launching CBS Sports, Chromium aborted with `net::ERR_TOO_MANY_REDIRECTS`.
+   - Network diagnostics via `curl -ILs` revealed an infinite ping-pong loop caused by an edge CDN routing conflict on CBS Sports servers: `GET https://www.cbssports.com/watch` returns HTTP 301 redirecting to `/watch/`, while `GET https://www.cbssports.com/watch/` returns HTTP 308 redirecting back to `/watch`.
+   - In contrast, the dedicated live sports streaming hub `https://www.cbssports.com/watch/live` and root `https://www.cbssports.com` both return HTTP 200 OK directly without any redirects.
+2. **App Catalog Direct Routing (`AppCatalog.java`):**
+   - Updated the CBS Sports entry in the `"Watch"` category from `https://www.cbssports.com/watch` to `https://www.cbssports.com/watch/live` ("Live Games & Watch").
+3. **Triple-Redundancy Edge Redirect Mitigation (`UserAgentManager.java`, `GodotWebView.java`, `SplitScreenManager.java`, `SecondaryTabManager.java`):**
+   - **Pre-Flight Normalization (`normalizeTargetUrl`):** In `UserAgentManager.java`, added `isCbsSportsWatchLoop(url)` and `fixCbsSportsWatchUrl(url)`. Any URL targeting `/watch` or `/watch/` is rewritten to `/watch/live` before `webView.loadUrl(...)` is called.
+   - **In-Flight Redirect Interception (`shouldOverrideUrlLoading`):** In `GodotWebView.java`, `SplitScreenManager.java`, and `SecondaryTabManager.java`, intercepted any redirect requests matching `/watch` and immediately loaded `/watch/live`.
+   - **Crash / Error Fallback Recovery (`onReceivedError`):** In `GodotWebView.java` and `SplitScreenManager.java`, added `onReceivedError` handling for `WebViewClient.ERROR_REDIRECT_LOOP` to catch and auto-recover from any unexpected redirect loops by reloading `/watch/live`.
+4. **Interactive Web Prototype Parity (`docs/`):**
+   - Added CBS Sports (`🏈 CBS Sports`, "Live Games & Watch") to the Watch & Stream category track in `docs/index.html` and `APP_DATA` in `docs/app.js`.
+   - Updated Watch category item count badge to 6 apps.

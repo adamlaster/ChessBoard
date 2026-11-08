@@ -100,7 +100,7 @@ public final class AppCatalog {
         )),
         new CategoryEntry("Watch", "📺", Arrays.asList(
             new SiteEntry("YouTube", "https://www.youtube.com", "▶️", "Videos & Streaming", "MEDIA"),
-            new SiteEntry("CBS Sports", "https://www.cbssports.com/watch", "🏈", "Live Games & Watch", "SPORTS"),
+            new SiteEntry("CBS Sports", "https://www.cbssports.com/watch/live", "🏈", "Live Games & Watch", "SPORTS"),
             new SiteEntry("Peacock", "https://www.peacocktv.com", "🦚", "NBC Sports & TV", "TV"),
             new SiteEntry("MLB.TV", "https://www.mlb.com/tv", "⚾", "Baseball Stream", "SPORTS"),
             new SiteEntry("Disney+", "https://www.disneyplus.com", "🏰", "Movies & Shows", "MOVIES"),
