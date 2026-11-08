@@ -22,6 +22,7 @@ import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -85,6 +86,7 @@ public class SplitScreenManager {
     private ProgressBar secondaryProgressBar = null;
     private View secondaryCustomView = null;
     private WebChromeClient.CustomViewCallback secondaryCustomViewCallback = null;
+    private FloatingDismissButton secondaryFullscreenDismissButton = null;
     private LinearLayout dividerView = null;
     private View dividerHandle = null;
     private GradientDrawable dividerHandleBg = null;
@@ -126,6 +128,7 @@ public class SplitScreenManager {
     // Cached references for layout updates
     private Activity activity = null;
     private FrameLayout rootLayout = null;
+    private FrameLayout primaryContainer = null;
     private WebView primaryWebView = null;
     private ProgressBar primaryProgressBar = null;
     private UserAgentManager uaManager = null;
@@ -213,14 +216,31 @@ public class SplitScreenManager {
                               UserAgentManager userAgentMgr,
                               float density,
                               SplitScreenCallback cb) {
-        return openSplit(act, root, primaryView, primaryProgress, targetUrl, userAgentMgr, density,
+        return openSplit(act, root, null, primaryView, primaryProgress, targetUrl, userAgentMgr, density,
                 SiteSettingsDialogHelper.MARGIN_MODE_NONE, SiteSettingsDialogHelper.DEFAULT_GUTTER_DP,
                 SiteSettingsDialogHelper.MARGIN_MODE_NONE, SiteSettingsDialogHelper.DEFAULT_GUTTER_DP, cb);
+    }
+
+    public boolean openSplit(Activity act,
+                              FrameLayout root,
+                              WebView primaryView,
+                              ProgressBar primaryProgress,
+                              String targetUrl,
+                              UserAgentManager userAgentMgr,
+                              float density,
+                              int primMarginMode,
+                              int primMarginDp,
+                              int secMarginMode,
+                              int secMarginDp,
+                              SplitScreenCallback cb) {
+        return openSplit(act, root, null, primaryView, primaryProgress, targetUrl, userAgentMgr, density,
+                primMarginMode, primMarginDp, secMarginMode, secMarginDp, cb);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     public boolean openSplit(Activity act,
                               FrameLayout root,
+                              FrameLayout primContainer,
                               WebView primaryView,
                               ProgressBar primaryProgress,
                               String targetUrl,
@@ -235,6 +255,7 @@ public class SplitScreenManager {
 
         this.activity = act;
         this.rootLayout = root;
+        this.primaryContainer = primContainer;
         this.primaryWebView = primaryView;
         this.primaryProgressBar = primaryProgress;
         this.uaManager = userAgentMgr;
@@ -261,6 +282,12 @@ public class SplitScreenManager {
         // 1. Create Secondary Container
         secondaryContainer = new FrameLayout(act);
         secondaryContainer.setBackgroundColor(Color.BLACK);
+        secondaryContainer.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            int w = right - left;
+            if (w > 0 && secondaryFullscreenDismissButton != null && secondaryCustomView != null) {
+                secondaryFullscreenDismissButton.pinToTopRight(w);
+            }
+        });
 
         // 2. Create Secondary WebView
         secondaryWebView = new WebView(act);
@@ -313,11 +340,37 @@ public class SplitScreenManager {
             }
 
             @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && request != null && request.getUrl() != null) {
+                    String fullTargetUrl = request.getUrl().toString();
+                    if (UserAgentManager.isCbsSportsWatchLoop(fullTargetUrl)) {
+                        view.loadUrl(UserAgentManager.fixCbsSportsWatchUrl(fullTargetUrl));
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 ChessTouchHelper.injectTouchEnhancements(view, url);
                 applyAudioMuteState(secondaryWebView, isSecondaryMuted);
                 updateControlBarButtons();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && request != null && request.isForMainFrame() && error != null) {
+                    if (error.getErrorCode() == WebViewClient.ERROR_REDIRECT_LOOP) {
+                        String failedUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                        if (UserAgentManager.isCbsSportsWatchLoop(failedUrl) || failedUrl.contains("cbssports.com/watch")) {
+                            Log.w(TAG, "Mitigating ERR_TOO_MANY_REDIRECTS on secondary CBS Sports by loading /watch/live directly");
+                            view.post(() -> view.loadUrl("https://www.cbssports.com/watch/live"));
+                        }
+                    }
+                }
             }
 
             @Override
@@ -376,31 +429,33 @@ public class SplitScreenManager {
                 }
                 secondaryCustomView = view;
                 secondaryCustomView.setBackgroundColor(Color.BLACK);
+                secondaryCustomView.setFocusable(true);
+                secondaryCustomView.setFocusableInTouchMode(true);
+                secondaryCustomView.setClickable(true);
+                secondaryCustomView.requestFocus();
                 secondaryCustomViewCallback = callback;
-                if (secondaryWebView != null) {
-                    secondaryWebView.setVisibility(View.GONE);
-                }
                 if (secondaryContainer != null) {
                     secondaryContainer.addView(secondaryCustomView, new FrameLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+                    if (secondaryFullscreenDismissButton == null) {
+                        secondaryFullscreenDismissButton = new FloatingDismissButton();
+                        View exitBtn = secondaryFullscreenDismissButton.createButton(act, secondaryContainer,
+                                SplitScreenManager.this::exitSecondaryCustomFullscreen);
+                        secondaryContainer.addView(exitBtn);
+                    }
+                    secondaryFullscreenDismissButton.showFullscreenExitStyle();
+                    int containerW = secondaryContainer.getWidth();
+                    if (containerW > 0) {
+                        secondaryFullscreenDismissButton.pinToTopRight(containerW);
+                    }
+                    secondaryFullscreenDismissButton.bringToFront();
                 }
             }
 
             @Override
             public void onHideCustomView() {
-                if (secondaryCustomView != null) {
-                    if (secondaryContainer != null) {
-                        secondaryContainer.removeView(secondaryCustomView);
-                    }
-                    secondaryCustomView = null;
-                }
-                if (secondaryWebView != null) {
-                    secondaryWebView.setVisibility(View.VISIBLE);
-                }
-                if (secondaryCustomViewCallback != null) {
-                    secondaryCustomViewCallback.onCustomViewHidden();
-                    secondaryCustomViewCallback = null;
-                }
+                exitSecondaryCustomFullscreen();
             }
         });
 
@@ -419,8 +474,9 @@ public class SplitScreenManager {
 
         // 7. Insert Views into root hierarchy
         int insertIndex = 1;
-        if (root.indexOfChild(primaryWebView) >= 0) {
-            insertIndex = root.indexOfChild(primaryWebView) + 1;
+        View anchor = (primaryContainer != null) ? primaryContainer : primaryWebView;
+        if (root.indexOfChild(anchor) >= 0) {
+            insertIndex = root.indexOfChild(anchor) + 1;
         }
         root.addView(secondaryContainer, insertIndex);
         root.addView(dragOverlayView, insertIndex + 1);
@@ -1290,15 +1346,10 @@ public class SplitScreenManager {
         if (!isSplitActive) return;
         isSplitActive = false;
 
-        if (secondaryCustomView != null) {
-            if (secondaryContainer != null) {
-                secondaryContainer.removeView(secondaryCustomView);
-            }
-            secondaryCustomView = null;
-        }
-        if (secondaryCustomViewCallback != null) {
-            secondaryCustomViewCallback.onCustomViewHidden();
-            secondaryCustomViewCallback = null;
+        exitSecondaryCustomFullscreen();
+        if (secondaryFullscreenDismissButton != null) {
+            secondaryFullscreenDismissButton.destroy();
+            secondaryFullscreenDismissButton = null;
         }
 
         if (secondaryWebView != null) {
@@ -1359,17 +1410,23 @@ public class SplitScreenManager {
             exitBtn = null;
         }
 
-        // Restore primary webview to full screen and unmuted audio
-        if (primaryWebView != null && rootLayout != null) {
-            applyAudioMuteState(primaryWebView, false);
+        // Restore primary pane to full screen and unmuted audio
+        View primaryPane = (primaryContainer != null) ? primaryContainer : primaryWebView;
+        if (primaryPane != null && rootLayout != null) {
+            if (primaryWebView != null) {
+                applyAudioMuteState(primaryWebView, false);
+            }
             isPrimaryMuted = false;
             activeAudio = AudioFocusPane.PRIMARY;
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) primaryWebView.getLayoutParams();
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) primaryPane.getLayoutParams();
             if (lp != null) {
                 lp.width = FrameLayout.LayoutParams.MATCH_PARENT;
                 lp.height = FrameLayout.LayoutParams.MATCH_PARENT;
                 lp.leftMargin = 0;
-                primaryWebView.setLayoutParams(lp);
+                lp.topMargin = 0;
+                lp.rightMargin = 0;
+                lp.bottomMargin = 0;
+                primaryPane.setLayoutParams(lp);
             }
         }
 
@@ -1380,6 +1437,30 @@ public class SplitScreenManager {
         if (callback != null) {
             callback.onSplitClosed();
         }
+    }
+
+    public void exitSecondaryCustomFullscreen() {
+        if (secondaryCustomView != null) {
+            if (secondaryContainer != null) {
+                secondaryContainer.removeView(secondaryCustomView);
+            }
+            secondaryCustomView = null;
+        }
+        if (secondaryFullscreenDismissButton != null) {
+            secondaryFullscreenDismissButton.hide();
+        }
+        if (secondaryWebView != null) {
+            secondaryWebView.setVisibility(View.VISIBLE);
+            secondaryWebView.requestFocus();
+        }
+        if (secondaryCustomViewCallback != null) {
+            secondaryCustomViewCallback.onCustomViewHidden();
+            secondaryCustomViewCallback = null;
+        }
+    }
+
+    public boolean isSecondaryCustomViewActive() {
+        return secondaryCustomView != null;
     }
 
     public void updateLayout(int rootWidth, int rootHeight) {
@@ -1513,7 +1594,7 @@ public class SplitScreenManager {
         int rightPx = (rightMarginMode != SiteSettingsDialogHelper.MARGIN_MODE_NONE) ? (int) (rightMarginDp * density) : 0;
 
         // Apply to Left Pane
-        View leftView = isPrimaryOnLeft ? primaryWebView : secondaryContainer;
+        View leftView = isPrimaryOnLeft ? (primaryContainer != null ? primaryContainer : primaryWebView) : secondaryContainer;
         FrameLayout.LayoutParams leftLp = (FrameLayout.LayoutParams) leftView.getLayoutParams();
         if (leftLp == null) {
             leftLp = new FrameLayout.LayoutParams(leftPaneWidth, totalHeight);
@@ -1544,7 +1625,7 @@ public class SplitScreenManager {
         leftView.setLayoutParams(leftLp);
 
         // Apply to Right Pane
-        View rightView = isPrimaryOnLeft ? secondaryContainer : primaryWebView;
+        View rightView = isPrimaryOnLeft ? secondaryContainer : (primaryContainer != null ? primaryContainer : primaryWebView);
         FrameLayout.LayoutParams rightLp = (FrameLayout.LayoutParams) rightView.getLayoutParams();
         if (rightLp == null) {
             rightLp = new FrameLayout.LayoutParams(rightPaneWidth, totalHeight);
@@ -1575,7 +1656,7 @@ public class SplitScreenManager {
         rightView.setLayoutParams(rightLp);
 
         // Apply to Primary ProgressBar
-        if (primaryProgressBar != null) {
+        if (primaryContainer == null && primaryProgressBar != null) {
             FrameLayout.LayoutParams primLp = (FrameLayout.LayoutParams) primaryWebView.getLayoutParams();
             if (primLp != null) {
                 FrameLayout.LayoutParams pbLp = (FrameLayout.LayoutParams) primaryProgressBar.getLayoutParams();
@@ -1610,6 +1691,7 @@ public class SplitScreenManager {
         closeSplit();
         activity = null;
         rootLayout = null;
+        primaryContainer = null;
         primaryWebView = null;
         primaryProgressBar = null;
         uaManager = null;

@@ -191,6 +191,10 @@ public final class HelpDialogHelper {
                 "Swap Panes (⇄)",
                 "Tap [ ⇄ Swap ] in the split control bar to instantly exchange the positions of the left and right applications.",
                 activeTheme, menuDensity);
+        addItemRow(content,
+                "Duo Fullscreen Video Isolation & Exit (✕)",
+                "When expanding embedded web video players (such as YouTube) to full screen during Duo mode, video playback is strictly isolated to that specific pane (left or right). The companion app, center divider, and controls bar remain fully visible and interactive. A dedicated circular [✕] exit button with 4-second auto-fade is pinned to the top-right corner of the video pane for easy 1-tap tabletop return to split view. Tapping the Browser Controls Back button (⬅) or native player controls also exits fullscreen safely.",
+                activeTheme, menuDensity);
 
         // --- SECTION 3: BROWSER CONTROLS RAIL & THEMES ---
         addSectionHeader(content, "🎛️ Browser Controls Rail & Themes", activeTheme, menuDensity);

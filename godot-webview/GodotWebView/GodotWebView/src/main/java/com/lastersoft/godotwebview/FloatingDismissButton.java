@@ -152,6 +152,48 @@ public class FloatingDismissButton {
         }
     }
 
+    public void showFullscreenExitStyle() {
+        if (button == null || container == null) return;
+
+        button.setText("✕");
+        button.setTextSize(20);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setTextColor(Color.WHITE);
+
+        GradientDrawable exitCircle = new GradientDrawable();
+        exitCircle.setShape(GradientDrawable.OVAL);
+        exitCircle.setColor(Color.parseColor("#E60F172A")); // Deep dark acrylic
+        exitCircle.setStroke((int) (2.0f * density), Color.parseColor("#38BDF8")); // Cyan accent stroke
+        button.setBackground(exitCircle);
+        button.setContentDescription("Exit Fullscreen");
+
+        int containerW = container.getWidth();
+        if (containerW > 0) {
+            pinToTopRight(containerW);
+        } else {
+            container.post(() -> {
+                if (button != null && container != null && button.getVisibility() == View.VISIBLE) {
+                    pinToTopRight(container.getWidth());
+                }
+            });
+        }
+
+        button.setAlpha(1.0f);
+        button.setVisibility(View.VISIBLE);
+        button.bringToFront();
+        scheduleIdleFade();
+    }
+
+    public void pinToTopRight(int containerWidth) {
+        if (button == null) return;
+        float targetX = containerWidth - buttonSize - margin;
+        float targetY = margin;
+        if (targetX > 0) {
+            button.setX(targetX);
+            button.setY(targetY);
+        }
+    }
+
     public void hide() {
         if (button != null) {
             button.animate().cancel();
